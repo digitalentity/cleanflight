@@ -78,10 +78,13 @@
 t_fp_vector imuAccelInBodyFrame;
 t_fp_vector imuMeasuredGravityBF;
 t_fp_vector imuMeasuredRotationBF;
+t_fp_vector imuEstimatedGyroBiasDPS;
 float smallAngleCosZ = 0;
 
 static bool isAccelUpdatedAtLeastOnce = false;
 
+static float estGyroBiasAccX = 0.0f,  estGyroBiasAccY = 0.0f, estGyroBiasAccZ = 0.0f;    // integral error terms scaled by Ki
+static float estGyroBiasMagX = 0.0f,  estGyroBiasMagY = 0.0f, estGyroBiasMagZ = 0.0f;    // integral error terms scaled by Ki
 STATIC_UNIT_TESTED float q0 = 1.0f, q1 = 0.0f, q2 = 0.0f, q3 = 0.0f;    // quaternion of sensor frame relative to earth frame
 STATIC_UNIT_TESTED float rMat[3][3];
 
@@ -168,6 +171,7 @@ void imuInit(void)
 
     for (int axis = 0; axis < XYZ_AXIS_COUNT; axis++) {
         imuAccelInBodyFrame.A[axis] = 0;
+        imuEstimatedGyroBiasDPS.A[axis] = 0;
     }
 
     imuComputeRotationMatrix();
@@ -290,8 +294,6 @@ static void imuMahonyAHRSupdate(float dt, float gx, float gy, float gz,
                                 bool useMag, float mx, float my, float mz,
                                 bool useCOG, float courseOverGround)
 {
-    static float integralAccX = 0.0f,  integralAccY = 0.0f, integralAccZ = 0.0f;    // integral error terms scaled by Ki
-    static float integralMagX = 0.0f,  integralMagY = 0.0f, integralMagZ = 0.0f;    // integral error terms scaled by Ki
     float recipNorm;
     float ex, ey, ez;
     float qa, qb, qc;
@@ -354,13 +356,13 @@ static void imuMahonyAHRSupdate(float dt, float gx, float gy, float gz,
         if(imuRuntimeConfig.dcm_ki_mag > 0.0f) {
             // Stop integrating if spinning beyond the certain limit
             if (spin_rate_sq < sq(DEGREES_TO_RADIANS(SPIN_RATE_LIMIT))) {
-                integralMagX += imuRuntimeConfig.dcm_ki_mag * ex * dt;    // integral error scaled by Ki
-                integralMagY += imuRuntimeConfig.dcm_ki_mag * ey * dt;
-                integralMagZ += imuRuntimeConfig.dcm_ki_mag * ez * dt;
+                estGyroBiasMagX += imuRuntimeConfig.dcm_ki_mag * ex * dt;    // integral error scaled by Ki
+                estGyroBiasMagY += imuRuntimeConfig.dcm_ki_mag * ey * dt;
+                estGyroBiasMagZ += imuRuntimeConfig.dcm_ki_mag * ez * dt;
 
-                gx += integralMagX;
-                gy += integralMagY;
-                gz += integralMagZ;
+                gx += estGyroBiasMagX;
+                gy += estGyroBiasMagY;
+                gz += estGyroBiasMagZ;
             }
         }
 
@@ -394,13 +396,13 @@ static void imuMahonyAHRSupdate(float dt, float gx, float gy, float gz,
         if(imuRuntimeConfig.dcm_ki_acc > 0.0f) {
             // Stop integrating if spinning beyond the certain limit
             if (spin_rate_sq < sq(DEGREES_TO_RADIANS(SPIN_RATE_LIMIT))) {
-                integralAccX += imuRuntimeConfig.dcm_ki_acc * ex * dt;    // integral error scaled by Ki
-                integralAccY += imuRuntimeConfig.dcm_ki_acc * ey * dt;
-                integralAccZ += imuRuntimeConfig.dcm_ki_acc * ez * dt;
+                estGyroBiasAccX += imuRuntimeConfig.dcm_ki_acc * ex * dt;    // integral error scaled by Ki
+                estGyroBiasAccY += imuRuntimeConfig.dcm_ki_acc * ey * dt;
+                estGyroBiasAccZ += imuRuntimeConfig.dcm_ki_acc * ez * dt;
 
-                gx += integralAccX;
-                gy += integralAccY;
-                gz += integralAccZ;
+                gx += estGyroBiasAccX;
+                gy += estGyroBiasAccY;
+                gz += estGyroBiasAccZ;
             }
         }
 
@@ -528,10 +530,16 @@ static void imuCalculateEstimatedAttitude(float dT)
     }
 #endif
 
+    // Update orientation quaternion
     imuMahonyAHRSupdate(dT,     imuMeasuredRotationBF.A[X], imuMeasuredRotationBF.A[Y], imuMeasuredRotationBF.A[Z],
                         accWeight, imuMeasuredGravityBF.A[X], imuMeasuredGravityBF.A[Y], imuMeasuredGravityBF.A[Z],
                         useMag, mag.magADC[X], mag.magADC[Y], mag.magADC[Z],
                         useCOG, courseOverGround);
+
+    // Expose calculated gyro bias
+    imuEstimatedGyroBiasDPS.A[X] = RADIANS_TO_DEGREES(estGyroBiasAccX + estGyroBiasMagX);
+    imuEstimatedGyroBiasDPS.A[Y] = RADIANS_TO_DEGREES(estGyroBiasAccY + estGyroBiasMagY);
+    imuEstimatedGyroBiasDPS.A[Z] = RADIANS_TO_DEGREES(estGyroBiasAccZ + estGyroBiasMagZ);
 
     imuUpdateEulerAngles();
 }

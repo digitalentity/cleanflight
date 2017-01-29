@@ -29,6 +29,7 @@ extern int16_t smallAngle;
 extern t_fp_vector imuAccelInBodyFrame;         // cm/s/s
 extern t_fp_vector imuMeasuredGravityBF;        // cm/s/s
 extern t_fp_vector imuMeasuredRotationBF;       // rad/s
+extern t_fp_vector imuEstimatedGyroBiasDPS;     // deg/s
 
 typedef union {
     int16_t raw[XYZ_AXIS_COUNT];
