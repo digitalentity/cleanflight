@@ -28,10 +28,11 @@
 #include "build/version.h"
 
 #include "common/axis.h"
+#include "common/bitarray.h"
 #include "common/color.h"
+#include "common/huffman.h"
 #include "common/maths.h"
 #include "common/streambuf.h"
-#include "common/bitarray.h"
 #include "common/utils.h"
 
 #include "drivers/accgyro/accgyro.h"
@@ -505,7 +506,12 @@ static void serializeDataflashSummaryReply(sbuf_t *dst)
 }
 
 #ifdef USE_FLASHFS
-static void serializeDataflashReadReply(sbuf_t *dst, uint32_t address, uint16_t size)
+enum compressionType_e {
+    NO_COMPRESSION,
+    HUFFMAN
+};
+
+static void serializeDataflashReadReply(sbuf_t *dst, uint32_t address, const uint16_t size, bool useLegacyFormat, bool allowCompression)
 {
     // Check how much bytes we can read
     const int bytesRemainingInBuf = sbufBytesRemaining(dst);
@@ -521,11 +527,69 @@ static void serializeDataflashReadReply(sbuf_t *dst, uint32_t address, uint16_t 
     // Write address
     sbufWriteU32(dst, address);
 
-    // Read into streambuf directly
-    const int bytesRead = flashfsReadAbs(address, sbufPtr(dst), readLen);
-    sbufAdvance(dst, bytesRead);
-}
+    // legacy format does not support compression
+    const uint8_t compressionMethod = (!allowCompression || useLegacyFormat) ? NO_COMPRESSION : HUFFMAN;
+
+    if (compressionMethod == NO_COMPRESSION) {
+        if (!useLegacyFormat) {
+            // new format supports variable read lengths
+            sbufWriteU16(dst, readLen);
+            sbufWriteU8(dst, 0); // placeholder for compression format
+        }
+
+        const int bytesRead = flashfsReadAbs(address, sbufPtr(dst), readLen);
+
+        sbufAdvance(dst, bytesRead);
+
+        if (useLegacyFormat) {
+            // pad the buffer with zeros
+            for (int i = bytesRead; i < size; i++) {
+                sbufWriteU8(dst, 0);
+            }
+        }
+    } else {
+#ifdef USE_HUFFMAN
+        // compress in 256-byte chunks
+        const uint16_t READ_BUFFER_SIZE = 256;
+        uint8_t readBuffer[READ_BUFFER_SIZE];
+
+        huffmanState_t state = {
+            .bytesWritten = 0,
+            .outByte = sbufPtr(dst) + sizeof(uint16_t) + sizeof(uint8_t) + HUFFMAN_INFO_SIZE,
+            .outBufLen = readLen,
+            .outBit = 0x80,
+        };
+        *state.outByte = 0;
+
+        uint16_t bytesReadTotal = 0;
+        // read until output buffer overflows or flash is exhausted
+        while (state.bytesWritten < state.outBufLen && address + bytesReadTotal < flashfsSize) {
+            const int bytesRead = flashfsReadAbs(address + bytesReadTotal, readBuffer,
+                MIN(sizeof(readBuffer), flashfsSize - address - bytesReadTotal));
+
+            const int status = huffmanEncodeBufStreaming(&state, readBuffer, bytesRead, huffmanTable);
+            if (status == -1) {
+                // overflow
+                break;
+            }
+
+            bytesReadTotal += bytesRead;
+        }
+
+        if (state.outBit != 0x80) {
+            ++state.bytesWritten;
+        }
+
+        // header
+        sbufWriteU16(dst, HUFFMAN_INFO_SIZE + state.bytesWritten);
+        sbufWriteU8(dst, compressionMethod);
+        // payload
+        sbufWriteU16(dst, bytesReadTotal);
+        sbufAdvance(dst, state.bytesWritten);
 #endif
+    }
+}
+#endif // USE_FLASHFS
 
 /*
  * Returns true if the command was processd, false otherwise.
@@ -1346,21 +1410,25 @@ static void mspFcWaypointOutCommand(sbuf_t *dst, sbuf_t *src)
 static void mspFcDataFlashReadCommand(sbuf_t *dst, sbuf_t *src)
 {
     const unsigned int dataSize = sbufBytesRemaining(src);
-    uint16_t readLength;
-
     const uint32_t readAddress = sbufReadU32(src);
-
+    uint16_t readLength;
+    bool allowCompression = false;
+    bool useLegacyFormat;
     // Request payload:
     //  uint32_t    - address to read from
     //  uint16_t    - size of block to read (optional)
     if (dataSize >= sizeof(uint32_t) + sizeof(uint16_t)) {
         readLength = sbufReadU16(src);
-    }
-    else {
+        if (sbufBytesRemaining(src)) {
+            allowCompression = sbufReadU8(src);
+        }
+        useLegacyFormat = false;
+    } else {
         readLength = 128;
+        useLegacyFormat = true;
     }
 
-    serializeDataflashReadReply(dst, readAddress, readLength);
+    serializeDataflashReadReply(dst, readAddress, readLength, useLegacyFormat, allowCompression);
 }
 #endif
 

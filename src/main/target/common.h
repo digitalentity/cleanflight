@@ -90,6 +90,7 @@
 #define NAV_MAX_WAYPOINTS       60
 #define MAX_BOOTLOG_ENTRIES     64
 #define USE_RCSPLIT
+#define USE_HUFFMAN
 #else
 #define CLI_MINIMAL_VERBOSITY
 #define SKIP_TASK_STATISTICS

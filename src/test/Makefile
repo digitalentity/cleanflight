@@ -162,6 +162,31 @@ $(OBJECT_DIR)/encoding_unittest : \
 
 	$(CXX) $(CXX_FLAGS) $^ -o $(OBJECT_DIR)/$@
 
+$(OBJECT_DIR)/common/huffman.o : $(USER_DIR)/common/huffman.c $(USER_DIR)/common/huffman.h $(GTEST_HEADERS)
+	@mkdir -p $(dir $@)
+	$(CC) $(C_FLAGS) $(TEST_CFLAGS) -c $(USER_DIR)/common/huffman.c -o $@
+
+$(OBJECT_DIR)/common/huffman_table.o : $(USER_DIR)/common/huffman_table.c $(USER_DIR)/common/huffman.h $(GTEST_HEADERS)
+	@mkdir -p $(dir $@)
+	$(CC) $(C_FLAGS) $(TEST_CFLAGS) -c $(USER_DIR)/common/huffman_table.c -o $@
+
+$(OBJECT_DIR)/huffman_unittest.o : \
+	$(TEST_DIR)/huffman_unittest.cc \
+	$(USER_DIR)/common/huffman.h \
+	$(GTEST_HEADERS)
+
+	@mkdir -p $(dir $@)
+	$(CXX) $(CXX_FLAGS) $(TEST_CFLAGS) -c $(TEST_DIR)/huffman_unittest.cc -o $@
+
+$(OBJECT_DIR)/huffman_unittest : \
+	$(OBJECT_DIR)/common/huffman.o \
+	$(OBJECT_DIR)/common/huffman_table.o \
+	$(OBJECT_DIR)/huffman_unittest.o \
+	$(OBJECT_DIR)/gtest_main.a
+
+	$(CXX) $(CXX_FLAGS) $^ -o $(OBJECT_DIR)/$@
+
+
 $(OBJECT_DIR)/flight/imu.o : \
 	$(USER_DIR)/flight/imu.c \
 	$(USER_DIR)/flight/imu.h \
