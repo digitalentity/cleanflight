@@ -176,7 +176,7 @@ void resetGCSFlags(void);
 static bool posEstimationHasGlobalReference(void);
 static void calcualteAndSetActiveWaypoint(const navWaypoint_t * waypoint);
 static void calcualteAndSetActiveWaypointToLocalPosition(const t_fp_vector * pos);
-void calculateInitialHoldPosition(t_fp_vector * pos);
+void signalInitialHoldActivation(t_fp_vector * pos);
 void calculateFarAwayTarget(t_fp_vector * farAwayPos, int32_t yaw, int32_t distance);
 
 void initializeRTHSanityChecker(const t_fp_vector * pos);
@@ -723,7 +723,7 @@ static navigationFSMEvent_t navOnEnteringState_NAV_STATE_POSHOLD_2D_INITIALIZE(n
 
     if (((prevFlags & NAV_CTL_POS) == 0) || ((prevFlags & NAV_AUTO_RTH) != 0) || ((prevFlags & NAV_AUTO_WP) != 0)) {
         t_fp_vector targetHoldPos;
-        calculateInitialHoldPosition(&targetHoldPos);
+        signalInitialHoldActivation    (&targetHoldPos);
         setDesiredPosition(&targetHoldPos, posControl.actualState.yaw, NAV_POS_UPDATE_XY | NAV_POS_UPDATE_HEADING);
     }
 
@@ -737,7 +737,7 @@ static navigationFSMEvent_t navOnEnteringState_NAV_STATE_POSHOLD_2D_IN_PROGRESS(
     // If GCS was disabled - reset 2D pos setpoint
     if (posControl.flags.isGCSAssistedNavigationReset) {
         t_fp_vector targetHoldPos;
-        calculateInitialHoldPosition(&targetHoldPos);
+        signalInitialHoldActivation(&targetHoldPos);
         setDesiredPosition(&targetHoldPos, posControl.actualState.yaw, NAV_POS_UPDATE_XY | NAV_POS_UPDATE_HEADING);
         resetGCSFlags();
     }
@@ -766,7 +766,7 @@ static navigationFSMEvent_t navOnEnteringState_NAV_STATE_POSHOLD_3D_INITIALIZE(n
 
     if (((prevFlags & NAV_CTL_POS) == 0) || ((prevFlags & NAV_AUTO_RTH) != 0) || ((prevFlags & NAV_AUTO_WP) != 0)) {
         t_fp_vector targetHoldPos;
-        calculateInitialHoldPosition(&targetHoldPos);
+        signalInitialHoldActivation(&targetHoldPos);
         setDesiredPosition(&targetHoldPos, posControl.actualState.yaw, NAV_POS_UPDATE_XY | NAV_POS_UPDATE_HEADING);
     }
 
@@ -780,7 +780,7 @@ static navigationFSMEvent_t navOnEnteringState_NAV_STATE_POSHOLD_3D_IN_PROGRESS(
     // If GCS was disabled - reset 2D pos setpoint
     if (posControl.flags.isGCSAssistedNavigationReset) {
         t_fp_vector targetHoldPos;
-        calculateInitialHoldPosition(&targetHoldPos);
+        signalInitialHoldActivation(&targetHoldPos);
         setDesiredPosition(&posControl.actualState.pos, posControl.actualState.yaw, NAV_POS_UPDATE_Z);
         setDesiredPosition(&targetHoldPos, posControl.actualState.yaw, NAV_POS_UPDATE_XY | NAV_POS_UPDATE_HEADING);
         resetGCSFlags();
@@ -831,7 +831,7 @@ static navigationFSMEvent_t navOnEnteringState_NAV_STATE_RTH_INITIALIZE(navigati
                 calculateFarAwayTarget(&targetHoldPos, posControl.actualState.yaw, 100000.0f);  // 1km away
             } else {
                 // Multicopter, hover and climb
-                calculateInitialHoldPosition(&targetHoldPos);
+                signalInitialHoldActivation(&targetHoldPos);
 
                 // Initialize RTH sanity check to prevent fly-aways on RTH
                 // For airplanes this is delayed until climb-out is finished
@@ -1780,13 +1780,13 @@ int32_t getTotalTravelDistance(void)
 /*-----------------------------------------------------------
  * Calculate platform-specific hold position (account for deceleration)
  *-----------------------------------------------------------*/
-void calculateInitialHoldPosition(t_fp_vector * pos)
+void signalInitialHoldActivation(t_fp_vector * pos)
 {
     if (STATE(FIXED_WING)) { // FIXED_WING
-        calculateFixedWingInitialHoldPosition(pos);
+        signalFixedWingInitialHoldActivation(pos);
     }
     else {
-        calculateMulticopterInitialHoldPosition(pos);
+        signalMulticopterInitialHoldActivation(pos);
     }
 }
 
