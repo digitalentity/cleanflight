@@ -49,6 +49,9 @@ tables:
   - name: gps_dyn_model
     values: ["PEDESTRIAN", "AIR_1G", "AIR_4G"]
     enum: gpsDynModel_e
+  - name: use_gps_heading
+    values: ["AUTO", "ON", "OFF"]
+    enum: gps_heading_e
   - name: reset_altitude
     values: ["NEVER", "FIRST_ARM", "EACH_ARM"]
   - name: nav_user_control_mode
@@ -676,6 +679,8 @@ groups:
       - name: small_angle
         min: 0
         max: 180
+      - name: use_gps_heading
+        table: use_gps_heading
 
   - name: PG_ARMING_CONFIG
     type: armingConfig_t

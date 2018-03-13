@@ -47,6 +47,8 @@
 
 #include "io/gps.h"
 
+#include "navigation/navigation.h"
+
 #include "sensors/acceleration.h"
 #include "sensors/barometer.h"
 #include "sensors/compass.h"
@@ -88,6 +90,7 @@ FASTRAM attitudeEulerAngles_t attitude;             // absolute angle inclinatio
 STATIC_FASTRAM imuRuntimeConfig_t imuRuntimeConfig;
 
 STATIC_FASTRAM bool gpsHeadingInitialized;
+STATIC_FASTRAM bool gpsHasCOG;
 
 PG_REGISTER_WITH_RESET_TEMPLATE(imuConfig_t, imuConfig, PG_IMU_CONFIG, 0);
 
@@ -145,6 +148,7 @@ void imuInit(void)
     // Explicitly initialize FASTRAM statics
     isAccelUpdatedAtLeastOnce = false;
     gpsHeadingInitialized = false;
+    gpsHasCOG = false;
     q0 = 1.0f;
     q1 = 0.0f;
     q2 = 0.0f;
@@ -442,6 +446,20 @@ static bool imuCanUseAccelerometerForCorrection(void)
     return (nearness > MAX_ACC_SQ_NEARNESS) ? false : true;
 }
 
+static bool imuHasGPSHeadingEnabled(void)
+{
+    // TODO: Use GPS heading if the real compass fails during a flight
+    switch (imuConfig()->use_gps_heading) {
+        case GPS_HEADING_AUTO:
+            return STATE(FIXED_WING);
+        case GPS_HEADING_ENABLED:
+            return true;
+        case GPS_HEADING_DISABLED:
+            break;
+    }
+    return false;
+}
+
 static void imuCalculateEstimatedAttitude(float dT)
 {
 #if defined(USE_MAG)
@@ -457,41 +475,85 @@ static void imuCalculateEstimatedAttitude(float dT)
     bool useCOG = false;
 
 #if defined(USE_GPS)
-    if (STATE(FIXED_WING)) {
-        bool canUseCOG = sensors(SENSOR_GPS) && STATE(GPS_FIX) && gpsSol.numSat >= 6 && gpsSol.groundSpeed >= 300;
+    bool canUseCOG = false;
+    int16_t groundCourse;
+    if (imuHasGPSHeadingEnabled() && gpsHasCOG) {
+        if (STATE(FIXED_WING)) {
+            // Fixed wing always flies forward, so we require a 3m/s speed and use
+            // the GPS groundCourse without any rotations
+            canUseCOG = gpsSol.groundSpeed >= 300;
+            groundCourse = gpsSol.groundCourse;
+        } else {
+#if defined(USE_NAV)
+            // MR might fly on any direction, but it tends to fly in the direction the
+            // head it's tilted to. To compensate for this, we rotate gpsSol.groundCourse
+            // by the estimated speed direction. Pitch and roll angles must fall in the [20, 90)
+            // interval so the data doesn't get polluted during flips or rolls.
+            // For now, we also require a harcoded speed of 6m/s, but we
+            // should adjust this depending on the maximum speed in modes which do limit
+            // it (e.g. RTH).
 
-        if (canUseCOG) {
-            if (gpsHeadingInitialized) {
-                // Use GPS heading if error is acceptable or if it's the only source of heading
-                if (ABS(gpsSol.groundCourse - attitude.values.yaw) < DEGREES_TO_DECIDEGREES(MAX_GPS_HEADING_ERROR_DEG) || !canUseMAG) {
-                    courseOverGround = DECIDEGREES_TO_RADIANS(gpsSol.groundCourse);
-                    useCOG = true;
+            // Check tilt via calculateCosTiltAngle(). Note that cos() is decreasing in
+            // the (20, 90] interval, so the cos for the minimum tilt is the maximum
+            // value for calculateCosTiltAngle() - same thing applies to maxTiltCos.
+            const float minTiltCos = 0.9396926207859084f; // cos(20)
+            const float maxTiltCos = 0; // cos(90)
+            if (gpsSol.groundSpeed >= 600 &&
+                calculateCosTiltAngle() <= minTiltCos &&
+                calculateCosTiltAngle() > maxTiltCos) {
+
+                float tiltDirection = atan2_approx(attitude.values.roll, attitude.values.pitch);
+
+                t_fp_vector v = {
+                    .V.X = getEstimatedActualVelocity(X),
+                    .V.Y = getEstimatedActualVelocity(Y),
+                    .V.Z = getEstimatedActualVelocity(Z),
+                };
+                imuTransformVectorEarthToBody(&v);
+
+                float bodySpeedDirectionXY = atan2_approx(v.V.Y, v.V.X);
+
+                // Check that the estimated speed direction is close to the tilt direction
+                // in the XY plane.
+                if (ABS(tiltDirection - bodySpeedDirectionXY) < M_PIf / 8) {
+                    // Rotate by speed direction in XY
+                    int16_t COGRotation = RADIANS_TO_DECIDEGREES(bodySpeedDirectionXY);
+                    groundCourse = (gpsSol.groundCourse + COGRotation);
+                    canUseCOG = true;
                 }
             }
-            else {
-                // Re-initialize quaternion from known Roll, Pitch and GPS heading
-                imuComputeQuaternionFromRPY(attitude.values.roll, attitude.values.pitch, gpsSol.groundCourse);
-                gpsHeadingInitialized = true;
-
-                // Force reset of heading hold target
-                resetHeadingHoldTarget(DECIDEGREES_TO_DEGREES(attitude.values.yaw));
-            }
-
-            // If we can't use COG and there's MAG available - fallback
-            if (!useCOG && canUseMAG) {
-                useMag = true;
-            }
+#endif
         }
-        else if (canUseMAG) {
-            useMag = true;
-            gpsHeadingInitialized = true;   // GPS heading initialised from MAG, continue on GPS if possible
-        }
+        // Only use each COG reading once, to avoid reusing the same GPS
+        // GPS data more than once introducing unnnecessary error.
+        gpsHasCOG = false;
     }
-    else {
-        // Multicopters don't use GPS heading
-        if (canUseMAG) {
+
+    if (canUseCOG) {
+        if (gpsHeadingInitialized) {
+            // Use GPS heading if error is acceptable or if it's the only source of heading
+            if (ABS(groundCourse - attitude.values.yaw) < DEGREES_TO_DECIDEGREES(MAX_GPS_HEADING_ERROR_DEG) || !canUseMAG) {
+                courseOverGround = DECIDEGREES_TO_RADIANS(groundCourse);
+                useCOG = true;
+            }
+        }
+        else {
+            // Re-initialize quaternion from known Roll, Pitch and GPS heading
+            imuComputeQuaternionFromRPY(attitude.values.roll, attitude.values.pitch, groundCourse);
+            gpsHeadingInitialized = true;
+
+            // Force reset of heading hold target
+            resetHeadingHoldTarget(DECIDEGREES_TO_DEGREES(attitude.values.yaw));
+        }
+
+        // If we can't use COG and there's MAG available - fallback
+        if (!useCOG && canUseMAG) {
             useMag = true;
         }
+
+    } else if (canUseMAG) {
+        useMag = true;
+        gpsHeadingInitialized = true;   // GPS heading initialised from MAG, continue on GPS if possible
     }
 #else
     // In absence of GPS MAG is the only option
@@ -578,7 +640,26 @@ bool isImuReady(void)
 
 bool isImuHeadingValid(void)
 {
-    return (sensors(SENSOR_MAG) && STATE(COMPASS_CALIBRATED)) || (STATE(FIXED_WING) && gpsHeadingInitialized);
+    return imuHasPreciseHeading() || (imuHasGPSHeadingEnabled() && gpsHeadingInitialized);
+}
+
+bool imuHasHeadingEnabled(void)
+{
+    return sensors(SENSOR_MAG) || imuHasGPSHeadingEnabled();
+}
+
+bool imuHasPreciseHeading(void)
+{
+    return sensors(SENSOR_MAG) && STATE(COMPASS_CALIBRATED);
+}
+
+void imuUpdateGPSCOG(void)
+{
+    // Don't check for numSat. gps.c already checks for
+    // gpsConfig()->gpsMinSats before enabling GPS_FIX
+    if (STATE(GPS_FIX) && gpsSol.flags.validVelNE) {
+        gpsHasCOG = true;
+    }
 }
 
 float calculateCosTiltAngle(void)

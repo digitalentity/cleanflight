@@ -964,7 +964,7 @@ static navigationFSMEvent_t navOnEnteringState_NAV_STATE_RTH_HOVER_PRIOR_TO_LAND
     // If position ok OR within valid timeout - continue
     if ((posControl.flags.estPosStatue >= EST_USABLE) || !checkForPositionSensorTimeout()) {
         // Wait until target heading is reached (with 15 deg margin for error)
-        if (STATE(FIXED_WING)) {
+        if (!imuHasPreciseHeading()) {
             resetLandingDetector();
             return NAV_FSM_EVENT_SUCCESS;
         }

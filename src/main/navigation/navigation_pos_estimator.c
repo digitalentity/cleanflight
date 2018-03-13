@@ -428,6 +428,7 @@ void onNewGPSData(void)
     else {
         posEstimator.gps.lastUpdateTime = 0;
     }
+    imuUpdateGPSCOG();
 }
 #endif
 

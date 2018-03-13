@@ -25,6 +25,12 @@
 extern t_fp_vector imuMeasuredAccelBF;         // cm/s/s
 extern t_fp_vector imuMeasuredRotationBF;       // rad/s
 
+typedef enum {
+    GPS_HEADING_AUTO, // Enabled for FW, disabled for anything else
+    GPS_HEADING_ENABLED, // Always enabled
+    GPS_HEADING_DISABLED, // Always disabled
+} gps_heading_e;
+
 typedef union {
     int16_t raw[XYZ_AXIS_COUNT];
     struct {
@@ -43,6 +49,7 @@ typedef struct imuConfig_s {
     uint16_t dcm_kp_mag;                    // DCM filter proportional gain ( x 10000) for magnetometer and GPS heading
     uint16_t dcm_ki_mag;                    // DCM filter integral gain ( x 10000) for magnetometer and GPS heading
     uint8_t small_angle;
+    uint8_t use_gps_heading;                // from gps_heading_e
 } imuConfig_t;
 
 PG_DECLARE(imuConfig_t, imuConfig);
@@ -62,6 +69,9 @@ void imuUpdateAccelerometer(void);
 float calculateCosTiltAngle(void);
 bool isImuReady(void);
 bool isImuHeadingValid(void);
+bool imuHasHeadingEnabled(void);
+bool imuHasPreciseHeading(void);
+void imuUpdateGPSCOG(void);
 
 void imuTransformVectorBodyToEarth(t_fp_vector * v);
 void imuTransformVectorEarthToBody(t_fp_vector * v);

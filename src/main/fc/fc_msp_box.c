@@ -30,6 +30,8 @@
 #include "fc/fc_msp_box.h"
 #include "fc/runtime_config.h"
 
+#include "flight/imu.h"
+
 #include "sensors/diagnostics.h"
 #include "sensors/sensors.h"
 
@@ -179,7 +181,7 @@ void initActiveBoxIds(void)
         activeBoxIds[activeBoxIdCount++] = BOXSURFACE;
     }
 
-    if ((feature(FEATURE_GPS) && sensors(SENSOR_MAG) && sensors(SENSOR_ACC)) || (STATE(FIXED_WING) && sensors(SENSOR_ACC) && feature(FEATURE_GPS))) {
+    if (feature(FEATURE_GPS) && sensors(SENSOR_ACC) && imuHasHeadingEnabled()) {
         activeBoxIds[activeBoxIdCount++] = BOXNAVPOSHOLD;
         activeBoxIds[activeBoxIdCount++] = BOXNAVRTH;
         activeBoxIds[activeBoxIdCount++] = BOXNAVWP;
