@@ -255,16 +255,14 @@ void pidResetErrorAccumulators(void)
     }
 }
 
-static float pidRcCommandToAngle(int16_t stick, int16_t maxInclination)
+static float pidRcCommandToAngle(float stick, float maxInclination)
 {
-    stick = constrain(stick, -500, 500);
-    return scaleRangef((float) stick, -500.0f, 500.0f, (float) -maxInclination, (float) maxInclination);
+    return constrainf(stick * maxInclination, -maxInclination, +maxInclination);
 }
 
-int16_t pidAngleToRcCommand(float angleDeciDegrees, int16_t maxInclination)
+float pidAngleToRcCommand(float angleDeciDegrees, float maxInclination)
 {
-    angleDeciDegrees = constrainf(angleDeciDegrees, (float) -maxInclination, (float) maxInclination);
-    return scaleRangef((float) angleDeciDegrees, (float) -maxInclination, (float) maxInclination, -500.0f, 500.0f);
+    return constrainf(angleDeciDegrees, (float) -maxInclination, (float) maxInclination) / maxInclination;
 }
 
 /*
@@ -275,13 +273,13 @@ Rate 20 means 200dps at full stick deflection
 float pidRateToRcCommand(float rateDPS, uint8_t rate)
 {
     const float maxRateDPS = rate * 10.0f;
-    return scaleRangef(rateDPS, -maxRateDPS, maxRateDPS, -500.0f, 500.0f);
+    return constrainf(rateDPS, -maxRateDPS, maxRateDPS) / rateDPS;
 }
 
-float pidRcCommandToRate(int16_t stick, uint8_t rate)
+float pidRcCommandToRate(float stick, uint8_t rate)
 {
     const float maxRateDPS = rate * 10.0f;
-    return scaleRangef((float) stick, -500.0f, 500.0f, -maxRateDPS, maxRateDPS);
+    return constrainf(stick * maxRateDPS, -maxRateDPS, +maxRateDPS);
 }
 
 static float calculateFixedWingTPAFactor(uint16_t throttle)
@@ -413,7 +411,7 @@ static float calcHorizonRateMagnitude(void)
 static void pidLevel(pidState_t *pidState, flight_dynamics_index_t axis, float horizonRateMagnitude)
 {
     // This is ROLL/PITCH, run ANGLE/HORIZON controllers
-    const float angleTarget = pidRcCommandToAngle(rcCommand[axis], pidProfile()->max_angle_inclination[axis]);
+    const float angleTarget = pidRcCommandToAngle(rcCmd.stick[axis], pidProfile()->max_angle_inclination[axis]);
     const float angleErrorDeg = DECIDEGREES_TO_DEGREES(angleTarget - attitude.raw[axis]);
 
     float angleRateTarget = constrainf(angleErrorDeg * (pidBank()->pid[PID_LEVEL].P / FP_PID_LEVEL_P_MULTIPLIER), -currentControlRateProfile->stabilized.rates[axis] * 10.0f, currentControlRateProfile->stabilized.rates[axis] * 10.0f);
@@ -598,7 +596,7 @@ static uint8_t getHeadingHoldState(void)
     }
     else
 #endif
-    if (ABS(rcCommand[YAW]) == 0 && FLIGHT_MODE(HEADING_MODE)) {
+    if (ABS(rcCmd.stick[YAW]) <= 0.0001f && FLIGHT_MODE(HEADING_MODE)) {
         return HEADING_HOLD_ENABLED;
     } else {
         return HEADING_HOLD_UPDATE_HEADING;
@@ -744,7 +742,7 @@ void pidController(void)
         if (axis == FD_YAW && headingHoldState == HEADING_HOLD_ENABLED) {
             rateTarget = pidHeadingHold();
         } else {
-            rateTarget = pidRcCommandToRate(rcCommand[axis], currentControlRateProfile->stabilized.rates[axis]);
+            rateTarget = pidRcCommandToRate(rcCmd.stick[axis], currentControlRateProfile->stabilized.rates[axis]);
         }
 
         // Limit desired rate to something gyro can measure reliably

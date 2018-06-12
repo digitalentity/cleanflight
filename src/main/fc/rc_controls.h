@@ -69,6 +69,12 @@ typedef enum {
     THR_HI = (2 << (2 * THROTTLE))
 } stickPositions_e;
 
+typedef struct {
+    float   stick[4];       // Raw stick positions + EXPO. Range: [-1;1] for all RPYT sticks. This is set by RC processing code and is never modified
+    float   command[4];     // Command that is going to be sent to mixer. [-1;1] for RPY & THROTTLE
+} rcCommandState_t;
+
+extern rcCommandState_t rcCmd;
 extern int16_t rcCommand[4];
 
 typedef struct rcControlsConfig_s {

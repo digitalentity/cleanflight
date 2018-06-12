@@ -24,6 +24,7 @@
 #define PID_SUM_LIMIT_MIN       100
 #define PID_SUM_LIMIT_MAX       1000
 #define PID_SUM_LIMIT_DEFAULT   500
+#define PID_MIXER_SCALING       1000.0f
 #define YAW_P_LIMIT_MIN 100                 // Maximum value for yaw P limiter
 #define YAW_P_LIMIT_MAX 500                 // Maximum value for yaw P limiter
 #define YAW_P_LIMIT_DEFAULT 300             // Default value for yaw P limiter
@@ -141,7 +142,7 @@ void updatePIDCoefficients(void);
 void pidController(void);
 
 float pidRateToRcCommand(float rateDPS, uint8_t rate);
-int16_t pidAngleToRcCommand(float angleDeciDegrees, int16_t maxInclination);
+float pidAngleToRcCommand(float angleDeciDegrees, float maxInclination);
 
 enum {
     HEADING_HOLD_DISABLED = 0,

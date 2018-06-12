@@ -315,6 +315,26 @@ void annexCode(void)
         throttleValue = (uint32_t)(throttleValue - rxConfig()->mincheck) * PWM_RANGE_MIN / (PWM_RANGE_MAX - rxConfig()->mincheck);       // [MINCHECK;2000] -> [0;1000]
         rcCommand[THROTTLE] = rcLookupThrottle(throttleValue);
 
+
+        // Compute ROLL PITCH and YAW command
+        rcCmd.stick[ROLL]  =  getAxisRcCommand(rcData[ROLL], currentControlRateProfile->stabilized.rcExpo8, rcControlsConfig()->deadband) / 500.0f;
+        rcCmd.command[ROLL] = rcCmd.stick[ROLL];
+
+        rcCmd.stick[PITCH] =  getAxisRcCommand(rcData[PITCH], currentControlRateProfile->stabilized.rcExpo8, rcControlsConfig()->deadband) / 500.0f;
+        rcCmd.command[PITCH] = rcCmd.stick[PITCH];
+
+        rcCmd.stick[YAW]   = -getAxisRcCommand(rcData[YAW], currentControlRateProfile->stabilized.rcYawExpo8, rcControlsConfig()->yaw_deadband) / 500.0f;
+        rcCmd.command[YAW] = rcCmd.stick[YAW];
+
+        // Compute THROTTLE command
+        // TODO: throttle expo
+        throttleValue = constrain(rcData[THROTTLE], rxConfig()->mincheck, PWM_RANGE_MAX);
+        rcCmd.stick[THROTTLE] = scaleRangef(throttleValue, rxConfig()->mincheck, PWM_RANGE_MAX, -1.0f, 1.0f);
+
+        // Compute command for throttle - compress throttle to [0;1] range for non-3D mode
+        rcCmd.command[THROTTLE] = feature(FEATURE_3D) ? rcCmd.stick[THROTTLE] : scaleRangef(rcCmd.stick[THROTTLE], -1.0f, 1.0f, 0.0f, 1.0f);
+
+
         // Signal updated rcCommand values to Failsafe system
         failsafeUpdateRcCommandValues();
 
