@@ -133,18 +133,19 @@ PG_RESET_TEMPLATE(navConfig_t, navConfig,
         .land_dive_angle = 2,   // 2 degrees dive by default
 
         // Fixed wing launch
-        .launch_velocity_thresh = 300,         // 3 m/s
-        .launch_accel_thresh = 1.9f * 981,     // cm/s/s (1.9*G)
-        .launch_time_thresh = 40,              // 40ms
+        .launch_velocity_thresh = 300,          // 3 m/s
+        .launch_accel_thresh = 1.9f * 981,      // cm/s/s (1.9*G)
+        .launch_time_thresh = 40,               // 40ms
         .launch_throttle = 1700,
-        .launch_idle_throttle = 1000,          // Motor idle or MOTOR_STOP
-        .launch_motor_timer = 500,             // ms
-        .launch_motor_spinup_time = 100,       // ms, time to gredually increase throttle from idle to launch
-        .launch_min_time = 0,                  // ms, min time in launch mode
-        .launch_timeout = 5000,                // ms, timeout for launch procedure
-        .launch_max_altitude = 0,              // cm, altitude where to consider launch ended
-        .launch_climb_angle = 18,              // 18 degrees
-        .launch_max_angle = 45                 // 45 deg
+        .launch_idle_throttle = 1000,           // Motor idle or MOTOR_STOP
+        .launch_motor_timer = 500,              // ms
+        .launch_motor_spinup_time = 100,        // ms, time to gredually increase throttle from idle to launch
+        .launch_min_time = 0,                   // ms, min time in launch mode
+        .launch_timeout = 5000,                 // ms, timeout for launch procedure
+        .launch_max_altitude = 0,               // cm, altitude where to consider launch ended
+        .launch_climb_angle = 18,               // 18 degrees
+        .launch_max_angle = 45,                 // 45 deg
+        .launch_climb_angle_awaits_motor = false,
     }
 );
 

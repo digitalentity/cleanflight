@@ -159,6 +159,11 @@ static inline bool isFixedWingLaunchCompleted(float timeSinceLaunchMs)
     return (isLaunchModeMaxTimeElapsed(timeSinceLaunchMs)) || ((isLaunchModeMinTimeElapsed(timeSinceLaunchMs)) && (areSticksDeflectedMoreThanPosHoldDeadband())) || isFixedWingLaunchMaxAltitudeReached();
 }
 
+static uint16_t fixedWingLaunchMinIdleThrottle(void)
+{
+    return MAX(motorConfig()->minthrottle, navConfig()->fw.launch_idle_throttle);
+}
+
 void applyFixedWingLaunchController(timeUs_t currentTimeUs)
 {
     // Called at PID rate
@@ -180,10 +185,9 @@ void applyFixedWingLaunchController(timeUs_t currentTimeUs)
                 // Increase throttle gradually over `launch_motor_spinup_time` milliseconds
                 if (navConfig()->fw.launch_motor_spinup_time > 0) {
                     const float timeSinceMotorStartMs = constrainf(timeElapsedSinceLaunchMs - navConfig()->fw.launch_motor_timer, 0.0f, navConfig()->fw.launch_motor_spinup_time);
-                    const uint16_t minIdleThrottle = MAX(motorConfig()->minthrottle, navConfig()->fw.launch_idle_throttle);
                     rcCommand[THROTTLE] = scaleRangef(timeSinceMotorStartMs,
                                                       0.0f, navConfig()->fw.launch_motor_spinup_time,
-                                                      minIdleThrottle, navConfig()->fw.launch_throttle);
+                                                      fixedWingLaunchMinIdleThrottle(), navConfig()->fw.launch_throttle);
                 }
                 else {
                     rcCommand[THROTTLE] = navConfig()->fw.launch_throttle;
@@ -209,9 +213,25 @@ void applyFixedWingLaunchController(timeUs_t currentTimeUs)
         beeper(BEEPER_LAUNCH_MODE_ENABLED);
     }
 
+    float climbAngle;
+    if (navConfig()->fw.launch_climb_angle_awaits_motor) {
+        if (launchState.launchDetected) {
+            // Scale angle with THR
+            climbAngle = -scaleRangef(rcCommand[THROTTLE],
+                            fixedWingLaunchMinIdleThrottle(), navConfig()->fw.launch_throttle,
+                            0.0f, -DEGREES_TO_DECIDEGREES(navConfig()->fw.launch_climb_angle));
+        } else {
+            // While the motor hasn't started, apply zero pitch
+            climbAngle = 0;
+        }
+    } else {
+        // Old behavior, apply full pitch as soon as launch mode is enabled.
+        climbAngle = -DEGREES_TO_DECIDEGREES(navConfig()->fw.launch_climb_angle);
+    }
+
     // Lock out controls
     rcCommand[ROLL] = 0;
-    rcCommand[PITCH] = pidAngleToRcCommand(-DEGREES_TO_DECIDEGREES(navConfig()->fw.launch_climb_angle), pidProfile()->max_angle_inclination[FD_PITCH]);
+    rcCommand[PITCH] = pidAngleToRcCommand(climbAngle, pidProfile()->max_angle_inclination[FD_PITCH]);
     rcCommand[YAW] = 0;
 }
 

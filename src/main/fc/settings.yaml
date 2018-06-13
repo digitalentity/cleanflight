@@ -1344,6 +1344,9 @@ groups:
         field: fw.launch_climb_angle
         min: 5
         max: 45
+      - name: nav_fw_launch_climb_angle_awaits_motor
+        field: fw.launch_climb_angle_awaits_motor
+        type: bool
 
   - name: PG_TELEMETRY_CONFIG
     type: telemetryConfig_t
