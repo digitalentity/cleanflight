@@ -116,6 +116,7 @@ typedef enum {
     DEVHW_PCA9685,      // PWM output device
     DEVHW_M25P16,       // SPI NOR flash
     DEVHW_UG2864,       // I2C OLED display
+    DEVHW_PITOT_EAGLE_TREE,   // Pitot meter
 } devHardwareType_e;
 
 typedef enum {

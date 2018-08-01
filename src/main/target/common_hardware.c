@@ -210,6 +210,12 @@
     BUSDEV_REGISTER_I2C(busdev_ms5425,      DEVHW_MS4525,       MS4525_I2C_BUS,     0x28,               NONE,           DEVFLAGS_NONE);
 #endif
 
+#if defined(USE_PITOT_EAGLE_TREE)
+    #if !defined(EAGLE_TREE_I2C_BUS)
+        #define EAGLE_TREE_I2C_BUS PITOT_I2C_BUS
+    #endif
+    BUSDEV_REGISTER_I2C(busdev_EAGLE_TREE,   DEVHW_PITOT_EAGLE_TREE,  EAGLE_TREE_I2C_BUS, 0x4D,         NONE,           DEVFLAGS_USE_RAW_REGISTERS);
+#endif
 
 /** OTHER HARDWARE **/
 

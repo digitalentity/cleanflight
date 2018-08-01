@@ -33,6 +33,7 @@
 #include "drivers/logging.h"
 #include "drivers/pitotmeter.h"
 #include "drivers/pitotmeter_ms4525.h"
+#include "drivers/pitotmeter_eagle_tree.h"
 #include "drivers/pitotmeter_adc.h"
 #include "drivers/time.h"
 
@@ -108,6 +109,19 @@ bool pitotDetect(pitotDev_t *dev, uint8_t pitotHardwareToUse)
                 break;
             }
             */
+#endif
+            /* If we are asked for a specific sensor - break out, otherwise - fall through and continue */
+            if (pitotHardwareToUse != PITOT_AUTODETECT) {
+                break;
+            }
+            FALLTHROUGH;
+
+        case PITOT_EAGLE_TREE:
+#ifdef USE_PITOT_EAGLE_TREE
+            if (pitotEagleTreeDetect(dev)) {
+                pitotHardware = PITOT_EAGLE_TREE;
+                break;
+            }
 #endif
             /* If we are asked for a specific sensor - break out, otherwise - fall through and continue */
             if (pitotHardwareToUse != PITOT_AUTODETECT) {

@@ -24,17 +24,19 @@
 #include "drivers/timer.h"
 
 /* GYRO */
-BUSDEV_REGISTER_SPI_TAG(busdev_mpu6000,     DEVHW_MPU6000,      MPU6000_SPI_BUS,    MPU6000_CS_PIN,     MPU6000_EXTI_PIN,       0,  DEVFLAGS_NONE);
+BUSDEV_REGISTER_SPI_TAG(busdev_mpu6000,     DEVHW_MPU6000,          MPU6000_SPI_BUS,    MPU6000_CS_PIN,     MPU6000_EXTI_PIN,       0,  DEVFLAGS_NONE);
 
-BUSDEV_REGISTER_I2C(    busdev_ms5611,      DEVHW_MS5611,       BARO_I2C_BUS,       0x77,               NONE,                       DEVFLAGS_USE_RAW_REGISTERS);
+BUSDEV_REGISTER_I2C(    busdev_ms5611,      DEVHW_MS5611,           BARO_I2C_BUS,       0x77,               NONE,                       DEVFLAGS_USE_RAW_REGISTERS);
 
-BUSDEV_REGISTER_I2C_TAG(busdev_hmc5883_int, DEVHW_HMC5883,      MAG_I2C_BUS_INT,    0x1E,               NONE,                   0,  DEVFLAGS_NONE);
+BUSDEV_REGISTER_I2C(    busdev_eagle_tree,  DEVHW_PITOT_EAGLE_TREE, EAGLE_TREE_I2C_BUS, 0x4D,               NONE,                       DEVFLAGS_USE_RAW_REGISTERS);
 
-BUSDEV_REGISTER_I2C_TAG(busdev_hmc5883,     DEVHW_HMC5883,      MAG_I2C_BUS_EXT,    0x1E,               NONE,                   1,  DEVFLAGS_NONE);
-BUSDEV_REGISTER_I2C_TAG(busdev_qmc5883,     DEVHW_QMC5883,      MAG_I2C_BUS_EXT,    0x0D,               NONE,                   1,  DEVFLAGS_NONE);
-BUSDEV_REGISTER_I2C_TAG(busdev_mag3110,     DEVHW_MAG3110,      MAG_I2C_BUS_EXT,    0x0E,               NONE,                   1,  DEVFLAGS_NONE);
+BUSDEV_REGISTER_I2C_TAG(busdev_hmc5883_int, DEVHW_HMC5883,          MAG_I2C_BUS_INT,    0x1E,               NONE,                   0,  DEVFLAGS_NONE);
 
-BUSDEV_REGISTER_SPI    (busdev_m25p16,      DEVHW_M25P16,       M25P16_SPI_BUS,     M25P16_CS_PIN,      NONE,                       DEVFLAGS_NONE);
+BUSDEV_REGISTER_I2C_TAG(busdev_hmc5883,     DEVHW_HMC5883,          MAG_I2C_BUS_EXT,    0x1E,               NONE,                   1,  DEVFLAGS_NONE);
+BUSDEV_REGISTER_I2C_TAG(busdev_qmc5883,     DEVHW_QMC5883,          MAG_I2C_BUS_EXT,    0x0D,               NONE,                   1,  DEVFLAGS_NONE);
+BUSDEV_REGISTER_I2C_TAG(busdev_mag3110,     DEVHW_MAG3110,          MAG_I2C_BUS_EXT,    0x0E,               NONE,                   1,  DEVFLAGS_NONE);
+
+BUSDEV_REGISTER_SPI    (busdev_m25p16,      DEVHW_M25P16,           M25P16_SPI_BUS,     M25P16_CS_PIN,      NONE,                       DEVFLAGS_NONE);
 
 /* TIMERS */
 const timerHardware_t timerHardware[] = {
