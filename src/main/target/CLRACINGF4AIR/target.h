@@ -103,14 +103,11 @@
 #define UART6_RX_PIN            PC7
 #define UART6_TX_PIN            PC6
 #if defined( CLRACINGF4AIRV2 )
-#define SERIAL_PORT_COUNT        6 //VCP, USART1, UART2, USART3,USART4, USART6,
 #elif defined(CLRACINGF4AIRV3)
 #define USE_UART5
 #define UART5_RX_PIN            PD2
 #define UART5_TX_PIN            PC12
-#define SERIAL_PORT_COUNT        7 //VCP, USART1, UART2, USART3,USART4, USART5,USART6,
 #else
-#define SERIAL_PORT_COUNT       5 //VCP, USART1, USART3,USART4, USART6,
 #endif
 #define USE_ESCSERIAL
 #define ESCSERIAL_TIMER_TX_HARDWARE 0 // PWM 1

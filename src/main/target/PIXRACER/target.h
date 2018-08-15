@@ -129,7 +129,6 @@
 #define UART8_RX_PIN            PE0
 #define UART8_TX_PIN            PE1
 
-#define SERIAL_PORT_COUNT       8
 
 #define USE_SPI
 

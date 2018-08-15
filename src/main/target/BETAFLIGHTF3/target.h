@@ -54,7 +54,6 @@
 #define USE_SOFTSERIAL1
 //#define USE_SOFTSERIAL2
 
-#define SERIAL_PORT_COUNT       5
 
 //#define USE_ESCSERIAL // XXX
 //#define ESCSERIAL_TIMER_TX_HARDWARE 0 // PWM 1 XXX

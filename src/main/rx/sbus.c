@@ -186,6 +186,8 @@ static uint8_t sbusFrameStatus(rxRuntimeConfig_t *rxRuntimeConfig)
 
 bool sbusInit(const rxConfig_t *rxConfig, rxRuntimeConfig_t *rxRuntimeConfig)
 {
+    UNUSED(rxConfig);
+
     static uint16_t sbusChannelData[SBUS_MAX_CHANNEL];
     static sbusFrameData_t sbusFrameData;
 
@@ -215,7 +217,7 @@ bool sbusInit(const rxConfig_t *rxConfig, rxRuntimeConfig_t *rxRuntimeConfig)
         &sbusFrameData,
         SBUS_BAUDRATE,
         portShared ? MODE_RXTX : MODE_RX,
-        SBUS_PORT_OPTIONS | (rxConfig->serialrx_inverted ? 0 : SERIAL_INVERTED) | (rxConfig->halfDuplex ? SERIAL_BIDIR : 0)
+        SBUS_PORT_OPTIONS | SERIAL_INVERTED
         );
 
 #ifdef USE_TELEMETRY

@@ -25,7 +25,7 @@
 
 #include "config/feature.h"
 
-#include "rx/rx.h"
+#include "io/serial.h"
 
 #include "hardware_revision.h"
 
@@ -35,6 +35,6 @@ void targetConfiguration(void)
         featureSet(FEATURE_OSD);
     }
 
-    rxConfigMutable()->halfDuplex = false;
+    serialConfigMutable()->portConfigs[SERIAL_PORT_POSITION_USART3].options = SERIAL_PORT_OPTION_HALF_DUPLEX;
 }
 #endif

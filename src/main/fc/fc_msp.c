@@ -894,6 +894,7 @@ static bool mspFcProcessOutCommand(uint16_t cmdMSP, sbuf_t *dst, mspPostProcessF
             sbufWriteU8(dst, serialConfig()->portConfigs[i].gps_baudrateIndex);
             sbufWriteU8(dst, serialConfig()->portConfigs[i].telemetry_baudrateIndex);
             sbufWriteU8(dst, serialConfig()->portConfigs[i].peripheral_baudrateIndex);
+            sbufWriteU8(dst, serialConfig()->portConfigs[i].options);
         }
         break;
 
@@ -2352,15 +2353,21 @@ static mspResult_e mspFcProcessInCommand(uint16_t cmdMSP, sbuf_t *src)
 
     case MSP_SET_CF_SERIAL_CONFIG:
         {
-            uint8_t portConfigSize = sizeof(uint8_t) + sizeof(uint16_t) + (sizeof(uint8_t) * 4);
+            uint8_t portConfigSizeLegacy = sizeof(uint8_t) + sizeof(uint16_t) + (sizeof(uint8_t) * 4);
+            uint8_t portConfigSize = portConfigSizeLegacy + sizeof(uint8_t);
 
-            if (dataSize % portConfigSize != 0) {
+            uint8_t availablePortCount = serialGetAvailablePortCount();
+
+            bool isLegacy;
+            if (dataSize == portConfigSize * availablePortCount) {
+                isLegacy = false;
+            } else if (dataSize == portConfigSizeLegacy * availablePortCount) {
+                isLegacy = true;
+            } else {
                 return MSP_RESULT_ERROR;
             }
 
-            uint8_t remainingPortsInPacket = dataSize / portConfigSize;
-
-            while (remainingPortsInPacket--) {
+            for (unsigned ii = 0; ii < availablePortCount; ii++) {
                 uint8_t identifier = sbufReadU8(src);
 
                 serialPortConfig_t *portConfig = serialFindPortConfiguration(identifier);
@@ -2374,6 +2381,9 @@ static mspResult_e mspFcProcessInCommand(uint16_t cmdMSP, sbuf_t *src)
                 portConfig->gps_baudrateIndex = sbufReadU8(src);
                 portConfig->telemetry_baudrateIndex = sbufReadU8(src);
                 portConfig->peripheral_baudrateIndex = sbufReadU8(src);
+                if (!isLegacy) {
+                     portConfig->options = sbufReadU8(src);
+                }
             }
         }
         break;

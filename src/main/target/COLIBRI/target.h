@@ -106,7 +106,6 @@
 #define UART5_RX_PIN            PD2
 #define UART5_TX_PIN            PC12
 
-#define SERIAL_PORT_COUNT       6 //VCP, UART1, UART2, UART3, UART4, UART5
 
 #define USE_SPI
 

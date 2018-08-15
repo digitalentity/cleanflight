@@ -690,26 +690,22 @@ static void cliAux(char *cmdline)
 
 static void printSerial(uint8_t dumpMask, const serialConfig_t *serialConfig, const serialConfig_t *serialConfigDefault)
 {
-    const char *format = "serial %d %d %ld %ld %ld %ld";
+    const char *format = "serial %d %d %ld %ld %ld %ld %d";
     for (uint32_t i = 0; i < SERIAL_PORT_COUNT; i++) {
         if (!serialIsPortAvailable(serialConfig->portConfigs[i].identifier)) {
             continue;
         };
         bool equalsDefault = false;
         if (serialConfigDefault) {
-            equalsDefault = serialConfig->portConfigs[i].identifier == serialConfigDefault->portConfigs[i].identifier
-                && serialConfig->portConfigs[i].functionMask == serialConfigDefault->portConfigs[i].functionMask
-                && serialConfig->portConfigs[i].msp_baudrateIndex == serialConfigDefault->portConfigs[i].msp_baudrateIndex
-                && serialConfig->portConfigs[i].gps_baudrateIndex == serialConfigDefault->portConfigs[i].gps_baudrateIndex
-                && serialConfig->portConfigs[i].telemetry_baudrateIndex == serialConfigDefault->portConfigs[i].telemetry_baudrateIndex
-                && serialConfig->portConfigs[i].peripheral_baudrateIndex == serialConfigDefault->portConfigs[i].peripheral_baudrateIndex;
+            equalsDefault = memcmp(serialConfigDefault, &serialConfig->portConfigs[i], sizeof(*serialConfigDefault)) == 0;
             cliDefaultPrintLinef(dumpMask, equalsDefault, format,
                 serialConfigDefault->portConfigs[i].identifier,
                 serialConfigDefault->portConfigs[i].functionMask,
                 baudRates[serialConfigDefault->portConfigs[i].msp_baudrateIndex],
                 baudRates[serialConfigDefault->portConfigs[i].gps_baudrateIndex],
                 baudRates[serialConfigDefault->portConfigs[i].telemetry_baudrateIndex],
-                baudRates[serialConfigDefault->portConfigs[i].peripheral_baudrateIndex]
+                baudRates[serialConfigDefault->portConfigs[i].peripheral_baudrateIndex],
+                serialConfigDefault->portConfigs[i].options
             );
         }
         cliDumpPrintLinef(dumpMask, equalsDefault, format,
@@ -718,7 +714,8 @@ static void printSerial(uint8_t dumpMask, const serialConfig_t *serialConfig, co
             baudRates[serialConfig->portConfigs[i].msp_baudrateIndex],
             baudRates[serialConfig->portConfigs[i].gps_baudrateIndex],
             baudRates[serialConfig->portConfigs[i].telemetry_baudrateIndex],
-            baudRates[serialConfig->portConfigs[i].peripheral_baudrateIndex]
+            baudRates[serialConfig->portConfigs[i].peripheral_baudrateIndex],
+            serialConfig->portConfigs[i].options
             );
     }
 }
@@ -752,7 +749,7 @@ static void cliSerial(char *cmdline)
         validArgumentCount++;
     }
 
-    for (int i = 0; i < 4; i ++) {
+    for (int i = 0; i < 5; i ++) {
         ptr = nextArg(ptr);
         if (!ptr) {
             break;
@@ -761,9 +758,6 @@ static void cliSerial(char *cmdline)
         val = fastA2I(ptr);
 
         uint8_t baudRateIndex = lookupBaudRateIndex(val);
-        if (baudRates[baudRateIndex] != (uint32_t) val) {
-            break;
-        }
 
         switch (i) {
         case 0:
@@ -789,6 +783,11 @@ static void cliSerial(char *cmdline)
                 continue;
             }
             portConfig.peripheral_baudrateIndex = baudRateIndex;
+            break;
+        case 4:
+            // This is optional, to keep backwards compatibility. If not provided,
+            // the default options are used instead (all zeroes).
+            portConfig.options = val;
             break;
         }
 

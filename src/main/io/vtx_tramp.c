@@ -595,14 +595,7 @@ bool vtxTrampInit(void)
     serialPortConfig_t *portConfig = findSerialPortConfig(FUNCTION_VTX_TRAMP);
 
     if (portConfig) {
-        portOptions_t portOptions = 0;
-#if defined(USE_VTX_COMMON)
-        portOptions = portOptions | (vtxConfig()->halfDuplex ? SERIAL_BIDIR : SERIAL_UNIDIR);
-#else
-        portOptions = SERIAL_BIDIR;
-#endif
-
-        trampSerialPort = openSerialPort(portConfig->identifier, FUNCTION_VTX_TRAMP, NULL, NULL, 9600, MODE_RXTX, portOptions);
+        trampSerialPort = openSerialPort(portConfig->identifier, FUNCTION_VTX_TRAMP, NULL, NULL, 9600, MODE_RXTX, SERIAL_BIDIR);
     }
 
     if (!trampSerialPort) {

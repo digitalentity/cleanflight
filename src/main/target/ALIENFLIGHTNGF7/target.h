@@ -128,7 +128,6 @@
 #define UART4_RX_PIN            PC11
 #define UART4_TX_PIN            PC10
 
-#define SERIAL_PORT_COUNT       5
 
 //#define USE_ESCSERIAL
 //#define ESCSERIAL_TIMER_TX_HARDWARE 0 // PWM 1

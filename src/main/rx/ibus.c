@@ -235,7 +235,7 @@ bool ibusInit(const rxConfig_t *rxConfig, rxRuntimeConfig_t *rxRuntimeConfig)
         NULL,
         IBUS_BAUDRATE,
         portShared ? MODE_RXTX : MODE_RX,
-        SERIAL_NOT_INVERTED | (rxConfig->halfDuplex || portShared ? SERIAL_BIDIR : 0)
+        SERIAL_NOT_INVERTED | (portShared ? SERIAL_BIDIR : SERIAL_UNIDIR)
         );
 
 #if defined(USE_TELEMETRY) && defined(USE_TELEMETRY_IBUS)

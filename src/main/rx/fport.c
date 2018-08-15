@@ -59,7 +59,7 @@
 
 #define FPORT_BAUDRATE 115200
 
-#define FPORT_PORT_OPTIONS (SERIAL_STOPBITS_1 | SERIAL_PARITY_NO)
+#define FPORT_PORT_OPTIONS (SERIAL_STOPBITS_1 | SERIAL_PARITY_NO | SERIAL_BIDIR)
 
 enum {
     DEBUG_FPORT_FRAME_INTERVAL = 0,
@@ -375,6 +375,8 @@ static bool fportProcessFrame(const rxRuntimeConfig_t *rxRuntimeConfig)
 
 bool fportRxInit(const rxConfig_t *rxConfig, rxRuntimeConfig_t *rxRuntimeConfig)
 {
+    UNUSED(rxConfig);
+
     static uint16_t sbusChannelData[SBUS_MAX_CHANNEL];
     static uint8_t consecutiveSensorCount = 0;
     rxRuntimeConfig->channelData = sbusChannelData;
@@ -398,7 +400,7 @@ bool fportRxInit(const rxConfig_t *rxConfig, rxRuntimeConfig_t *rxRuntimeConfig)
         NULL,
         FPORT_BAUDRATE,
         MODE_RXTX,
-        FPORT_PORT_OPTIONS | (rxConfig->serialrx_inverted ? SERIAL_INVERTED : 0) | (rxConfig->halfDuplex ? SERIAL_BIDIR : 0)
+        FPORT_PORT_OPTIONS
     );
 
     if (fportPort) {

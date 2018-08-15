@@ -130,7 +130,6 @@
 #define UART5_RX_PIN            PD2
 #define UART5_TX_PIN            PC12
 
-#define SERIAL_PORT_COUNT       4 // VCP, USART1, USART2, USART5
 
 // *************** WS2811 *****************************
 #define USE_LED_STRIP

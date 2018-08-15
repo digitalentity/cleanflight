@@ -36,39 +36,22 @@ Smartport uses _57600bps_ serial speed.
 
 ### Direct connection for F3/F7
 
-Only TX serial pin has to be connected to Smartport receiver. Disable `telemetry_inverted`.
-
-```
-set telemetry_inverted = OFF
-set smartport_uart_unidir = OFF
-```
+Only TX serial pin has to be connected to Smartport receiver. Don't set any port options.
 
 ### Receiver univerted hack
 
-Some receivers (X4R, XSR and so on) can be hacked to get _uninverted_ Smartport signal. In this case connect uninverted signal to TX pad of chosen serial port and enable `telemetry_inverted`.
-
-```
-set telemetry_inverted = ON
-set smartport_uart_unidir = OFF
-```
+Some receivers (X4R, XSR and so on) can be hacked to get _uninverted_ Smartport signal. In this case connect uninverted signal to TX pad of chosen serial port and set the `Not Inverted` option in the serial port.
 
 ### Software Serial
 
 Software emulated serial port allows to connect to Smartport receivers without any hacks. Only `TX` has to be connected to the receiver.
-
-```
-set telemetry_inverted = OFF
-```
+Don't set any port options.
 
 If solution above is not working, there is an alternative RX and TX lines have to be bridged using
 1kOhm resistor (confirmed working with 100Ohm, 1kOhm and 10kOhm)
 
 ```
 SmartPort ---> RX (CH5 pad) ---> 1kOhm resistor ---> TX (CH6 pad)
-```
-
-```
-set telemetry_inverted = OFF
 ```
 
 ### SmartPort (S.Port) with external hardware inverter
@@ -83,12 +66,7 @@ It is possible to use DIY UART inverter to connect SmartPort receivers to F1 and
 
 **Warning** Chosen UART has to be 5V tolerant. If not, use 3.3V power supply instead (not tested)
 
-When external inverter is used, following configuration has to be applied:
-
-```
-set smartport_uart_unidir = ON
-set telemetry_inverted = ON
-```
+When an external inverter is used, the port options should be set to `Not Inverted`, `Full-Duplex`.
 
 ### Available SmartPort (S.Port) sensors
 
@@ -138,12 +116,6 @@ FrSky telemetry signals are inverted.  To connect a INAV capable board to an FrS
 3. Use a flight controller that has software configurable hardware inversion (e.g. F3 or F7).
 
 For 1, just connect your inverter to a usart or software serial port.
-
-For 2 and 3 use the CLI command as follows:
-
-```
-set telemetry_inverted = OFF
-```
 
 ### Precision setting for VFAS
 

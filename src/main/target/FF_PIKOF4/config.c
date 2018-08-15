@@ -21,9 +21,8 @@
 #include <platform.h>
 
 #ifdef USE_TARGET_CONFIG
-#include "rx/rx.h"
 
-#include "telemetry/telemetry.h"
+#include "io/serial.h"
 
 #include "sensors/battery.h"
 
@@ -31,8 +30,7 @@
 
 void targetConfiguration(void)
 {
-    rxConfigMutable()->halfDuplex = false;
-    telemetryConfigMutable()->smartportUartUnidirectional = true;
+    serialConfigMutable()->portConfigs[SERIAL_PORT_POSITION_USART3].options = SERIAL_PORT_OPTION_HALF_DUPLEX;
     batteryMetersConfigMutable()->current.scale = CURRENTSCALE;
 }
 #endif

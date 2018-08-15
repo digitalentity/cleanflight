@@ -49,20 +49,18 @@
 #include "telemetry/ibus.h"
 #include "telemetry/crsf.h"
 
-PG_REGISTER_WITH_RESET_TEMPLATE(telemetryConfig_t, telemetryConfig, PG_TELEMETRY_CONFIG, 1);
+PG_REGISTER_WITH_RESET_TEMPLATE(telemetryConfig_t, telemetryConfig, PG_TELEMETRY_CONFIG, 2);
 
 PG_RESET_TEMPLATE(telemetryConfig_t, telemetryConfig,
     .gpsNoFixLatitude = 0,
     .gpsNoFixLongitude = 0,
     .telemetry_switch = 0,
-    .telemetry_inverted = 0,
     .frsky_coordinate_format = FRSKY_FORMAT_DMS,
     .frsky_unit = FRSKY_UNIT_METRICS,
     .frsky_vfas_precision = 0,
     .frsky_pitch_roll = 0,
     .report_cell_voltage = 0,
     .hottAlarmSoundInterval = 5,
-    .smartportUartUnidirectional = 0,
     .smartportFuelUnit = SMARTPORT_FUEL_UNIT_MAH,
     .ibusTelemetryType = 0,
     .ltmUpdateRate = LTM_RATE_NORMAL,

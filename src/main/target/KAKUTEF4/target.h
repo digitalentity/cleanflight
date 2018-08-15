@@ -118,11 +118,9 @@
 #   define UART5_TX_PIN            NONE
 
 // #   define USE_SOFTSERIAL1
-#   define SERIAL_PORT_COUNT 6
 #else
 // #   define USE_SOFTSERIAL1
 // #   define USE_SOFTSERIAL2
-#   define SERIAL_PORT_COUNT 4
 #endif
 
 #define USE_SPI

@@ -670,13 +670,7 @@ bool vtxSmartAudioInit(void)
 
     serialPortConfig_t *portConfig = findSerialPortConfig(FUNCTION_VTX_SMARTAUDIO);
     if (portConfig) {
-        portOptions_t portOptions = SERIAL_STOPBITS_2 | SERIAL_BIDIR_NOPULL;
-#if defined(USE_VTX_COMMON)
-        portOptions = portOptions | (vtxConfig()->halfDuplex ? SERIAL_BIDIR | SERIAL_BIDIR_PP : SERIAL_UNIDIR);
-#else
-        portOptions = SERIAL_BIDIR;
-#endif
-
+        portOptions_t portOptions = SERIAL_STOPBITS_2 | SERIAL_BIDIR | SERIAL_BIDIR_NOPULL | SERIAL_BIDIR_PP;
         smartAudioSerialPort = openSerialPort(portConfig->identifier, FUNCTION_VTX_SMARTAUDIO, NULL, NULL, 4800, MODE_RXTX, portOptions);
     }
 

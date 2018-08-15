@@ -200,11 +200,8 @@ After restoring it's always a good idea to `dump` or `diff` the settings once ag
 |  nav_fw_land_dive_angle  | 2 | Dive angle that airplane will use during final landing phase. During dive phase, motor is stopped or IDLE and roll control is locked to 0 degrees |
 |  nav_fw_cruise_yaw_rate  | 20 | Max YAW rate when NAV CRUISE mode is enabled (0=disable control via yaw stick) [dps]|
 |  serialrx_provider  | SPEK1024 | When feature SERIALRX is enabled, this allows connection to several receivers which output data via digital interface resembling serial. See RX section. |
-|  serialrx_halfduplex  | OFF | Allow serial receiver to operate on UART TX pin. With some receivers will allow control and telemetry over a single wire |
-|  serialrx_inverted     | OFF | Reverse the serial inversion of the  serial RX protocol. When this value is OFF, each protocol will use its default signal (e.g. SBUS will use an inverted signal). Some OpenLRS receivers produce a non-inverted SBUS signal. This setting supports this type of receivers (including modified FrSKY). |
 |  spektrum_sat_bind  | 0 | 0 = disabled. Used to bind the spektrum satellite to RX |
 |  telemetry_switch  | OFF | Which aux channel to use to change serial output & baud rate (MSP / Telemetry). It disables automatic switching to Telemetry when armed. |
-|  telemetry_inverted  | OFF | Determines if the telemetry protocol default signal inversion is reversed. This should be OFF in most cases unless a custom or hacked RX is used. |
 |  frsky_unit  | METRIC | Not used? [METRIC/IMPERIAL] |
 |  frsky_default_latitude  | 0.000 | D-Series telemetry only: OpenTX needs a valid set of coordinates to show compass value. A fake value defined in this setting is sent while no fix is acquired. |
 |  frsky_default_longitude  | 0.000 | D-Series telemetry only: OpenTX needs a valid set of coordinates to show compass value. A fake value defined in this setting is sent while no fix is acquired. |
@@ -212,7 +209,6 @@ After restoring it's always a good idea to `dump` or `diff` the settings once ag
 |  frsky_vfas_precision  | 0 | D-Series telemetry only: Set to 1 to send raw VBat value in 0.1V resolution for receivers that can handle it, or 0 (default) to use the standard method |
 |  frsky_pitch_roll  | OFF | S.Port and D-Series telemetry: Send pitch and roll degrees*10 instead of raw accelerometer data |
 |  smartport_fuel_unit  | MAH | S.Port telemetry only: Unit of the value sent with the `FUEL` ID (FrSky D-Series always sends precent). [PERCENT/MAH/MWH] |
-|  smartport_uart_unidir  | OFF | S.Port telemetry only: Turn UART into UNIDIR for usage on F1 and F4 target. See Telemetry.md for details |
 |  report_cell_voltage  | OFF | S.Port, D-Series, and IBUS telemetry: Send the average cell voltage if set to ON |
 |  hott_alarm_sound_interval  | 5 | Battery alarm delay in seconds for Hott telemetry |
 |  smartport_fuel_unit  | MAH | S.Port and D-Series telemetry: Unit of the value sent with the `FUEL` ID. [PERCENT/MAH/MWH] |
@@ -415,7 +411,6 @@ After restoring it's always a good idea to `dump` or `diff` the settings once ag
 |  vtx_band  | 4 | Configure the VTX band. Set to zero to use `vtx_freq`. Bands: 1: A, 2: B, 3: E, 4: F, 5: Race. |
 |  vtx_channel  | 1 | Channel to use within the configured `vtx_band`. Valid values are [1, 8]. |
 |  vtx_freq  | 5740 | Set the VTX frequency using raw MHz. This parameter is ignored unless `vtx_band` is 0. |
-|  vtx_halfduplex  | ON | Use half duplex UART to communicate with the VTX, using only a TX pin in the FC. |
 |  vtx_low_power_disarm  | OFF | When the craft is disarmed, set the VTX to its lowest power. `ON` will set the power to its minimum value on startup, increase it to `vtx_power` when arming and change it back to its lowest setting after disarming. `UNTIL_FIRST_ARM` will start with minimum power, but once the craft is armed it will increase to `vtx_power` and it will never decrease until the craft is power cycled. |
 |  vtx_pit_mode_freq  | Frequency to use (in MHz) when the VTX is in pit mode. |
 |  vtx_power  | 1 | VTX RF power level to use. The exact number of mw depends on the VTX hardware. |

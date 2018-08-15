@@ -111,7 +111,6 @@
 #define SOFTSERIAL_1_RX_PIN     NONE
 #define SOFTSERIAL_1_TX_PIN     PA9     // Clash with UART1_TX, needed for S.Port
 
-#define SERIAL_PORT_COUNT       7       // VCP, USART1, USART2, USART3, USART4, USART6, SOFTSERIAL1
 
 #define USE_SPI
 

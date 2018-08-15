@@ -107,7 +107,6 @@
 #define INVERTER_PIN_UART6_RX   PB15
 
 #define USE_SOFTSERIAL1
-#define SERIAL_PORT_COUNT       5
 
 #define SOFTSERIAL_1_RX_PIN     PB1
 #define SOFTSERIAL_1_TX_PIN     PB0

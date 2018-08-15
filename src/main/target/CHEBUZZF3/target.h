@@ -64,7 +64,6 @@
 #define USE_VCP
 #define USE_UART1
 #define USE_UART2
-#define SERIAL_PORT_COUNT 3
 
 #define USE_I2C
 #define USE_I2C_DEVICE_1

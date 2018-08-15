@@ -39,12 +39,7 @@
 
 #if defined(USE_VTX_CONTROL) && defined(USE_VTX_COMMON)
 
-PG_REGISTER_WITH_RESET_TEMPLATE(vtxConfig_t, vtxConfig, PG_VTX_CONFIG, 2);
-
-PG_RESET_TEMPLATE(vtxConfig_t, vtxConfig,
-//    .vtxChannelActivationConditions = { 0 },
-      .halfDuplex = true,
-);
+PG_REGISTER(vtxConfig_t, vtxConfig, PG_VTX_CONFIG, 3);
 
 static uint8_t locked = 0;
 

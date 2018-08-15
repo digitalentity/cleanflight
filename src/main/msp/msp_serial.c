@@ -49,22 +49,24 @@ static void resetMspPort(mspPort_t *mspPortToReset, serialPort_t *serialPort)
 
 void mspSerialAllocatePorts(void)
 {
-    uint8_t portIndex = 0;
-    serialPortConfig_t *portConfig = findSerialPortConfig(FUNCTION_MSP);
-    while (portConfig && portIndex < MAX_MSP_PORT_COUNT) {
-        mspPort_t *mspPort = &mspPorts[portIndex];
+    int serialPortIndex = 0;
+    int mspPortIndex = 0;
+    while (mspPortIndex < MAX_MSP_PORT_COUNT) {
+        serialPortConfig_t *portConfig = findNextSerialPortConfig(FUNCTION_MSP, &serialPortIndex);
+        if (!portConfig) {
+            break;
+        }
+        mspPort_t *mspPort = &mspPorts[mspPortIndex];
         if (mspPort->port) {
-            portIndex++;
+            mspPortIndex++;
             continue;
         }
 
         serialPort_t *serialPort = openSerialPort(portConfig->identifier, FUNCTION_MSP, NULL, NULL, baudRates[portConfig->msp_baudrateIndex], MODE_RXTX, SERIAL_NOT_INVERTED);
         if (serialPort) {
             resetMspPort(mspPort, serialPort);
-            portIndex++;
+            mspPortIndex++;
         }
-
-        portConfig = findNextSerialPortConfig(FUNCTION_MSP);
     }
 }
 
@@ -416,7 +418,9 @@ static void mspEvaluateNonMspData(mspPort_t * mspPort, uint8_t receivedChar)
         return;
     }
 
-    if (receivedChar == serialConfig()->reboot_character) {
+    // Flashing over a half duplex link won't work, so there's no reason to
+    // allow rebooting into the bootloader.
+    if (receivedChar == serialConfig()->reboot_character && !serialIsBidir(mspPort->port)) {
         mspPort->pendingRequest = MSP_PENDING_BOOTLOADER;
         return;
     }
@@ -424,8 +428,12 @@ static void mspEvaluateNonMspData(mspPort_t * mspPort, uint8_t receivedChar)
 
 static void mspProcessPendingRequest(mspPort_t * mspPort)
 {
-    // If no request is pending or 100ms guard time has not elapsed - do nothing
-    if ((mspPort->pendingRequest == MSP_PENDING_NONE) || (millis() - mspPort->lastActivityMs < 100)) {
+    // If no request is pending or the guard time has not elapsed - do nothing
+    // For full duplex links, the guard time is 100ms. For half duplex links,
+    // we require a longer 1s pause, since the MSP client could be waiting for
+    // our response.
+    timeMs_t pause = serialIsBidir(mspPort->port) ? 1000 : 100;
+    if ((mspPort->pendingRequest == MSP_PENDING_NONE) || (millis() - mspPort->lastActivityMs < pause)) {
         return;
     }
 
@@ -502,6 +510,11 @@ void mspSerialInit(void)
 int mspSerialPushPort(uint16_t cmd, const uint8_t *data, int datalen, mspPort_t *mspPort, mspVersion_e version)
 {
     uint8_t pushBuf[MSP_PORT_OUTBUF_SIZE];
+
+    if (serialIsBidir(mspPort->port)) {
+        // Can't push to half duplex ports
+        return -1;
+    }
 
     mspPacket_t push = {
         .buf = { .ptr = pushBuf, .end = ARRAYEND(pushBuf), },

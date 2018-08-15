@@ -126,7 +126,6 @@
 #define UART6_TX_PIN            PC6
 #define INVERTER_PIN_UART6_RX   PB15
 
-#define SERIAL_PORT_COUNT       5
 
 #define USE_ESCSERIAL
 #define ESCSERIAL_TIMER_TX_HARDWARE 0

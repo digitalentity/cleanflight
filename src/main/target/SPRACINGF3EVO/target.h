@@ -79,13 +79,11 @@
 #define UART3_RX_PIN            PB11 // PB11 (AF7)
 
 #ifdef SPRACINGF3EVO_1SS
-    #define SERIAL_PORT_COUNT       5
 
     #define SOFTSERIAL_1_RX_PIN     PB0
     #define SOFTSERIAL_1_TX_PIN     PB1
 #else
     #define USE_SOFTSERIAL2
-    #define SERIAL_PORT_COUNT       6
 
     #define SOFTSERIAL_1_RX_PIN     PA6
     #define SOFTSERIAL_1_TX_PIN     PA7

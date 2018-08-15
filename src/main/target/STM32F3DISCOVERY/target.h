@@ -102,7 +102,6 @@
 #define USE_UART3
 #define USE_UART4
 #define USE_UART5
-#define SERIAL_PORT_COUNT       6
 
 #define UART3_TX_PIN            PB10 // PB10 (AF7)
 #define UART3_RX_PIN            PB11 // PB11 (AF7)

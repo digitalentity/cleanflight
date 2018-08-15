@@ -115,7 +115,6 @@
 #define UART6_TX_PIN            PC6
 #define INVERTER_PIN_UART6_RX   PB12
 
-#define SERIAL_PORT_COUNT       6
 
 #define USE_I2C
 

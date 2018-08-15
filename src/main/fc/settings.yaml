@@ -361,9 +361,6 @@ groups:
       - name: serialrx_provider
         condition: USE_SERIAL_RX
         table: serial_rx
-      - name: serialrx_inverted
-        condition: USE_SERIAL_RX
-        type: bool
       - name: rx_spi_protocol
         condition: USE_RX_SPI
         table: rx_spi_protocol
@@ -384,9 +381,6 @@ groups:
       - name: rx_max_usec
         min: PWM_PULSE_MIN
         max: PWM_PULSE_MAX
-      - name: serialrx_halfduplex
-        field: halfDuplex
-        type: bool
 
   - name: PG_BLACKBOX_CONFIG
     type: blackboxConfig_t
@@ -1413,8 +1407,6 @@ groups:
     members:
       - name: telemetry_switch
         type: bool
-      - name: telemetry_inverted
-        type: bool
       - name: frsky_default_latitude
         field: gpsNoFixLatitude
         min: -90
@@ -1442,10 +1434,6 @@ groups:
         field: hottAlarmSoundInterval
         min: 0
         max: 120
-      - name: smartport_uart_unidir
-        field: smartportUartUnidirectional
-        condition: USE_TELEMETRY_SMARTPORT
-        type: bool
       - name: smartport_fuel_unit
         field: smartportFuelUnit
         condition: USE_TELEMETRY_SMARTPORT
@@ -1652,15 +1640,6 @@ groups:
     members:
       - name: display_force_sw_blink
         field: force_sw_blink
-        type: bool
-
-  - name: PG_VTX_CONFIG
-    type: vtxConfig_t
-    headers: ["io/vtx_control.h"]
-    condition: USE_VTX_CONTROL && USE_VTX_COMMON
-    members:
-      - name: vtx_halfduplex
-        field: halfDuplex
         type: bool
 
   - name: PG_VTX_SETTINGS_CONFIG

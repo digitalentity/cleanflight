@@ -256,6 +256,8 @@ void crsfRxSendTelemetryData(void)
 
 bool crsfRxInit(const rxConfig_t *rxConfig, rxRuntimeConfig_t *rxRuntimeConfig)
 {
+    UNUSED(rxConfig);
+
     for (int ii = 0; ii < CRSF_MAX_CHANNEL; ++ii) {
         crsfChannelData[ii] = (16 * PWM_RANGE_MIDDLE) / 10 - 1408;
     }
@@ -277,7 +279,7 @@ bool crsfRxInit(const rxConfig_t *rxConfig, rxRuntimeConfig_t *rxRuntimeConfig)
         NULL,
         CRSF_BAUDRATE,
         CRSF_PORT_MODE,
-        CRSF_PORT_OPTIONS | (rxConfig->halfDuplex ? SERIAL_BIDIR : 0)
+        CRSF_PORT_OPTIONS
         );
 
     return serialPort != NULL;

@@ -97,7 +97,6 @@
 #define UART6_TX_PIN            PC6
 #define INVERTER_PIN_UART6_RX   PD3
 
-#define SERIAL_PORT_COUNT       6 //VCP, UART1, UART2, UART3, UART4,  UART6
 
 #define USE_SPI
 #define USE_SPI_DEVICE_1

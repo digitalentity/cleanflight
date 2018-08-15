@@ -101,7 +101,6 @@
 #define UART6_RX_PIN            PC7
 #define UART6_TX_PIN            PC6
 
-#define SERIAL_PORT_COUNT       6
 
 #define USE_CMS
 #define USE_MSP_DISPLAYPORT
