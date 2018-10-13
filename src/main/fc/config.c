@@ -42,6 +42,7 @@
 #include "drivers/serial.h"
 #include "drivers/timer.h"
 #include "drivers/bus_i2c.h"
+#include "drivers/watchdog.h"
 
 #include "sensors/sensors.h"
 #include "sensors/gyro.h"
@@ -397,6 +398,9 @@ static void activateConfig(void)
 
 void readEEPROM(void)
 {
+#if defined(USE_WATCHDOG)
+    watchdogSuspend();
+#endif
     suspendRxSignal();
 
     // Sanity check, read flash
@@ -411,15 +415,24 @@ void readEEPROM(void)
     activateConfig();
 
     resumeRxSignal();
+#if defined(USE_WATCHDOG)
+    watchdogResume();
+#endif
 }
 
 void writeEEPROM(void)
 {
+#if defined(USE_WATCHDOG)
+    watchdogSuspend();
+#endif
     suspendRxSignal();
 
     writeConfigToEEPROM();
 
     resumeRxSignal();
+#if defined(USE_WATCHDOG)
+    watchdogResume();
+#endif
 }
 
 void resetEEPROM(void)

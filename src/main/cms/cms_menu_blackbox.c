@@ -37,6 +37,7 @@
 #include "config/feature.h"
 
 #include "drivers/time.h"
+#include "drivers/watchdog.h"
 
 #include "fc/config.h"
 #include "fc/settings.h"
@@ -54,6 +55,9 @@ static long cmsx_EraseFlash(displayPort_t *pDisplay, const void *ptr)
 
     flashfsEraseCompletely();
     while (!flashfsIsReady()) {
+#if defined(USE_WATCHDOG)
+        watchdogRestart();
+#endif
         delay(100);
     }
 

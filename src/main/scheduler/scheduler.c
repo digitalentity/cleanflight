@@ -31,6 +31,7 @@
 #include "common/utils.h"
 
 #include "drivers/time.h"
+#include "drivers/watchdog.h"
 
 STATIC_FASTRAM cfTask_t *currentTask = NULL;
 
@@ -127,6 +128,11 @@ void taskSystem(timeUs_t currentTimeUs)
         totalWaitingTasksSamples = 0;
         totalWaitingTasks = 0;
     }
+
+#if defined(USE_WATCHDOG)
+    // Restart watchdog counter
+    watchdogRestart();
+#endif
 }
 
 #ifndef SKIP_TASK_STATISTICS

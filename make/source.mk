@@ -52,6 +52,7 @@ COMMON_SRC = \
             drivers/system.c \
             drivers/timer.c \
             drivers/lights_io.c \
+            drivers/watchdog.c \
             fc/cli.c \
             fc/config.c \
             fc/controlrate_profile.c \

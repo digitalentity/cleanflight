@@ -68,6 +68,7 @@
 #define USE_EXTENDED_CMS_MENUS
 #define USE_UAV_INTERCONNECT
 #define USE_RX_UIB
+#define USE_WATCHDOG
 #endif
 
 #if (FLASH_SIZE > 128)
