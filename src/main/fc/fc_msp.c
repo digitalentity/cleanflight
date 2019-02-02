@@ -1381,6 +1381,21 @@ static bool mspFcProcessOutCommand(uint16_t cmdMSP, sbuf_t *dst, mspPostProcessF
         sbufWriteU8(dst, navConfig()->mc.braking_bank_angle);
 #endif
         break;
+    case MSP2_INAV_NAMES:
+    {
+        const char *names[] = {
+            systemConfig()->name,
+            systemConfig()->pilotName,
+        };
+        for (unsigned ii = 0; ii < ARRAYLEN(names); ii++) {
+            const char *name = names[ii];
+            while (*name) {
+                sbufWriteU8(dst, *name++);
+            }
+            sbufWriteU8(dst, '\0');
+        }
+        break;
+    }
 
     default:
         return false;

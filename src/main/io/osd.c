@@ -1182,6 +1182,22 @@ static void osdDisplayAdjustableDecimalValue(uint8_t elemPosX, uint8_t elemPosY,
     displayWriteWithAttr(osdDisplayPort, elemPosX + strlen(str) + 1 + valueOffset, elemPosY, buff, elemAttr);
 }
 
+static void osdFormatName(char *buf, size_t bufsize, const char *name, const char *defaultName)
+{
+    UNUSED(bufsize);
+
+    if (name && *name) {
+        for (int i = 0; i < MAX_NAME_LENGTH; i++) {
+            buf[i] = sl_toupper((unsigned char)name[i]);
+            if (name[i] == 0) {
+                break;
+            }
+        }
+    } else {
+        strcpy(buf, defaultName);
+    }
+}
+
 static bool osdDrawSingleElement(uint8_t item)
 {
     uint16_t pos = osdConfig()->item_pos[currentLayout][item];
@@ -1573,15 +1589,11 @@ static bool osdDrawSingleElement(uint8_t item)
         }
 
     case OSD_CRAFT_NAME:
-        if (strlen(systemConfig()->name) == 0)
-            strcpy(buff, "CRAFT_NAME");
-        else {
-            for (int i = 0; i < MAX_NAME_LENGTH; i++) {
-                buff[i] = sl_toupper((unsigned char)systemConfig()->name[i]);
-                if (systemConfig()->name[i] == 0)
-                    break;
-            }
-        }
+        osdFormatName(buff, sizeof(buff), systemConfig()->name, "CRAFT_NAME");
+        break;
+
+    case OSD_PILOT_NAME:
+        osdFormatName(buff, sizeof(buff), systemConfig()->pilotName, "PILOT_NAME");
         break;
 
     case OSD_THROTTLE_POS:
@@ -2481,6 +2493,7 @@ void pgResetFn_osdConfig(osdConfig_t *osdConfig)
 
     osdConfig->item_pos[0][OSD_CRAFT_NAME] = OSD_POS(20, 2);
     osdConfig->item_pos[0][OSD_VTX_CHANNEL] = OSD_POS(8, 6);
+    osdConfig->item_pos[0][OSD_PILOT_NAME] = OSD_POS(20, 3);
 
     osdConfig->item_pos[0][OSD_ONTIME] = OSD_POS(23, 8);
     osdConfig->item_pos[0][OSD_FLYTIME] = OSD_POS(23, 9);

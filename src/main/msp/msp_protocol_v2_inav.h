@@ -45,3 +45,6 @@
 #define MSP2_INAV_SELECT_BATTERY_PROFILE        0x2018
 
 #define MSP2_INAV_DEBUG                         0x2019
+
+#define MSP2_INAV_NAMES                         0x2020
+#define MSP2_INAV_SET_NAMES                     0x2021

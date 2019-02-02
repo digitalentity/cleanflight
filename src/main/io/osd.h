@@ -125,6 +125,7 @@ typedef enum {
     OSD_TEMPERATURE,    // 86
     OSD_ALTITUDE_MSL,   // 87
     OSD_PLUS_CODE,      // 88
+    OSD_PILOT_NAME,     // 89
     OSD_ITEM_COUNT // MUST BE LAST
 } osd_items_e;
 

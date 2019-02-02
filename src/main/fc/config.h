@@ -79,6 +79,7 @@ typedef struct systemConfig_s {
     uint8_t throttle_tilt_compensation_strength;      // the correction that will be applied at throttle_correction_angle.
     inputFilteringMode_e pwmRxInputFilteringMode;
     char name[MAX_NAME_LENGTH + 1];
+    char pilotName[MAX_NAME_LENGTH + 1];
 } systemConfig_t;
 
 PG_DECLARE(systemConfig_t, systemConfig);
