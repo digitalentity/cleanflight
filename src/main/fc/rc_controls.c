@@ -186,7 +186,7 @@ void processRcStickPositions(throttleStatus_e throttleStatus)
             // Disarming via ARM BOX
             // Don't disarm via switch if failsafe is active or receiver doesn't receive data - we can't trust receiver
             // and can't afford to risk disarming in the air
-            if (ARMING_FLAG(ARMED) && !IS_RC_MODE_ACTIVE(BOXFAILSAFE) && rxIsReceivingSignal() && !failsafeIsActive()) {
+            if (ARMING_FLAG(ARMED) && rxIsReceivingSignal() && !failsafeIsPreventingDisarm()) {
                 const timeMs_t disarmDelay = currentTimeMs - rcDisarmTimeMs;
                 if (disarmDelay > armingConfig()->switchDisarmDelayMs) {
                     if (armingConfig()->disarm_kill_switch || (throttleStatus == THROTTLE_LOW)) {

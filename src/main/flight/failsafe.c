@@ -196,6 +196,32 @@ bool failsafeIsActive(void)
     return failsafeState.active;
 }
 
+static bool failsafeCheckIfSticksAreMoving(void)
+{
+    uint32_t totalRcDelta = 0;
+
+    totalRcDelta += ABS(rcData[ROLL] - PWM_RANGE_MIDDLE);
+    totalRcDelta += ABS(rcData[PITCH] - PWM_RANGE_MIDDLE);
+    totalRcDelta += ABS(rcData[YAW] - PWM_RANGE_MIDDLE);
+
+    return totalRcDelta >= failsafeConfig()->failsafe_stick_motion_threshold;
+}
+
+// Returs true iff FS has re-established the RC link, BOXFAILSAFE is not
+// active and it's awaiting for stick input to disable FS.
+static bool failsafeIsAwaitingForStickInput(void)
+{
+    return failsafeIsReceivingRxData() && !IS_RC_MODE_ACTIVE(BOXFAILSAFE) && !failsafeCheckIfSticksAreMoving();
+}
+
+bool failsafeIsPreventingDisarm(void)
+{
+    // failsafe prevents disarming while it's active unless the
+    // RC link has been properly re-established and FS is only
+    // awaiting for stick movement to disable itself.
+    return failsafeState.active && !failsafeIsAwaitingForStickInput();
+}
+
 bool failsafeShouldApplyControlInput(void)
 {
     return failsafeState.controlling;
@@ -327,22 +353,6 @@ void failsafeOnValidDataFailed(void)
     }
 }
 
-static bool failsafeCheckStickMotion(void)
-{
-    if (failsafeConfig()->failsafe_stick_motion_threshold > 0) {
-        uint32_t totalRcDelta = 0;
-
-        totalRcDelta += ABS(rcData[ROLL] - PWM_RANGE_MIDDLE);
-        totalRcDelta += ABS(rcData[PITCH] - PWM_RANGE_MIDDLE);
-        totalRcDelta += ABS(rcData[YAW] - PWM_RANGE_MIDDLE);
-
-        return totalRcDelta >= failsafeConfig()->failsafe_stick_motion_threshold;
-    }
-    else {
-        return true;
-    }
-}
-
 void failsafeUpdateState(void)
 {
     if (!failsafeIsMonitoring() || failsafeIsSuspended()) {
@@ -351,7 +361,7 @@ void failsafeUpdateState(void)
 
     const bool receivingRxDataAndNotFailsafeMode = failsafeIsReceivingRxData() && !IS_RC_MODE_ACTIVE(BOXFAILSAFE);
     const bool armed = ARMING_FLAG(ARMED);
-    const bool sticksAreMoving = failsafeCheckStickMotion();
+    const bool sticksAreMoving = failsafeCheckIfSticksAreMoving();
     beeperMode_e beeperMode = BEEPER_SILENCE;
 
     // Beep RX lost only if we are not seeing data and we have been armed earlier

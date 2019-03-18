@@ -157,6 +157,7 @@ void failsafeUpdateState(void);
 failsafePhase_e failsafePhase(void);
 bool failsafeIsMonitoring(void);
 bool failsafeIsActive(void);
+bool failsafeIsPreventingDisarm(void);
 bool failsafeIsReceivingRxData(void);
 void failsafeOnRxSuspend(void);
 void failsafeOnRxResume(void);
