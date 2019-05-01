@@ -42,6 +42,7 @@
 #include "fc/rc_controls.h"
 #include "fc/runtime_config.h"
 
+#include "flight/flock.h"
 #include "flight/imu.h"
 #include "flight/mixer.h"
 #include "flight/pid.h"
@@ -341,6 +342,9 @@ void fcTasksInit(void)
 #ifdef USE_LOGIC_CONDITIONS
     setTaskEnabled(TASK_LOGIC_CONDITIONS, true);
 #endif
+#ifdef USE_FLOCK
+    setTaskEnabled(TASK_FLOCK, true);
+#endif
 }
 
 cfTask_t cfTasks[TASK_COUNT] = {
@@ -552,6 +556,14 @@ cfTask_t cfTasks[TASK_COUNT] = {
         .taskFunc = logicConditionUpdateTask,
         .desiredPeriod = TASK_PERIOD_HZ(10),          // 10Hz @100msec
         .staticPriority = TASK_PRIORITY_IDLE,
+    },
+#endif
+#ifdef USE_FLOCK
+    [TASK_FLOCK] = {
+        .taskName = "FLOCK",
+        .taskFunc = flockUpdate,
+        .desiredPeriod = TASK_PERIOD_HZ(10),
+        .staticPriority = TASK_PRIORITY_LOW,
     },
 #endif
 };

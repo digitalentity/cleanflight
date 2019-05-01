@@ -64,6 +64,7 @@
 #include "fc/settings.h"
 
 #include "flight/failsafe.h"
+#include "flight/flock.h"
 #include "flight/imu.h"
 #include "flight/hil.h"
 #include "flight/mixer.h"
@@ -3068,6 +3069,21 @@ bool mspFCProcessInOutCommand(uint16_t cmdMSP, sbuf_t *dst, sbuf_t *src, mspResu
         *ret = MSP_RESULT_ACK;
         break;
 #endif
+
+    case MSP2_COMMON_FLOCK:
+#ifdef USE_FLOCK
+        {
+            const void *srcPtr = sbufPtr(src);
+            size_t srcSize = sbufBytesRemaining(src);
+            void *dstPtr = sbufPtr(dst);
+            size_t dstSize = sbufBytesRemaining(dst);
+            int ret = flockReceivedMSP(srcPtr, srcSize, dstPtr, dstSize);
+            if (ret > 0) {
+                dst->ptr += ret;
+            }
+        }
+#endif
+        break;
 
     default:
         // Not handled

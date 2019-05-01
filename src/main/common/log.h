@@ -28,6 +28,7 @@ typedef enum {
     LOG_TOPIC_IMU,              // 6, mask = 64
     LOG_TOPIC_TEMPERATURE,      // 7, mask = 128
     LOG_TOPIC_POS_ESTIMATOR,    // 8, mask = 256
+    LOG_TOPIC_FLOCK,            // 9, mask = 512
 
     LOG_TOPIC_COUNT,
 } logTopic_e;

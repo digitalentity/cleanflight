@@ -129,7 +129,7 @@ typedef struct gpsSolutionData_s {
     int16_t       magData[3];
     int16_t       velNED[3];
 
-    int16_t groundSpeed;
+    int16_t groundSpeed; // cm/s
     int16_t groundCourse;
 
     uint16_t eph;   // horizontal accuracy (cm)

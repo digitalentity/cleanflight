@@ -158,6 +158,8 @@
 #define RTC_AUTOMATIC_DST
 // Wind estimator
 #define USE_WIND_ESTIMATOR
+// Flock
+#define USE_FLOCK
 
 #else // FLASH_SIZE < 128
 
