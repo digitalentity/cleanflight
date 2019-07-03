@@ -246,7 +246,7 @@ void rxInit(void)
     rxRuntimeConfig.requireFiltering = false;
     rcSampleIndex = 0;
 
-      timeMs_t nowMs = millis();
+    timeMs_t nowMs = millis();
 
     for (int i = 0; i < MAX_SUPPORTED_RC_CHANNEL_COUNT; i++) {
         rcChannels[i].raw = PWM_RANGE_MIDDLE;
@@ -254,7 +254,7 @@ void rxInit(void)
         rcChannels[i].expiresAt = nowMs + MAX_INVALID_RX_PULSE_TIME;
     }
 
-    rcChannels[THROTTLE].raw = (feature(FEATURE_3D)) ? PWM_RANGE_MIDDLE : rxConfig()->rx_min_usec;
+    rcChannels[THROTTLE].raw = (feature(FEATURE_BIDIR_MOTORS)) ? PWM_RANGE_MIDDLE : rxConfig()->rx_min_usec;
     rcChannels[THROTTLE].data = rcChannels[THROTTLE].raw;
 
     // Initialize ARM switch to OFF position when arming via switch is defined
@@ -565,6 +565,7 @@ bool calculateRxChannelsAndUpdateFailsafe(timeUs_t currentTimeUs)
                 rcChannels[channel].data = rcStaging[channel];
             }
         }
+
     }
 
 #if defined(USE_RX_MSP) && defined(USE_MSP_RC_OVERRIDE)

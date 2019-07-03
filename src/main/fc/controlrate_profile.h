@@ -40,6 +40,12 @@ and so on.
 
 #define CONTROL_RATE_CONFIG_TPA_MAX              100
 
+typedef struct controlRateAxes_s {
+    uint8_t rcExpo8;
+    uint8_t rcYawExpo8;
+    uint8_t rates[3];
+} controlRateAxes_t;
+
 typedef struct controlRateConfig_s {
 
     struct {
@@ -50,17 +56,8 @@ typedef struct controlRateConfig_s {
         uint16_t fixedWingTauMs;               // Time constant of airplane TPA PT1-filter
     } throttle;
 
-    struct {
-        uint8_t rcExpo8;
-        uint8_t rcYawExpo8;
-        uint8_t rates[3];
-    } stabilized;
-
-    struct {
-        uint8_t rcExpo8;
-        uint8_t rcYawExpo8;
-        uint8_t rates[3];
-    } manual;
+    controlRateAxes_t stabilized;
+    controlRateAxes_t manual;
 
     struct {
         uint8_t fpvCamAngleDegrees;             // Camera angle to treat as "forward" base axis in ACRO (Roll and Yaw sticks will command rotation considering this axis)

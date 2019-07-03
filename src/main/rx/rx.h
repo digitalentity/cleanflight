@@ -100,6 +100,7 @@ typedef struct rxChannelRangeConfig_s {
     uint16_t min;
     uint16_t max;
 } rxChannelRangeConfig_t;
+
 PG_DECLARE_ARRAY(rxChannelRangeConfig_t, NON_AUX_CHANNEL_COUNT, rxChannelRangeConfigs);
 
 typedef struct rxConfig_s {

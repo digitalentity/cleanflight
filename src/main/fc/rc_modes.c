@@ -30,7 +30,7 @@
 #include "config/parameter_group_ids.h"
 
 #include "fc/config.h"
-#include "fc/rc_controls.h"
+#include "fc/rc_control.h"
 #include "fc/runtime_config.h"
 
 #include "rx/rx.h"
@@ -78,7 +78,7 @@ static void processAirmodeMultirotor(void) {
             DISABLE_STATE(AIRMODE_ACTIVE);
         } else if (
             !STATE(AIRMODE_ACTIVE) && 
-            rcCommand[THROTTLE] > rcControlsConfig()->airmodeThrottleThreshold &&
+            rcCommandThrottleMagnitudeToPWM(rcControlGetOutputAxis(THROTTLE)) > rcControlsConfig()->airmodeThrottleThreshold &&
             (feature(FEATURE_AIRMODE) || IS_RC_MODE_ACTIVE(BOXAIRMODE))
         ) {
             /*

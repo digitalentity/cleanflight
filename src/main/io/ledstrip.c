@@ -43,6 +43,7 @@
 #include "drivers/time.h"
 
 #include "fc/config.h"
+#include "fc/rc_control.h"
 #include "fc/rc_controls.h"
 #include "fc/rc_modes.h"
 #include "fc/runtime_config.h"
@@ -654,18 +655,20 @@ static void applyLedGpsLayer(bool updateNow, timeUs_t *timer)
 
 #endif
 
-#define INDICATOR_DEADBAND 25
+#define INDICATOR_DEADBAND 0.05f
 
 static void applyLedIndicatorLayer(bool updateNow, timeUs_t *timer)
 {
     static bool flash = 0;
 
+    const rcCommand_t *controlOutput = rcControlGetOutput();
+
     if (updateNow) {
         if (rxIsReceivingSignal()) {
             // calculate update frequency
-            int scale = MAX(ABS(rcCommand[ROLL]), ABS(rcCommand[PITCH]));  // 0 - 500
-            scale += (50 - INDICATOR_DEADBAND);  // start increasing frequency right after deadband
-            *timer += LED_STRIP_HZ(5) * 50 / MAX(50, scale);   // 5 - 50Hz update, 2.5 - 25Hz blink
+            float scale = MAX(fabsf(controlOutput->roll), fabsf(controlOutput->pitch));  // 0 - 1
+            scale = fapplyDeadbandf(scale, INDICATOR_DEADBAND);
+            *timer += LED_STRIP_HZ(5) * 50 / MAX(50, scale * 500.0f);   // 5 - 50Hz update, 2.5 - 25Hz blink
 
             flash = !flash;
         } else {
@@ -679,14 +682,14 @@ static void applyLedIndicatorLayer(bool updateNow, timeUs_t *timer)
     const hsvColor_t *flashColor = &HSV(ORANGE); // TODO - use user color?
 
     quadrant_e quadrants = 0;
-    if (rcCommand[ROLL] > INDICATOR_DEADBAND) {
+    if (controlOutput->roll > INDICATOR_DEADBAND) {
         quadrants |= QUADRANT_NORTH_EAST | QUADRANT_SOUTH_EAST;
-    } else if (rcCommand[ROLL] < -INDICATOR_DEADBAND) {
+    } else if (controlOutput->roll < -INDICATOR_DEADBAND) {
         quadrants |= QUADRANT_NORTH_WEST | QUADRANT_SOUTH_WEST;
     }
-    if (rcCommand[PITCH] > INDICATOR_DEADBAND) {
+    if (controlOutput->pitch > INDICATOR_DEADBAND) {
         quadrants |= QUADRANT_NORTH_EAST | QUADRANT_NORTH_WEST;
-    } else if (rcCommand[PITCH] < -INDICATOR_DEADBAND) {
+    } else if (controlOutput->pitch < -INDICATOR_DEADBAND) {
         quadrants |= QUADRANT_SOUTH_EAST | QUADRANT_SOUTH_WEST;
     }
 
@@ -949,7 +952,7 @@ void ledStripUpdate(timeUs_t currentTimeUs)
 
     // apply all layers; triggered timed functions has to update timers
 
-    scaledThrottle = ARMING_FLAG(ARMED) ? scaleRange(rxGetChannelValue(THROTTLE), PWM_RANGE_MIN, PWM_RANGE_MAX, 10, 100) : 10;
+    scaledThrottle = ARMING_FLAG(ARMED) ? scaleRangef(fabsf(rcControlGetOutput()->throttle), RC_COMMAND_CENTER, RC_COMMAND_MAX, 10, 100) : 10;
 
     applyLedFixedLayers();
 

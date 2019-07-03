@@ -75,6 +75,8 @@ COMMON_SRC = \
             fc/fc_msp_box.c \
             fc/rc_smoothing.c \
             fc/rc_adjustments.c \
+            fc/rc_command.c \
+            fc/rc_control.c \
             fc/rc_controls.c \
             fc/rc_curves.c \
             fc/rc_modes.c \

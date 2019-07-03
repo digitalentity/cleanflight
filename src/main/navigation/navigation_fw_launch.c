@@ -51,7 +51,7 @@
 #include "flight/mixer.h"
 
 #include "fc/config.h"
-#include "fc/rc_controls.h"
+#include "fc/rc_control.h"
 #include "fc/runtime_config.h"
 
 #include "navigation/navigation.h"
@@ -129,7 +129,7 @@ void abortFixedWingLaunch(void)
 
 #define LAUNCH_MOTOR_IDLE_SPINUP_TIME 1500 //ms
 
-static void applyFixedWingLaunchIdleLogic(void)
+static void applyFixedWingLaunchIdleLogic(rcCommand_t *controlOutput)
 {
     // Until motors are started don't use PID I-term
     pidResetErrorAccumulators();
@@ -140,8 +140,8 @@ static void applyFixedWingLaunchIdleLogic(void)
     // Throttle control logic
     if (navConfig()->fw.launch_idle_throttle <= motorConfig()->minthrottle)
     {
-        ENABLE_STATE(NAV_MOTOR_STOP_OR_IDLE);             // If MOTOR_STOP is enabled mixer will keep motor stopped
-        rcCommand[THROTTLE] = motorConfig()->minthrottle; // If MOTOR_STOP is disabled, motors will spin at minthrottle
+        ENABLE_STATE(NAV_MOTOR_STOP_OR_IDLE);           // If MOTOR_STOP is enabled mixer will keep motor stopped
+        controlOutput->throttle = RC_COMMAND_CENTER;    // If MOTOR_STOP is disabled, motors will spin at minthrottle
     }
     else
     {
@@ -153,9 +153,10 @@ static void applyFixedWingLaunchIdleLogic(void)
         else
         {
             const float timeSinceMotorStartMs = MIN(millis() - timeThrottleRaisedMs, LAUNCH_MOTOR_IDLE_SPINUP_TIME);
-            rcCommand[THROTTLE] = scaleRangef(timeSinceMotorStartMs,
+            float thr = scaleRangef(timeSinceMotorStartMs,
                                                 0.0f, LAUNCH_MOTOR_IDLE_SPINUP_TIME,
                                                 motorConfig()->minthrottle, navConfig()->fw.launch_idle_throttle);
+            controlOutput->throttle = rcCommandMapUnidirectionalPWMThrottle(thr);
         }
     }
 }
@@ -183,6 +184,9 @@ void applyFixedWingLaunchController(timeUs_t currentTimeUs)
 {
     // Called at PID rate
 
+    rcCommand_t controlOutput;
+    rcCommandCopy(&controlOutput, rcControlGetOutput());
+
     if (launchState.launchDetected) {
         bool applyLaunchIdleLogic = true;
 
@@ -198,22 +202,24 @@ void applyFixedWingLaunchController(timeUs_t currentTimeUs)
                 applyLaunchIdleLogic = false;
 
                 // Increase throttle gradually over `launch_motor_spinup_time` milliseconds
+                float thr;
                 if (navConfig()->fw.launch_motor_spinup_time > 0) {
                     const float timeSinceMotorStartMs = constrainf(timeElapsedSinceLaunchMs - navConfig()->fw.launch_motor_timer, 0.0f, navConfig()->fw.launch_motor_spinup_time);
                     const uint16_t minIdleThrottle = MAX(motorConfig()->minthrottle, navConfig()->fw.launch_idle_throttle);
-                    rcCommand[THROTTLE] = scaleRangef(timeSinceMotorStartMs,
+                    thr = scaleRangef(timeSinceMotorStartMs,
                                                       0.0f, navConfig()->fw.launch_motor_spinup_time,
                                                       minIdleThrottle, navConfig()->fw.launch_throttle);
                 }
                 else {
-                    rcCommand[THROTTLE] = navConfig()->fw.launch_throttle;
+                    thr = navConfig()->fw.launch_throttle;
                 }
+                controlOutput.throttle = rcCommandMapUnidirectionalPWMThrottle(thr);
             }
         }
 
         if (applyLaunchIdleLogic) {
             // Launch idle logic - low throttle and zero out PIDs
-            applyFixedWingLaunchIdleLogic();
+            applyFixedWingLaunchIdleLogic(&controlOutput);
         }
     }
     else {
@@ -221,7 +227,7 @@ void applyFixedWingLaunchController(timeUs_t currentTimeUs)
         updateFixedWingLaunchDetector(currentTimeUs);
 
         // Launch idle logic - low throttle and zero out PIDs
-        applyFixedWingLaunchIdleLogic();
+        applyFixedWingLaunchIdleLogic(&controlOutput);
     }
 
     // Control beeper
@@ -230,9 +236,10 @@ void applyFixedWingLaunchController(timeUs_t currentTimeUs)
     }
 
     // Lock out controls
-    rcCommand[ROLL] = 0;
-    rcCommand[PITCH] = pidAngleToRcCommand(-DEGREES_TO_DECIDEGREES(navConfig()->fw.launch_climb_angle), pidProfile()->max_angle_inclination[FD_PITCH]);
-    rcCommand[YAW] = 0;
+    controlOutput.roll = RC_COMMAND_CENTER;
+    controlOutput.pitch = pidAngleToRcCommand(-DEGREES_TO_DECIDEGREES(navConfig()->fw.launch_climb_angle), pidProfile()->max_angle_inclination[FD_PITCH]);
+    controlOutput.yaw = RC_COMMAND_CENTER;
+    rcControlUpdateOutput(&controlOutput, RC_CONTROL_SOURCE_NAVIGATION);
 }
 
 #endif

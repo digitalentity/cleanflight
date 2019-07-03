@@ -41,47 +41,49 @@
 
 #include "fc/config.h"
 #include "fc/fc_core.h"
+#include "fc/rc_command.h"
 #include "fc/rc_controls.h"
 #include "fc/rc_smoothing.h"
 #include "fc/runtime_config.h"
 
 #include "flight/mixer.h"
 
-static biquadFilter_t rcSmoothFilter[4];
-static float rcStickUnfiltered[4];
+static biquadFilter_t rcSmoothFilter[RC_COMMAND_AXES_COUNT];
+static rcCommand_t rcUnfilteredInput;
 
-static void rcInterpolationInit(int rcFilterFreqency)
+static void rcInterpolationInit(int rcFilterFrequency)
 {
-    for (int stick = 0; stick < 4; stick++) {
-        biquadFilterInitLPF(&rcSmoothFilter[stick], rcFilterFreqency, getLooptime());
+    for (int stick = 0; stick < RC_COMMAND_AXES_COUNT; stick++) {
+        biquadFilterInitLPF(&rcSmoothFilter[stick], rcFilterFrequency, getLooptime());
     }
 }
 
-void rcInterpolationApply(bool isRXDataNew)
+bool rcInterpolationApply(rcCommand_t *dst, const rcCommand_t *src, bool isRXDataNew)
 {
     static bool initDone = false;
-    static float initFilterFreqency = 0;
+    static float initFilterFrequency = 0;
 
     if (isRXDataNew) {
-        if (!initDone || (initFilterFreqency != rxConfig()->rcFilterFrequency)) {
+        if (!initDone || (initFilterFrequency != rxConfig()->rcFilterFrequency)) {
             rcInterpolationInit(rxConfig()->rcFilterFrequency);
-            initFilterFreqency = rxConfig()->rcFilterFrequency;
+            initFilterFrequency = rxConfig()->rcFilterFrequency;
             initDone = true;
         }
 
-        for (int stick = 0; stick < 4; stick++) {
-            rcStickUnfiltered[stick] = rcCommand[stick];
+        for (int stick = 0; stick < RC_COMMAND_AXES_COUNT; stick++) {
+            rcUnfilteredInput.axes[stick] = src->axes[stick];
         }
     }
 
     // Don't filter if not initialized
     if (!initDone) {
-        return;
+        return false;
     }
 
-    for (int stick = 0; stick < 4; stick++) {
-        rcCommand[stick] = biquadFilterApply(&rcSmoothFilter[stick], rcStickUnfiltered[stick]);
+    for (int stick = 0; stick < RC_COMMAND_AXES_COUNT; stick++) {
+        dst->axes[stick] = biquadFilterApply(&rcSmoothFilter[stick], rcUnfilteredInput.axes[stick]);
     }
+    return true;
 }
 
 

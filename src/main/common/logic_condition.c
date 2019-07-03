@@ -29,15 +29,20 @@
 #include "config/parameter_group_ids.h"
 
 #include "common/logic_condition.h"
+#include "common/maths.h"
 #include "common/utils.h"
-#include "rx/rx.h"
-#include "maths.h"
+
 #include "fc/fc_core.h"
-#include "fc/rc_controls.h"
+#include "fc/rc_control.h"
+
+#include "flight/imu.h"
+
 #include "navigation/navigation.h"
+
+#include "rx/rx.h"
+
 #include "sensors/battery.h"
 #include "sensors/pitotmeter.h"
-#include "flight/imu.h"
 
 PG_REGISTER_ARRAY(logicCondition_t, MAX_LOGIC_CONDITIONS, logicConditions, PG_LOGIC_CONDITIONS, 0);
 
@@ -203,7 +208,7 @@ static int logicConditionGetFlightOperandValue(int operand) {
             break;
 
         case LOGIC_CONDITION_OPERAND_FLIGHT_TROTTLE_POS: // %
-            return (constrain(rcCommand[THROTTLE], PWM_RANGE_MIN, PWM_RANGE_MAX) - PWM_RANGE_MIN) * 100 / (PWM_RANGE_MAX - PWM_RANGE_MIN);
+            return fabsf(rcControlGetOutput()->throttle) * 100;
             break;
 
         case LOGIC_CONDITION_OPERAND_FLIGHT_ATTITUDE_ROLL: // deg

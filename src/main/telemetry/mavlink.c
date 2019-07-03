@@ -43,6 +43,7 @@
 
 #include "fc/config.h"
 #include "fc/fc_core.h"
+#include "fc/rc_control.h"
 #include "fc/rc_controls.h"
 #include "fc/runtime_config.h"
 
@@ -425,7 +426,8 @@ void mavlinkSendHUDAndHeartbeat(void)
         // heading Current heading in degrees, in compass units (0..360, 0=north)
         DECIDEGREES_TO_DEGREES(attitude.values.yaw),
         // throttle Current throttle setting in integer percent, 0 to 100
-        scaleRange(constrain(rxGetChannelValue(THROTTLE), PWM_RANGE_MIN, PWM_RANGE_MAX), PWM_RANGE_MIN, PWM_RANGE_MAX, 0, 100),
+        // XXX: Send input or output? - Delete after review
+        scaleRangef(rcControlGetInput()->throttle, RC_COMMAND_MIN, RC_COMMAND_MAX, 0, 100),
         // alt Current altitude (MSL), in meters, if we have surface or baro use them, otherwise use GPS (less accurate)
         mavAltitude,
         // climb Current climb rate in meters/second

@@ -474,6 +474,9 @@ groups:
       - name: motor_pwm_protocol
         field: motorPwmProtocol
         table: motor_pwm_protocol
+      - name: motor_bidir_reverse
+        field: motorBidirectionalReverse
+        type: bool
 
   - name: PG_FAILSAFE_CONFIG
     type: failsafeConfig_t

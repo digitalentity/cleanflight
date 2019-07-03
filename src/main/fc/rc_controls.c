@@ -40,6 +40,7 @@
 #include "fc/config.h"
 #include "fc/controlrate_profile.h"
 #include "fc/fc_core.h"
+#include "fc/rc_control.h"
 #include "fc/rc_controls.h"
 #include "fc/rc_curves.h"
 #include "fc/rc_modes.h"
@@ -67,8 +68,6 @@
 
 stickPositions_e rcStickPositions;
 
-FASTRAM int16_t rcCommand[4];           // interval [1000;2000] for THROTTLE and [-500;+500] for ROLL/PITCH/YAW
-
 PG_REGISTER_WITH_RESET_TEMPLATE(rcControlsConfig_t, rcControlsConfig, PG_RC_CONTROLS_CONFIG, 1);
 
 PG_RESET_TEMPLATE(rcControlsConfig_t, rcControlsConfig,
@@ -89,34 +88,26 @@ PG_RESET_TEMPLATE(armingConfig_t, armingConfig,
     .switchDisarmDelayMs = DEFAULT_RC_SWITCH_DISARM_DELAY_MS,
 );
 
-bool areSticksInApModePosition(uint16_t ap_mode)
-{
-    return ABS(rcCommand[ROLL]) < ap_mode && ABS(rcCommand[PITCH]) < ap_mode;
-}
-
 bool areSticksDeflectedMoreThanPosHoldDeadband(void)
 {
-    return (ABS(rcCommand[ROLL]) > rcControlsConfig()->pos_hold_deadband) || (ABS(rcCommand[PITCH]) > rcControlsConfig()->pos_hold_deadband);
+    const rcCommand_t *input = rcControlGetInput();
+    float deadband = rcCommandConvertPWMDeadband(rcControlsConfig()->pos_hold_deadband);
+    return fabsf(input->roll) > deadband || fabsf(input->pitch) > deadband;
 }
 
 throttleStatus_e calculateThrottleStatus(void)
 {
-    const uint16_t deadband3d_throttle = rcControlsConfig()->deadband3d_throttle;
-    if (feature(FEATURE_3D) && (rxGetChannelValue(THROTTLE) > (PWM_RANGE_MIDDLE - deadband3d_throttle) && rxGetChannelValue(THROTTLE) < (PWM_RANGE_MIDDLE + deadband3d_throttle)))
-        return THROTTLE_LOW;
-    else if (!feature(FEATURE_3D) && (rxGetChannelValue(THROTTLE) < rxConfig()->mincheck))
-        return THROTTLE_LOW;
-
-    return THROTTLE_HIGH;
+    // rc_control.c uses the deadband during conversion to [-1, 1] range,
+    // so we can just check for zero here.
+    return rcControlGetInput()->throttle == 0 ? THROTTLE_LOW : THROTTLE_HIGH;
 }
 
 rollPitchStatus_e calculateRollPitchCenterStatus(void)
 {
-    if (((rxGetChannelValue(PITCH) < (PWM_RANGE_MIDDLE + AIRMODE_DEADBAND)) && (rxGetChannelValue(PITCH) > (PWM_RANGE_MIDDLE -AIRMODE_DEADBAND)))
-            && ((rxGetChannelValue(ROLL) < (PWM_RANGE_MIDDLE + AIRMODE_DEADBAND)) && (rxGetChannelValue(ROLL) > (PWM_RANGE_MIDDLE -AIRMODE_DEADBAND))))
-        return CENTERED;
+    const rcCommand_t *input = rcControlGetInput();
+    float deadband = rcCommandConvertPWMDeadband(AIRMODE_DEADBAND);
 
-    return NOT_CENTERED;
+    return fabsf(input->pitch) < deadband && fabsf(input->roll) < deadband ? ROLL_PITCH_CENTERED : ROLL_PITCH_NOT_CENTERED;
 }
 
 stickPositions_e getRcStickPositions(void)
@@ -140,17 +131,21 @@ static void updateRcStickPositions(void)
 {
     stickPositions_e tmp = 0;
 
-    tmp |= ((rxGetChannelValue(ROLL) > rxConfig()->mincheck) ? 0x02 : 0x00) << (ROLL * 2);
-    tmp |= ((rxGetChannelValue(ROLL) < rxConfig()->maxcheck) ? 0x01 : 0x00) << (ROLL * 2);
+    int16_t roll = rxGetChannelValue(ROLL);
+    tmp |= ((roll > rxConfig()->mincheck) ? 0x02 : 0x00) << (ROLL * 2);
+    tmp |= ((roll < rxConfig()->maxcheck) ? 0x01 : 0x00) << (ROLL * 2);
 
-    tmp |= ((rxGetChannelValue(PITCH) > rxConfig()->mincheck) ? 0x02 : 0x00) << (PITCH * 2);
-    tmp |= ((rxGetChannelValue(PITCH) < rxConfig()->maxcheck) ? 0x01 : 0x00) << (PITCH * 2);
+    int16_t pitch = rxGetChannelValue(PITCH);
+    tmp |= ((pitch > rxConfig()->mincheck) ? 0x02 : 0x00) << (PITCH * 2);
+    tmp |= ((pitch < rxConfig()->maxcheck) ? 0x01 : 0x00) << (PITCH * 2);
 
-    tmp |= ((rxGetChannelValue(YAW) > rxConfig()->mincheck) ? 0x02 : 0x00) << (YAW * 2);
-    tmp |= ((rxGetChannelValue(YAW) < rxConfig()->maxcheck) ? 0x01 : 0x00) << (YAW * 2);
+    int16_t yaw = rxGetChannelValue(YAW);
+    tmp |= ((yaw > rxConfig()->mincheck) ? 0x02 : 0x00) << (YAW * 2);
+    tmp |= ((yaw < rxConfig()->maxcheck) ? 0x01 : 0x00) << (YAW * 2);
 
-    tmp |= ((rxGetChannelValue(THROTTLE) > rxConfig()->mincheck) ? 0x02 : 0x00) << (THROTTLE * 2);
-    tmp |= ((rxGetChannelValue(THROTTLE) < rxConfig()->maxcheck) ? 0x01 : 0x00) << (THROTTLE * 2);
+    int16_t throttle = rxGetChannelValue(THROTTLE);
+    tmp |= ((throttle > rxConfig()->mincheck) ? 0x02 : 0x00) << (THROTTLE * 2);
+    tmp |= ((throttle < rxConfig()->maxcheck) ? 0x01 : 0x00) << (THROTTLE * 2);
 
     rcStickPositions = tmp;
 }
@@ -309,8 +304,4 @@ void processRcStickPositions(throttleStatus_e throttleStatus)
         rcDelayCommand = 10;
         return;
     }
-}
-
-int32_t getRcStickDeflection(int32_t axis) {
-    return MIN(ABS(rxGetChannelValue(axis) - PWM_RANGE_MIDDLE), 500);
 }

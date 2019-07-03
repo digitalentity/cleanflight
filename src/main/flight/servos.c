@@ -27,6 +27,7 @@
 
 #include "common/axis.h"
 #include "common/filter.h"
+#include "common/log.h"
 #include "common/maths.h"
 
 #include "config/config_reset.h"
@@ -38,7 +39,7 @@
 #include "drivers/time.h"
 
 #include "fc/config.h"
-#include "fc/rc_controls.h"
+#include "fc/rc_control.h"
 #include "fc/rc_modes.h"
 #include "fc/runtime_config.h"
 #include "fc/controlrate_profile.h"
@@ -232,23 +233,42 @@ void writeServos(void)
     }
 }
 
+static bool servoYawNeedsReversingWithMotors(void)
+{
+    // Reverse yaw servo when inverted in 3D mode only for multirotor and tricopter
+    return mixerConfig()->platformType == PLATFORM_MULTIROTOR || mixerConfig()->platformType == PLATFORM_TRICOPTER;
+}
+
+static int16_t servoMixerGetThrottleChannelOutput(void)
+{
+    // For backwards compatibility, this considers only
+    // positive throttle values. Negative throttle values
+    // are cliped to zero, so we map [0, 1] to [-500, 500].
+    float thr = constrainf(rcControlGetOutput()->throttle, RC_COMMAND_CENTER, RC_COMMAND_MAX);
+    return (thr * 1000) - 500;
+}
+
+static int16_t servoMixerGetRCCommandChannelOutput(rc_alias_e ch)
+{
+    // Map RC command channels from [-1, 1] to [-500, 500]
+    return rcControlGetOutputAxis(ch) * 500.0f;
+}
+
 void servoMixer(float dT)
 {
     int16_t input[INPUT_SOURCE_COUNT]; // Range [-500:+500]
 
     if (FLIGHT_MODE(MANUAL_MODE)) {
-        input[INPUT_STABILIZED_ROLL] = rcCommand[ROLL];
-        input[INPUT_STABILIZED_PITCH] = rcCommand[PITCH];
-        input[INPUT_STABILIZED_YAW] = rcCommand[YAW];
+        input[INPUT_STABILIZED_ROLL] = servoMixerGetRCCommandChannelOutput(ROLL);
+        input[INPUT_STABILIZED_PITCH] = servoMixerGetRCCommandChannelOutput(PITCH);
+        input[INPUT_STABILIZED_YAW] = servoMixerGetRCCommandChannelOutput(YAW);
     } else {
         // Assisted modes (gyro only or gyro+acc according to AUX configuration in Gui
         input[INPUT_STABILIZED_ROLL] = axisPID[ROLL];
         input[INPUT_STABILIZED_PITCH] = axisPID[PITCH];
         input[INPUT_STABILIZED_YAW] = axisPID[YAW];
 
-        // Reverse yaw servo when inverted in 3D mode only for multirotor and tricopter
-        if (feature(FEATURE_3D) && (rxGetChannelValue(THROTTLE) < PWM_RANGE_MIDDLE) &&
-        (mixerConfig()->platformType == PLATFORM_MULTIROTOR || mixerConfig()->platformType == PLATFORM_TRICOPTER)) {
+        if (mixerIsReversingMotors() && servoYawNeedsReversingWithMotors()) {
             input[INPUT_STABILIZED_YAW] *= -1;
         }
     }
@@ -272,7 +292,15 @@ void servoMixer(float dT)
         input[INPUT_GIMBAL_ROLL] = 0;
     }
 
-    input[INPUT_STABILIZED_THROTTLE] = motor[0] - 1000 - 500;  // Since it derives from rcCommand or mincommand and must be [-500:+500]
+    // For backwards compatibility, this considers only
+    // positive throttle values. Negative throttle values
+    // are cliped to zero.
+    input[INPUT_STABILIZED_THROTTLE] = servoMixerGetThrottleChannelOutput();
+
+    input[INPUT_RC_ROLL]     = servoMixerGetRCCommandChannelOutput(ROLL);
+    input[INPUT_RC_PITCH]    = servoMixerGetRCCommandChannelOutput(PITCH);
+    input[INPUT_RC_YAW]      = servoMixerGetRCCommandChannelOutput(YAW);
+    input[INPUT_RC_THROTTLE] = servoMixerGetRCCommandChannelOutput(THROTTLE);
 
     // center the RC input value around the RC middle value
     // by subtracting the RC middle value from the RC input value, we get:
@@ -281,10 +309,6 @@ void servoMixer(float dT)
     // 1500 - 1500 = 0
     // 1000 - 1500 = -500
 #define GET_RX_CHANNEL_INPUT(x) (rxGetChannelValue(x) - PWM_RANGE_MIDDLE)
-    input[INPUT_RC_ROLL]     = GET_RX_CHANNEL_INPUT(ROLL);
-    input[INPUT_RC_PITCH]    = GET_RX_CHANNEL_INPUT(PITCH);
-    input[INPUT_RC_YAW]      = GET_RX_CHANNEL_INPUT(YAW);
-    input[INPUT_RC_THROTTLE] = GET_RX_CHANNEL_INPUT(THROTTLE);
     input[INPUT_RC_CH5]      = GET_RX_CHANNEL_INPUT(AUX1);
     input[INPUT_RC_CH6]      = GET_RX_CHANNEL_INPUT(AUX2);
     input[INPUT_RC_CH7]      = GET_RX_CHANNEL_INPUT(AUX3);

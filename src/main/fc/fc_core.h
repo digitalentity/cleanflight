@@ -25,7 +25,7 @@ typedef enum disarmReason_e {
     DISARM_NONE         = 0,
     DISARM_TIMEOUT      = 1,
     DISARM_STICKS       = 2,
-    DISARM_SWITCH_3D    = 3,
+    DISARM_SWITCH_BIDIR = 3,
     DISARM_SWITCH       = 4,
     DISARM_KILLSWITCH   = 5,
     DISARM_FAILSAFE     = 6,

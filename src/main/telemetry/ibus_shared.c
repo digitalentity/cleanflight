@@ -26,12 +26,15 @@
 #include "common/maths.h"
 #include "common/axis.h"
 
+#include "config/feature.h"
+
 #include "drivers/serial.h"
 
+#include "fc/config.h"
 #include "fc/fc_core.h"
+#include "fc/rc_control.h"
 #include "fc/rc_controls.h"
 #include "fc/runtime_config.h"
-#include "scheduler/scheduler.h"
 
 #include "io/serial.h"
 
@@ -42,16 +45,18 @@
 #include "sensors/sensors.h"
 #include "sensors/pitotmeter.h"
 
+#include "scheduler/scheduler.h"
+
 #include "flight/imu.h"
 #include "flight/failsafe.h"
+
+#include "io/gps.h"
 
 #include "navigation/navigation.h"
 
 #include "telemetry/ibus.h"
 #include "telemetry/telemetry.h"
-#include "fc/config.h"
-#include "config/feature.h"
-#include "io/gps.h"
+
 #define IBUS_TEMPERATURE_OFFSET (0x0190)
 
 typedef uint8_t ibusAddress_t;
@@ -146,7 +151,7 @@ static uint8_t dispatchMeasurementRequest(ibusAddress_t address) {
         if (!temp_valid || (temperature < -400)) temperature = -400; // Minimum reported temperature is -40°C
         return sendIbusMeasurement2(address, (uint16_t)(temperature  + IBUS_TEMPERATURE_OFFSET));
     } else if (SENSOR_ADDRESS_TYPE_LOOKUP[address].value == IBUS_MEAS_VALUE_RPM) {
-        return sendIbusMeasurement2(address, (uint16_t) (rcCommand[THROTTLE]));
+        return sendIbusMeasurement2(address, (uint16_t) fabsf(rcControlGetOutput()->throttle * 1000.0f));
     } else if (SENSOR_ADDRESS_TYPE_LOOKUP[address].value == IBUS_MEAS_VALUE_EXTERNAL_VOLTAGE) { //VBAT
         if (telemetryConfig()->report_cell_voltage) {
             return sendIbusMeasurement2(address, getBatteryAverageCellVoltage());

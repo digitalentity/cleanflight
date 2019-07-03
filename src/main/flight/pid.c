@@ -34,6 +34,8 @@
 
 #include "fc/config.h"
 #include "fc/controlrate_profile.h"
+#include "fc/rc_command.h"
+#include "fc/rc_control.h"
 #include "fc/rc_controls.h"
 #include "fc/rc_modes.h"
 #include "fc/runtime_config.h"
@@ -335,16 +337,17 @@ void pidResetErrorAccumulators(void)
     }
 }
 
-static float pidRcCommandToAngle(int16_t stick, int16_t maxInclination)
+static float pidRcCommandToAngle(float stick, int16_t maxInclination)
 {
-    stick = constrain(stick, -500, 500);
-    return scaleRangef((float) stick, -500.0f, 500.0f, (float) -maxInclination, (float) maxInclination);
+    // No need to constrain here, it's already constrained by
+    // the input system
+    return scaleRangef(stick, RC_COMMAND_MIN, RC_COMMAND_MAX, (float) -maxInclination, (float) maxInclination);
 }
 
-int16_t pidAngleToRcCommand(float angleDeciDegrees, int16_t maxInclination)
+float pidAngleToRcCommand(float angleDeciDegrees, int16_t maxInclination)
 {
     angleDeciDegrees = constrainf(angleDeciDegrees, (float) -maxInclination, (float) maxInclination);
-    return scaleRangef((float) angleDeciDegrees, (float) -maxInclination, (float) maxInclination, -500.0f, 500.0f);
+    return scaleRangef((float) angleDeciDegrees, (float) -maxInclination, (float) maxInclination, RC_COMMAND_MIN, RC_COMMAND_MAX);
 }
 
 /*
@@ -355,13 +358,13 @@ Rate 20 means 200dps at full stick deflection
 float pidRateToRcCommand(float rateDPS, uint8_t rate)
 {
     const float maxRateDPS = rate * 10.0f;
-    return scaleRangef(rateDPS, -maxRateDPS, maxRateDPS, -500.0f, 500.0f);
+    return scaleRangef(rateDPS, -maxRateDPS, maxRateDPS, RC_COMMAND_MIN, RC_COMMAND_MAX);
 }
 
-float pidRcCommandToRate(int16_t stick, uint8_t rate)
+static float pidRcCommandToRate(float stick, uint8_t rate)
 {
     const float maxRateDPS = rate * 10.0f;
-    return scaleRangef((float) stick, -500.0f, 500.0f, -maxRateDPS, maxRateDPS);
+    return scaleRangef(stick, RC_COMMAND_MIN, RC_COMMAND_MAX, -maxRateDPS, maxRateDPS);
 }
 
 static float calculateFixedWingTPAFactor(uint16_t throttle)
@@ -397,10 +400,12 @@ static float calculateMultirotorTPAFactor(void)
     float tpaFactor;
 
     // TPA should be updated only when TPA is actually set
-    if (currentControlRateProfile->throttle.dynPID == 0 || rcCommand[THROTTLE] < currentControlRateProfile->throttle.pa_breakpoint) {
+    float thr = fabsf(rcControlGetOutput()->throttle);
+    float paBreakpoint = rcCommandMapUnidirectionalPWMThrottle(currentControlRateProfile->throttle.pa_breakpoint);
+    if (currentControlRateProfile->throttle.dynPID == 0 || thr < paBreakpoint) {
         tpaFactor = 1.0f;
-    } else if (rcCommand[THROTTLE] < motorConfig()->maxthrottle) {
-        tpaFactor = (100 - (uint16_t)currentControlRateProfile->throttle.dynPID * (rcCommand[THROTTLE] - currentControlRateProfile->throttle.pa_breakpoint) / (float)(motorConfig()->maxthrottle - currentControlRateProfile->throttle.pa_breakpoint)) / 100.0f;
+    } else if (thr < RC_COMMAND_MAX) {
+        tpaFactor = (100 - (uint16_t)currentControlRateProfile->throttle.dynPID * (thr - paBreakpoint) / (RC_COMMAND_MAX - paBreakpoint)) / 100.0f;
     } else {
         tpaFactor = (100 - currentControlRateProfile->throttle.dynPID) / 100.0f;
     }
@@ -415,19 +420,21 @@ void schedulePidGainsUpdate(void)
 
 void FAST_CODE NOINLINE updatePIDCoefficients(void)
 {
-    STATIC_FASTRAM uint16_t prevThrottle = 0;
+    STATIC_FASTRAM float prevThrottle = 0;
 
+    const rcCommand_t *controlOutput = rcControlGetOutput();
+    float thr = controlOutput->throttle;
     // Check if throttle changed. Different logic for fixed wing vs multirotor
     if (STATE(FIXED_WING) && (currentControlRateProfile->throttle.fixedWingTauMs > 0)) {
-        uint16_t filteredThrottle = pt1FilterApply3(&fixedWingTpaFilter, rcCommand[THROTTLE], dT);
+        float filteredThrottle = pt1FilterApply3(&fixedWingTpaFilter, thr, dT);
         if (filteredThrottle != prevThrottle) {
             prevThrottle = filteredThrottle;
             pidGainsUpdateRequired = true;
         }
     }
     else {
-        if (rcCommand[THROTTLE] != prevThrottle) {
-            prevThrottle = rcCommand[THROTTLE];
+        if (thr != prevThrottle) {
+            prevThrottle = thr;
             pidGainsUpdateRequired = true;
         }
     }
@@ -435,8 +442,8 @@ void FAST_CODE NOINLINE updatePIDCoefficients(void)
     /*
      * Compute stick position in range of [-1.0f : 1.0f] without deadband and expo
      */
-    for (int axis = 0; axis < 3; axis++) {
-        pidState[axis].stickPosition = constrain(rxGetChannelValue(axis) - PWM_RANGE_MIDDLE, -500, 500) / 500.0f;
+    for (int axis = ROLL; axis < THROTTLE; axis++) {
+        pidState[axis].stickPosition = controlOutput->axes[axis];
     }
 
     // If nothing changed - don't waste time recalculating coefficients
@@ -479,9 +486,11 @@ void FAST_CODE NOINLINE updatePIDCoefficients(void)
 static float calcHorizonRateMagnitude(void)
 {
     // Figure out the raw stick positions
-    const int32_t stickPosAil = ABS(getRcStickDeflection(FD_ROLL));
-    const int32_t stickPosEle = ABS(getRcStickDeflection(FD_PITCH));
-    const float mostDeflectedStickPos = constrain(MAX(stickPosAil, stickPosEle), 0, 500) / 500.0f;
+    const rcCommand_t *input = rcControlGetInput();
+    const float pitchDeflection = fabsf(input->pitch);
+
+    const float rollDeflection = fabsf(input->roll);
+    const float mostDeflectedStickPos = MAX(pitchDeflection, rollDeflection);
     const float modeTransitionStickPos = constrain(pidBank()->pid[PID_LEVEL].D, 0, 100) / 100.0f;
 
     float horizonRateMagnitude;
@@ -499,12 +508,17 @@ static float calcHorizonRateMagnitude(void)
 
 static void pidLevel(pidState_t *pidState, flight_dynamics_index_t axis, float horizonRateMagnitude)
 {
+    const rcCommand_t *controlOutput = rcControlGetOutput();
     // This is ROLL/PITCH, run ANGLE/HORIZON controllers
-    float angleTarget = pidRcCommandToAngle(rcCommand[axis], pidProfile()->max_angle_inclination[axis]);
+    float angleTarget = pidRcCommandToAngle(controlOutput->axes[axis], pidProfile()->max_angle_inclination[axis]);
 
     // Automatically pitch down if the throttle is manually controlled and reduced bellow cruise throttle
-    if ((axis == FD_PITCH) && STATE(FIXED_WING) && FLIGHT_MODE(ANGLE_MODE) && !navigationIsControllingThrottle())
-        angleTarget += scaleRange(MAX(0, navConfig()->fw.cruise_throttle - rcCommand[THROTTLE]), 0, navConfig()->fw.cruise_throttle - PWM_RANGE_MIN, 0, mixerConfig()->fwMinThrottleDownPitchAngle);
+    if ((axis == FD_PITCH) && STATE(FIXED_WING) && FLIGHT_MODE(ANGLE_MODE) && !navigationIsControllingThrottle()) {
+        // XXX: Should we do this for negative THR?
+        float thr = controlOutput->throttle;
+        float cruiseThr = rcCommandMapUnidirectionalPWMThrottle(navConfig()->fw.cruise_throttle);
+        angleTarget += scaleRangef(MAX(0, cruiseThr - thr), 0, cruiseThr - RC_COMMAND_CENTER, 0, mixerConfig()->fwMinThrottleDownPitchAngle);
+    }
 
     const float angleErrorDeg = DECIDEGREES_TO_DEGREES(angleTarget - attitude.raw[axis]);
 
@@ -771,7 +785,7 @@ static uint8_t getHeadingHoldState(void)
     }
     else
 #endif
-    if (ABS(rcCommand[YAW]) == 0 && FLIGHT_MODE(HEADING_MODE)) {
+    if (rcControlGetInput()->yaw == 0 && FLIGHT_MODE(HEADING_MODE)) {
         return HEADING_HOLD_ENABLED;
     } else {
         return HEADING_HOLD_UPDATE_HEADING;
@@ -931,7 +945,9 @@ void FAST_CODE pidController(void)
         updateHeadingHoldTarget(DECIDEGREES_TO_DEGREES(attitude.values.yaw));
     }
 
-    for (int axis = 0; axis < 3; axis++) {
+    const rcCommand_t *controlOutput = rcControlGetOutput();
+
+    for (int axis = ROLL; axis <= YAW; axis++) {
         // Step 1: Calculate gyro rates
         pidState[axis].gyroRate = gyro.gyroADCf[axis];
 
@@ -941,7 +957,7 @@ void FAST_CODE pidController(void)
         if (axis == FD_YAW && headingHoldState == HEADING_HOLD_ENABLED) {
             rateTarget = pidHeadingHold();
         } else {
-            rateTarget = pidRcCommandToRate(rcCommand[axis], currentControlRateProfile->stabilized.rates[axis]);
+            rateTarget = pidRcCommandToRate(controlOutput->axes[axis], currentControlRateProfile->stabilized.rates[axis]);
         }
 
         // Limit desired rate to something gyro can measure reliably

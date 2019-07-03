@@ -615,9 +615,10 @@ void processRcAdjustments(controlRateConfig_t *controlRateConfig, bool canUseRxD
 
         if (adjustmentState->config->mode == ADJUSTMENT_MODE_STEP) {
             int delta;
-            if (rxGetChannelValue(channelIndex) > PWM_RANGE_MIDDLE + 200) {
+            int16_t channelValue = rxGetChannelValue(channelIndex);
+            if (channelValue > PWM_RANGE_MIDDLE + 200) {
                 delta = adjustmentState->config->data.stepConfig.step;
-            } else if (rxGetChannelValue(channelIndex) < PWM_RANGE_MIDDLE - 200) {
+            } else if (channelValue < PWM_RANGE_MIDDLE - 200) {
                 delta = 0 - adjustmentState->config->data.stepConfig.step;
             } else {
                 // returning the switch to the middle immediately resets the ready state

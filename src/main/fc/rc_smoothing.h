@@ -28,4 +28,6 @@
 #include <stdlib.h>
 #include <stdint.h>
 
-void rcInterpolationApply(bool isRXDataNew);
+typedef struct rcCommand_s rcCommand_t;
+
+bool rcInterpolationApply(rcCommand_t *dst, const rcCommand_t *src, bool isRXDataNew);

@@ -18,6 +18,7 @@
 #pragma once
 
 #include "config/parameter_group.h"
+
 #include "fc/runtime_config.h"
 
 #define GYRO_SATURATION_LIMIT   1800        // 1800dps
@@ -175,7 +176,7 @@ void updatePIDCoefficients(void);
 void pidController(void);
 
 float pidRateToRcCommand(float rateDPS, uint8_t rate);
-int16_t pidAngleToRcCommand(float angleDeciDegrees, int16_t maxInclination);
+float pidAngleToRcCommand(float angleDeciDegrees, int16_t maxInclination);
 
 enum {
     HEADING_HOLD_DISABLED = 0,

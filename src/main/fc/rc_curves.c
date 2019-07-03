@@ -24,6 +24,7 @@
 #include "common/maths.h"
 
 #include "fc/controlrate_profile.h"
+#include "fc/rc_command.h"
 #include "fc/rc_controls.h"
 #include "fc/rc_curves.h"
 
@@ -32,45 +33,41 @@
 #include "rx/rx.h"
 
 
-#define PITCH_LOOKUP_LENGTH 7
-#define YAW_LOOKUP_LENGTH 7
-#define THROTTLE_LOOKUP_LENGTH 11
+static float throttleRcMid;
+static float throttleRcExpo;
 
-static int16_t lookupThrottleRC[THROTTLE_LOOKUP_LENGTH];    // lookup table for expo & mid THROTTLE
-int16_t lookupThrottleRCMid;                         // THROTTLE curve mid point
-
-void generateThrottleCurve(const controlRateConfig_t *controlRateConfig)
+void rcCurvePrepareThrottle(const controlRateConfig_t *controlRateConfig)
 {
-    lookupThrottleRCMid = motorConfig()->minthrottle + (int32_t)(motorConfig()->maxthrottle - motorConfig()->minthrottle) * controlRateConfig->throttle.rcMid8 / 100; // [MINTHROTTLE;MAXTHROTTLE]
+    throttleRcMid = constrainf(controlRateConfig->throttle.rcMid8 / 100.0f, 0, 1);
+    throttleRcExpo = constrainf(controlRateConfig->throttle.rcExpo8 / 100.0f, 0, 1);
+}
 
-    for (int i = 0; i < THROTTLE_LOOKUP_LENGTH; i++) {
-        const int16_t tmp = 10 * i - controlRateConfig->throttle.rcMid8;
-        uint8_t y = 1;
-        if (tmp > 0)
-            y = 100 - controlRateConfig->throttle.rcMid8;
-        if (tmp < 0)
-            y = controlRateConfig->throttle.rcMid8;
-        lookupThrottleRC[i] = 10 * controlRateConfig->throttle.rcMid8 + tmp * (100 - controlRateConfig->throttle.rcExpo8 + (int32_t) controlRateConfig->throttle.rcExpo8 * (tmp * tmp) / (y * y)) / 10;
-        lookupThrottleRC[i] = motorConfig()->minthrottle + (int32_t) (motorConfig()->maxthrottle - motorConfig()->minthrottle) * lookupThrottleRC[i] / 1000; // [MINTHROTTLE;MAXTHROTTLE]
+float rcCurveApplyExpo(float deflection, float expo)
+{
+    // This is just
+    // ((1 - expo) * deflection) + (expo * deflection^3))
+    // rearranged, so instead of doing
+    // 1 add, 1 sub, 4 mult
+    // it does
+    // 1 add, 1 sub, 3 mult
+    return (1 + expo * (deflection * deflection - 1)) * deflection;
+}
+
+float rcCurveApplyThrottleExpo(float deflection)
+{
+    if (deflection < 0) {
+        return -rcCurveApplyThrottleExpo(-deflection);
     }
-}
 
-int16_t rcLookup(int32_t stickDeflection, uint8_t expo)
-{
-    float tmpf = stickDeflection / 100.0f;
-    return lrintf((2500.0f + (float)expo * (tmpf * tmpf - 25.0f)) * tmpf / 25.0f);
-}
+    // deflection is always >= 0 past this point
+    float tmp = deflection - throttleRcMid;
+    float y = 1;
+    if (tmp > 0) {
+        y = 1 - throttleRcMid;
+    } else if (tmp < 0) {
+        y = throttleRcMid;
+    }
 
-uint16_t rcLookupThrottle(uint16_t absoluteDeflection)
-{
-    if (absoluteDeflection > 999)
-        return motorConfig()->maxthrottle;
-
-    const uint8_t lookupStep = absoluteDeflection / 100;
-    return lookupThrottleRC[lookupStep] + (absoluteDeflection - lookupStep * 100) * (lookupThrottleRC[lookupStep + 1] - lookupThrottleRC[lookupStep]) / 100;
-}
-
-int16_t rcLookupThrottleMid(void)
-{
-    return lookupThrottleRCMid;
+    // See docs/Stick Input.md
+    return throttleRcMid + tmp * (1 - throttleRcExpo + throttleRcExpo * sq(tmp) / sq(y));
 }

@@ -48,7 +48,7 @@ typedef enum {
     FEATURE_UNUSED_4 = 1 << 9,          // was FEATURE_SONAR
     FEATURE_TELEMETRY = 1 << 10,
     FEATURE_CURRENT_METER = 1 << 11,
-    FEATURE_3D = 1 << 12,
+    FEATURE_BIDIR_MOTORS = 1 << 12,
     FEATURE_UNUSED_5 = 1 << 13,         // RX_PARALLEL_PWM
     FEATURE_UNUSED_6 = 1 << 14,         // RX_MSP
     FEATURE_RSSI_ADC = 1 << 15,

@@ -275,7 +275,7 @@ void init(void)
 
     // Some sanity checking
     if (motorConfig()->motorPwmProtocol == PWM_TYPE_BRUSHED) {
-        featureClear(FEATURE_3D);
+        featureClear(FEATURE_BIDIR_MOTORS);
     }
 
     // Initialize motor and servo outpus

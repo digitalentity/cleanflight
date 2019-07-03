@@ -16,8 +16,12 @@
  */
 
 #pragma once
+
 #include "common/time.h"
+
 #include "config/parameter_group.h"
+
+#include "fc/rc_command.h"
 
 #define FAILSAFE_POWER_ON_DELAY_US (1000 * 1000 * 5)
 #define MILLIS_PER_TENTH_SECOND         100
@@ -146,7 +150,7 @@ typedef struct failsafeState_s {
     failsafeProcedure_e activeProcedure;
     failsafePhase_e phase;
     failsafeRxLinkState_e rxLinkState;
-    int16_t lastGoodRcCommand[4];
+    rcCommand_t lastGoodRcCommand;
 } failsafeState_t;
 
 void failsafeInit(void);
@@ -162,12 +166,12 @@ bool failsafeIsReceivingRxData(void);
 void failsafeOnRxSuspend(void);
 void failsafeOnRxResume(void);
 bool failsafeMayRequireNavigationMode(void);
-void failsafeApplyControlInput(void);
+void failsafeApplyControlOutput(rcCommand_t *cmd);
 bool failsafeRequiresAngleMode(void);
 bool failsafeRequiresMotorStop(void);
-bool failsafeShouldApplyControlInput(void);
+bool failsafeShouldApplyControlOutput(void);
 bool failsafeBypassNavigation(void);
-void failsafeUpdateRcCommandValues(void);
+void failsafeUpdateLastGoodRcCommand(const rcCommand_t *input);
 
 void failsafeOnValidDataReceived(void);
 void failsafeOnValidDataFailed(void);

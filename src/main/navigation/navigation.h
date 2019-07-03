@@ -56,11 +56,11 @@ enum {
     NAV_GPS_CRUISE  = 1                     // Pitch/roll stick controls velocity (forward/right speed)
 };
 
-enum {
+typedef enum {
     NAV_LOITER_RIGHT = 0,                    // Loitering direction right
     NAV_LOITER_LEFT  = 1,                    // Loitering direction left
     NAV_LOITER_YAW   = 2
-};
+} nav_loiter_direction_e;
 
 enum {
     NAV_RTH_NO_ALT                       = 0, // Maintain current altitude

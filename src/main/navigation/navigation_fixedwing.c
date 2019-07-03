@@ -42,6 +42,7 @@
 
 #include "fc/config.h"
 #include "fc/controlrate_profile.h"
+#include "fc/rc_control.h"
 #include "fc/rc_controls.h"
 #include "fc/rc_modes.h"
 #include "fc/runtime_config.h"
@@ -51,10 +52,13 @@
 
 #include "rx/rx.h"
 
+// XXX: Whole file was using rcCommand to check for input, changed to actual inputs
 
 // If we are going slower than NAV_FW_MIN_VEL_SPEED_BOOST - boost throttle to fight against the wind
 #define NAV_FW_THROTTLE_SPEED_BOOST_GAIN        1.5f
 #define NAV_FW_MIN_VEL_SPEED_BOOST              700.0f      // 7 m/s
+
+#define NAV_FW_MANUAL_THR_INCREASE_THRESHOLD    0.95f       // 95%
 
 // If this is enabled navigation won't be applied if velocity is below 3 m/s
 //#define NAV_FW_LIMIT_MIN_FLY_VELOCITY
@@ -64,7 +68,6 @@ static bool isRollAdjustmentValid = false;
 static float throttleSpeedAdjustment = 0;
 static bool isAutoThrottleManuallyIncreased = false;
 static int32_t navHeadingError;
-static int8_t loiterDirYaw = 1;
 
 
 /*-----------------------------------------------------------
@@ -85,11 +88,11 @@ void resetFixedWingAltitudeController(void)
 
 bool adjustFixedWingAltitudeFromRCInput(void)
 {
-    int16_t rcAdjustment = applyDeadband(rcCommand[PITCH], rcControlsConfig()->alt_hold_deadband);
+    float rcAdjustment = rcControlGetInputAxisApplyingPosholdDeadband(PITCH);
 
     if (rcAdjustment) {
         // set velocity proportional to stick movement
-        float rcClimbRate = -rcAdjustment * navConfig()->general.max_manual_climb_rate / (500.0f - rcControlsConfig()->alt_hold_deadband);
+        float rcClimbRate = -rcAdjustment * navConfig()->general.max_manual_climb_rate;
         updateClimbRateToAltitudeController(rcClimbRate, ROC_TO_ALT_NORMAL);
         return true;
     }
@@ -189,11 +192,7 @@ void applyFixedWingAltitudeAndThrottleController(timeUs_t currentTimeUs)
  *-----------------------------------------------------------*/
 bool adjustFixedWingHeadingFromRCInput(void)
 {
-    if (ABS(rcCommand[YAW]) > rcControlsConfig()->pos_hold_deadband) {
-        return true;
-    }
-
-    return false;
+    return rcControlGetInputAxisApplyingPosholdDeadband(YAW) != 0;
 }
 
 /*-----------------------------------------------------------
@@ -215,15 +214,37 @@ void resetFixedWingPositionController(void)
     pt1FilterReset(&fwPosControllerCorrectionFilterState, 0.0f);
 }
 
+// Returns 1 when loitering should turn to the right, -1
+// when it should turn to the left.
 static int8_t loiterDirection(void) {
-    int8_t dir = 1; //NAV_LOITER_RIGHT
-    if (pidProfile()->loiter_direction == NAV_LOITER_LEFT) dir = -1;
-    if (pidProfile()->loiter_direction == NAV_LOITER_YAW) {
-        if (rcCommand[YAW] < -250) loiterDirYaw = 1; //RIGHT //yaw is contrariwise
-        if (rcCommand[YAW] > 250) loiterDirYaw = -1; //LEFT  //see annexCode in fc_core.c
-        dir = loiterDirYaw;
+    // Default to loitering to the right
+    static int8_t loiterDirYaw = 1;
+    int8_t dir = 1;
+    switch (pidProfile()->loiter_direction) {
+        case NAV_LOITER_LEFT:
+            dir = -1;
+            break;
+        case NAV_LOITER_RIGHT:
+        default:
+            break;
+        case NAV_LOITER_YAW:
+        {
+            // Require the stick to be either in the first 25% or the last 25% of the range
+            float yaw = fapplyDeadbandf(rcControlGetInputAxis(YAW), RC_COMMAND_RANGE / 4.0f);
+            if (yaw > 0) {
+                // Turn to the right
+                loiterDirYaw = 1;
+            } else if (yaw < 0) {
+                // Turn to the left
+                loiterDirYaw = -1;
+            }
+            dir = loiterDirYaw;
+            break;
+        }
     }
-    if (IS_RC_MODE_ACTIVE(BOXLOITERDIRCHN)) dir *= -1;
+    if (IS_RC_MODE_ACTIVE(BOXLOITERDIRCHN)) {
+        dir *= -1;
+    }
     return dir;
 }
 
@@ -264,10 +285,10 @@ static void calculateVirtualPositionTarget_FW(float trackingPeriod)
 
     // Shift position according to pilot's ROLL input (up to max_manual_speed velocity)
     if (posControl.flags.isAdjustingPosition) {
-        int16_t rcRollAdjustment = applyDeadband(rcCommand[ROLL], rcControlsConfig()->pos_hold_deadband);
+        float rcRollAdjustment = rcControlGetInputAxisApplyingPosholdDeadband(ROLL);
 
         if (rcRollAdjustment) {
-            float rcShiftY = rcRollAdjustment * navConfig()->general.max_manual_speed / 500.0f * trackingPeriod;
+            float rcShiftY = rcRollAdjustment * navConfig()->general.max_manual_speed * trackingPeriod;
 
             // Rotate this target shift from body frame to to earth frame and apply to position target
             virtualDesiredPosition.x += -rcShiftY * posControl.actualState.sinYaw;
@@ -278,8 +299,7 @@ static void calculateVirtualPositionTarget_FW(float trackingPeriod)
 
 bool adjustFixedWingPositionFromRCInput(void)
 {
-    int16_t rcRollAdjustment = applyDeadband(rcCommand[ROLL], rcControlsConfig()->pos_hold_deadband);
-    return (rcRollAdjustment);
+    return rcControlGetInputAxisApplyingPosholdDeadband(ROLL) != 0;
 }
 
 static void updatePositionHeadingController_FW(timeUs_t currentTimeUs, timeDelta_t deltaMicros)
@@ -439,20 +459,24 @@ int16_t fixedWingPitchToThrottleCorrection(int16_t pitch)
 
 void applyFixedWingPitchRollThrottleController(navigationFSMStateFlags_t navStateFlags, timeUs_t currentTimeUs)
 {
-    int16_t minThrottleCorrection = navConfig()->fw.min_throttle - navConfig()->fw.cruise_throttle;
-    int16_t maxThrottleCorrection = navConfig()->fw.max_throttle - navConfig()->fw.cruise_throttle;
+    rcCommand_t controlOutput;
+
+    rcCommandCopy(&controlOutput, rcControlGetOutput());
 
     if (isRollAdjustmentValid && (navStateFlags & NAV_CTL_POS)) {
         // ROLL >0 right, <0 left
         int16_t rollCorrection = constrain(posControl.rcAdjustment[ROLL], -DEGREES_TO_DECIDEGREES(navConfig()->fw.max_bank_angle), DEGREES_TO_DECIDEGREES(navConfig()->fw.max_bank_angle));
-        rcCommand[ROLL] = pidAngleToRcCommand(rollCorrection, pidProfile()->max_angle_inclination[FD_ROLL]);
+        controlOutput.roll = pidAngleToRcCommand(rollCorrection, pidProfile()->max_angle_inclination[FD_ROLL]);
     }
 
     if (isPitchAdjustmentValid && (navStateFlags & NAV_CTL_ALT)) {
         // PITCH >0 dive, <0 climb
         int16_t pitchCorrection = constrain(posControl.rcAdjustment[PITCH], -DEGREES_TO_DECIDEGREES(navConfig()->fw.max_dive_angle), DEGREES_TO_DECIDEGREES(navConfig()->fw.max_climb_angle));
-        rcCommand[PITCH] = -pidAngleToRcCommand(pitchCorrection, pidProfile()->max_angle_inclination[FD_PITCH]);
+        controlOutput.pitch = -pidAngleToRcCommand(pitchCorrection, pidProfile()->max_angle_inclination[FD_PITCH]);
         int16_t throttleCorrection = fixedWingPitchToThrottleCorrection(pitchCorrection);
+
+        int16_t minThrottleCorrection = navConfig()->fw.min_throttle - navConfig()->fw.cruise_throttle;
+        int16_t maxThrottleCorrection = navConfig()->fw.max_throttle - navConfig()->fw.cruise_throttle;
 
 #ifdef NAV_FIXED_WING_LANDING
         if (navStateFlags & NAV_CTL_LAND) {
@@ -471,20 +495,24 @@ void applyFixedWingPitchRollThrottleController(navigationFSMStateFlags_t navStat
             throttleCorrection = constrain(throttleCorrection, minThrottleCorrection, maxThrottleCorrection);
         }
 
-        uint16_t correctedThrottleValue = constrain(navConfig()->fw.cruise_throttle + throttleCorrection, navConfig()->fw.min_throttle, navConfig()->fw.max_throttle);
+        float correctedThrottleValue = rcCommandMapUnidirectionalPWMThrottle(constrain(navConfig()->fw.cruise_throttle + throttleCorrection, navConfig()->fw.min_throttle, navConfig()->fw.max_throttle));
+        float cruiseThr = rcCommandMapUnidirectionalPWMThrottle(navConfig()->fw.cruise_throttle);
 
         // Manual throttle increase
         if (navConfig()->fw.allow_manual_thr_increase && !FLIGHT_MODE(FAILSAFE_MODE)) {
-            if (rcCommand[THROTTLE] < PWM_RANGE_MIN + (PWM_RANGE_MAX - PWM_RANGE_MIN) * 0.95)
-                correctedThrottleValue += MAX(0, rcCommand[THROTTLE] - navConfig()->fw.cruise_throttle);
-            else
-                correctedThrottleValue = motorConfig()->maxthrottle;
-            isAutoThrottleManuallyIncreased = (rcCommand[THROTTLE] > navConfig()->fw.cruise_throttle);
+            // Check if THR is >= NAV_FW_MANUAL_THR_INCREASE_THRESHOLD
+            if (rcControlGetInputAxis(THROTTLE) >= RC_COMMAND_MAX * NAV_FW_MANUAL_THR_INCREASE_THRESHOLD) {
+                correctedThrottleValue = RC_COMMAND_MAX;
+            } else {
+                correctedThrottleValue += MAX(0, correctedThrottleValue - cruiseThr);
+            }
+            isAutoThrottleManuallyIncreased = correctedThrottleValue > cruiseThr;
         } else {
             isAutoThrottleManuallyIncreased = false;
         }
 
-        rcCommand[THROTTLE] = constrain(correctedThrottleValue, motorConfig()->minthrottle, motorConfig()->maxthrottle);
+        // Constrain throttle to zero or positive values
+        controlOutput.throttle = constrain(correctedThrottleValue, RC_COMMAND_CENTER, RC_COMMAND_MAX);
     }
 
 #ifdef NAV_FIXED_WING_LANDING
@@ -497,17 +525,19 @@ void applyFixedWingPitchRollThrottleController(navigationFSMStateFlags_t navStat
              ((posControl.flags.estAglStatus == EST_TRUSTED) && (posControl.actualState.agl.pos.z <= navConfig()->general.land_slowdown_minalt)) ) {
 
             // Set motor to min. throttle and stop it when MOTOR_STOP feature is enabled
-            rcCommand[THROTTLE] = motorConfig()->minthrottle;
+            // XXX: Should we deprecate the NAV_MOTOR_STOP_OR_IDLE flag?
+            controlOutput.throttle = 0;
             ENABLE_STATE(NAV_MOTOR_STOP_OR_IDLE);
 
             // Stabilize ROLL axis on 0 degrees banking regardless of loiter radius and position
-            rcCommand[ROLL] = 0;
+            controlOutput.roll = 0;
 
             // Stabilize PITCH angle into shallow dive as specified by the nav_fw_land_dive_angle setting (default value is 2 - defined in navigation.c).
-            rcCommand[PITCH] = pidAngleToRcCommand(DEGREES_TO_DECIDEGREES(navConfig()->fw.land_dive_angle), pidProfile()->max_angle_inclination[FD_PITCH]);
+            controlOutput.pitch = pidAngleToRcCommand(DEGREES_TO_DECIDEGREES(navConfig()->fw.land_dive_angle), pidProfile()->max_angle_inclination[FD_PITCH]);
         }
     }
 #endif
+    rcControlUpdateOutput(&controlOutput, RC_CONTROL_SOURCE_NAVIGATION);
 }
 
 bool isFixedWingAutoThrottleManuallyIncreased()
@@ -539,10 +569,14 @@ bool isFixedWingLandingDetected(void)
 void applyFixedWingEmergencyLandingController(void)
 {
     // FIXME: Use altitude controller if available (similar to MC code)
-    rcCommand[ROLL] = pidAngleToRcCommand(failsafeConfig()->failsafe_fw_roll_angle, pidProfile()->max_angle_inclination[FD_ROLL]);
-    rcCommand[PITCH] = pidAngleToRcCommand(failsafeConfig()->failsafe_fw_pitch_angle, pidProfile()->max_angle_inclination[FD_PITCH]);
-    rcCommand[YAW] = -pidRateToRcCommand(failsafeConfig()->failsafe_fw_yaw_rate, currentControlRateProfile->stabilized.rates[FD_YAW]);
-    rcCommand[THROTTLE] = failsafeConfig()->failsafe_throttle;
+    rcCommand_t controlOutput;
+
+    rcCommandCopy(&controlOutput, rcControlGetOutput());
+    controlOutput.roll = pidAngleToRcCommand(failsafeConfig()->failsafe_fw_roll_angle, pidProfile()->max_angle_inclination[FD_ROLL]);
+    controlOutput.pitch = pidAngleToRcCommand(failsafeConfig()->failsafe_fw_pitch_angle, pidProfile()->max_angle_inclination[FD_PITCH]);
+    controlOutput.yaw = -pidRateToRcCommand(failsafeConfig()->failsafe_fw_yaw_rate, currentControlRateProfile->stabilized.rates[FD_YAW]);
+    controlOutput.throttle = rcCommandMapUnidirectionalPWMThrottle(failsafeConfig()->failsafe_throttle);
+    rcControlUpdateOutput(&controlOutput, RC_CONTROL_SOURCE_NAVIGATION);
 }
 
 /*-----------------------------------------------------------
@@ -561,6 +595,8 @@ void resetFixedWingHeadingController(void)
 
 void applyFixedWingNavigationController(navigationFSMStateFlags_t navStateFlags, timeUs_t currentTimeUs)
 {
+    rcCommand_t controlOutput;
+
     if (navStateFlags & NAV_CTL_LAUNCH) {
         applyFixedWingLaunchController(currentTimeUs);
     }
@@ -591,8 +627,11 @@ void applyFixedWingNavigationController(navigationFSMStateFlags_t navStateFlags,
             posControl.rcAdjustment[ROLL] = 0;
         }
 
-        if (FLIGHT_MODE(NAV_CRUISE_MODE) && posControl.flags.isAdjustingPosition)
-            rcCommand[ROLL] = applyDeadband(rcCommand[ROLL], rcControlsConfig()->pos_hold_deadband);
+        if (FLIGHT_MODE(NAV_CRUISE_MODE) && posControl.flags.isAdjustingPosition) {
+            rcCommandCopy(&controlOutput, rcControlGetOutput());
+            controlOutput.roll = rcControlGetInputAxisApplyingPosholdDeadband(ROLL);
+            rcControlUpdateOutput(&controlOutput, RC_CONTROL_SOURCE_NAVIGATION);
+        }
 
         //if (navStateFlags & NAV_CTL_YAW)
         if ((navStateFlags & NAV_CTL_ALT) || (navStateFlags & NAV_CTL_POS))

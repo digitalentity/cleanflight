@@ -259,18 +259,20 @@ typedef enum {
     NAV_REQUIRE_ANGLE_FW    = (1 << 6),
     NAV_REQUIRE_MAGHOLD     = (1 << 7),
     NAV_REQUIRE_THRTILT     = (1 << 8),
+    NAV_REQUIRE_THR_UNIDIR  = (1 << 9),
+    NAV_REQUIRE_THR_BIDIR   = (1 << 10),
 
     /* Navigation autonomous modes */
-    NAV_AUTO_RTH            = (1 << 9),
-    NAV_AUTO_WP             = (1 << 10),
+    NAV_AUTO_RTH            = (1 << 11),
+    NAV_AUTO_WP             = (1 << 12),
 
     /* Adjustments for navigation modes from RC input */
-    NAV_RC_ALT              = (1 << 11),
-    NAV_RC_POS              = (1 << 12),
-    NAV_RC_YAW              = (1 << 13),
+    NAV_RC_ALT              = (1 << 13),
+    NAV_RC_POS              = (1 << 14),
+    NAV_RC_YAW              = (1 << 15),
 
     /* Additional flags */
-    NAV_CTL_LAND            = (1 << 14),
+    NAV_CTL_LAND            = (1 << 16),
 } navigationFSMStateFlags_t;
 
 typedef struct {
@@ -411,7 +413,7 @@ void resetMulticopterBrakingMode(void);
 
 bool adjustMulticopterAltitudeFromRCInput(void);
 bool adjustMulticopterHeadingFromRCInput(void);
-bool adjustMulticopterPositionFromRCInput(int16_t rcPitchAdjustment, int16_t rcRollAdjustment);
+bool adjustMulticopterPositionFromRCInput(float rcPitchAdjustment, float rcRollAdjustment);
 
 void applyMulticopterNavigationController(navigationFSMStateFlags_t navStateFlags, timeUs_t currentTimeUs);
 
