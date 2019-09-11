@@ -39,6 +39,7 @@
 #include "fc/fc_core.h"
 #include "fc/fc_msp.h"
 #include "fc/fc_tasks.h"
+#include "fc/message_bus.h"
 #include "fc/rc_controls.h"
 #include "fc/runtime_config.h"
 
@@ -339,6 +340,7 @@ void fcTasksInit(void)
 #ifdef USE_LOGIC_CONDITIONS
     setTaskEnabled(TASK_LOGIC_CONDITIONS, true);
 #endif
+    setTaskEnabled(TASK_MESSAGE_BUS, true);
 }
 
 cfTask_t cfTasks[TASK_COUNT] = {
@@ -552,4 +554,10 @@ cfTask_t cfTasks[TASK_COUNT] = {
         .staticPriority = TASK_PRIORITY_IDLE,
     },
 #endif
+    [TASK_MESSAGE_BUS] = {
+        .taskName = "MBUS",
+        .taskFunc = messageBusUpdate,
+        .desiredPeriod = TASK_PERIOD_HZ(10),          // 10Hz @100msec
+        .staticPriority = TASK_PRIORITY_IDLE,
+    },
 };

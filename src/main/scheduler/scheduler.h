@@ -113,6 +113,7 @@ typedef enum {
 #ifdef USE_LOGIC_CONDITIONS
     TASK_LOGIC_CONDITIONS,
 #endif
+    TASK_MESSAGE_BUS,
     /* Count of real tasks */
     TASK_COUNT,
 

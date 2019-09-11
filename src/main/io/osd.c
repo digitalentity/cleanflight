@@ -70,6 +70,7 @@
 #include "fc/controlrate_profile.h"
 #include "fc/fc_core.h"
 #include "fc/fc_tasks.h"
+#include "fc/message_bus.h"
 #include "fc/rc_adjustments.h"
 #include "fc/rc_controls.h"
 #include "fc/rc_modes.h"
@@ -116,7 +117,7 @@
 // Adjust OSD_MESSAGE's default position when
 // changing OSD_MESSAGE_LENGTH
 #define OSD_MESSAGE_LENGTH 28
-#define OSD_ALTERNATING_CHOICES(ms, num_choices) ((millis() / ms) % num_choices)
+#define OSD_ALTERNATING_CHOICES(ms, num_choices) ((millis() / ms) % (num_choices))
 #define _CONST_STR_SIZE(s) ((sizeof(s)/sizeof(s[0]))-1) // -1 to avoid counting final '\0'
 // Wrap all string constants intenteded for display as messages with
 // this macro to ensure compile time length validation.
@@ -124,6 +125,10 @@
     STATIC_ASSERT(_CONST_STR_SIZE(x) <= OSD_MESSAGE_LENGTH, message_string_ ## __COUNTER__ ## _too_long); \
     x; \
 })
+
+#define OSD_MESSAGE_UNABLE_TO_ARM OSD_MESSAGE_STR("UNABLE TO ARM")
+#define OSD_MESSAGE_INVALID_SETTING OSD_MESSAGE_STR("INVALID SETTING")
+#define OSD_MESSAGE_RX_LINK_LOST OSD_MESSAGE_STR("!RC RX LINK LOST!")
 
 #define OSD_CHR_IS_NUM(c) (c >= '0' && c <= '9')
 
@@ -614,10 +619,6 @@ static void osdFormatCoordinate(char *buff, char sym, int32_t val)
     buff[coordinateLength] = '\0';
 }
 
-// Used twice, make sure it's exactly the same string
-// to save some memory
-#define RC_RX_LINK_LOST_MSG "!RC RX LINK LOST!"
-
 static const char * osdArmingDisabledReasonMessage(void)
 {
     switch (isArmingDisabledReason()) {
@@ -631,7 +632,7 @@ static const char * osdArmingDisabledReasonMessage(void)
                     return OSD_MESSAGE_STR("TURN ARM SWITCH OFF");
                 }
                 // Not receiving RX data
-                return OSD_MESSAGE_STR(RC_RX_LINK_LOST_MSG);
+                return OSD_MESSAGE_RX_LINK_LOST;
             }
             return OSD_MESSAGE_STR("DISABLED BY FAILSAFE");
         case ARMING_DISABLED_NOT_LEVEL:
@@ -769,7 +770,7 @@ static const char * osdFailsafeInfoMessage(void)
         // User must move sticks to exit FS mode
         return OSD_MESSAGE_STR("!MOVE STICKS TO EXIT FS!");
     }
-    return OSD_MESSAGE_STR(RC_RX_LINK_LOST_MSG);
+    return OSD_MESSAGE_RX_LINK_LOST;
 }
 
 static const char * navigationStateMessage(void)
@@ -2141,16 +2142,25 @@ static bool osdDrawSingleElement(uint8_t item)
     case OSD_MESSAGES:
         {
             const char *message = NULL;
-            char messageBuf[MAX(SETTING_MAX_NAME_LENGTH, OSD_MESSAGE_LENGTH+1)];
+            // We need to keep track of this message becase we blink
+            // when it's shown, since it's not useful for recovering the
+            // craft. We don't blink for other FS related messages because
+            // they might be crucial during a lost aircraft recovery and
+            // blinking will cause it to be missing from some frames.
+            const char *failsafeInfoMessage = NULL;
+            char messageBuf[MAX(MAX(SETTING_MAX_NAME_LENGTH, OSD_MESSAGE_LENGTH+1), 64)];
+            // This holds the pointers to the harcoded messages
+            const char *messages[5];
+            int messageBusCount = messageBusGetCount();
+            int messageCount = 0;
+            int messageChoice = -1;
             if (ARMING_FLAG(ARMED)) {
                 // Aircraft is armed. We might have up to 5
-                // messages to show.
-                const char *messages[5];
-                unsigned messageCount = 0;
+                // hardcoded messages to show.
                 if (FLIGHT_MODE(FAILSAFE_MODE)) {
                     // In FS mode while being armed too
                     const char *failsafePhaseMessage = osdFailsafePhaseMessage();
-                    const char *failsafeInfoMessage = osdFailsafeInfoMessage();
+                    failsafeInfoMessage = osdFailsafeInfoMessage();
                     const char *navStateFSMessage = navigationStateMessage();
                     if (failsafePhaseMessage) {
                         messages[messageCount++] = failsafePhaseMessage;
@@ -2160,20 +2170,6 @@ static bool osdDrawSingleElement(uint8_t item)
                     }
                     if (navStateFSMessage) {
                         messages[messageCount++] = navStateFSMessage;
-                    }
-                    if (messageCount > 0) {
-                        message = messages[OSD_ALTERNATING_CHOICES(1000, messageCount)];
-                        if (message == failsafeInfoMessage) {
-                            // failsafeInfoMessage is not useful for recovering
-                            // a lost model, but might help avoiding a crash.
-                            // Blink to grab user attention.
-                            TEXT_ATTRIBUTES_ADD_BLINK(elemAttr);
-                        }
-                        // We're shoing either failsafePhaseMessage or
-                        // navStateFSMessage. Don't BLINK here since
-                        // having this text available might be crucial
-                        // during a lost aircraft recovery and blinking
-                        // will cause it to be missing from some frames.
                     }
                 } else {
                     if (FLIGHT_MODE(NAV_RTH_MODE) || FLIGHT_MODE(NAV_WP_MODE) || navigationIsExecutingAnEmergencyLanding()) {
@@ -2201,37 +2197,67 @@ static bool osdDrawSingleElement(uint8_t item)
                             messages[messageCount++] = "(HEADFREE)";
                         }
                     }
-                    // Pick one of the available messages. Each message lasts
-                    // a second.
-                    if (messageCount > 0) {
-                        message = messages[OSD_ALTERNATING_CHOICES(1000, messageCount)];
-                    }
                 }
             } else if (ARMING_FLAG(ARMING_DISABLED_ALL_FLAGS)) {
                 unsigned invalidIndex;
+                // We have 2 harcoded message types: invalid setting and arming
+                // blocked, each with 2 alternating messages. We run the choice
+                // here and if the selected index is < 2, we display one of
+                // the hardcoded messages. Otherwise we let the message bus
+                // display its messages.
+                messageCount = 2;
+                messageChoice = OSD_ALTERNATING_CHOICES(1000, messageBusCount + 2);
                 // Check if we're unable to arm for some reason
                 if (ARMING_FLAG(ARMING_DISABLED_INVALID_SETTING) && !settingsValidate(&invalidIndex)) {
-                    if (OSD_ALTERNATING_CHOICES(1000, 2) == 0) {
-                        const setting_t *setting = settingGet(invalidIndex);
-                        settingGetName(setting, messageBuf);
-                        for (int ii = 0; messageBuf[ii]; ii++) {
-                            messageBuf[ii] = sl_toupper(messageBuf[ii]);
+                    switch (messageChoice) {
+                        case 0:
+                            message = OSD_MESSAGE_INVALID_SETTING;
+                            break;
+                        case 1:
+                        {
+                            const setting_t *setting = settingGet(invalidIndex);
+                            settingGetName(setting, messageBuf);
+                            for (int ii = 0; messageBuf[ii]; ii++) {
+                                messageBuf[ii] = sl_toupper(messageBuf[ii]);
+                            }
+                            message = messageBuf;
+                            break;
                         }
-                        message = messageBuf;
-                    } else {
-                        message = "INVALID SETTING";
-                        TEXT_ATTRIBUTES_ADD_INVERTED(elemAttr);
                     }
                 } else {
-                    if (OSD_ALTERNATING_CHOICES(1000, 2) == 0) {
-                        message = "UNABLE TO ARM";
-                        TEXT_ATTRIBUTES_ADD_INVERTED(elemAttr);
-                    } else {
+                    switch (messageChoice) {
+                    case 0:
+                        message = OSD_MESSAGE_UNABLE_TO_ARM;
+                        break;
+                    case 1:
                         // Show the reason for not arming
                         message = osdArmingDisabledReasonMessage();
+                        break;
                     }
                 }
             }
+            // Pick one of the available messages. Each message lasts
+            // a second.
+            unsigned totalCount = messageCount + messageBusCount;
+            if (totalCount > 0 && !message) {
+                if (messageChoice < 0) {
+                    messageChoice = OSD_ALTERNATING_CHOICES(1000, totalCount);
+                }
+                if (messageChoice < messageBusCount) {
+                    messageBusFormatMessageAt(messageBuf, sizeof(messageBuf), messageChoice);
+                    message = messageBuf;
+                } else {
+                    message = messages[messageChoice - messageBusCount];
+                }
+            }
+
+            // Add blink/inverse to some messages to make them stand out more
+            if (message == OSD_MESSAGE_INVALID_SETTING || message == OSD_MESSAGE_UNABLE_TO_ARM) {
+                TEXT_ATTRIBUTES_ADD_INVERTED(elemAttr);
+            } else if (failsafeInfoMessage && message == failsafeInfoMessage) {
+                TEXT_ATTRIBUTES_ADD_BLINK(elemAttr);
+            }
+
             osdFormatMessage(buff, sizeof(buff), message);
             break;
         }
