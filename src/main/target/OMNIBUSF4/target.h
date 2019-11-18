@@ -265,6 +265,11 @@
 #   define WS2811_PIN                   PA1
 #endif
 
+#define USE_CAMERA_CONTROL
+#define CAMERA_CONTROL_PIN         	PA8
+
+
+
 #define DEFAULT_RX_TYPE         RX_TYPE_PPM
 #define DISABLE_RX_PWM_FEATURE
 #define DEFAULT_FEATURES        (FEATURE_TX_PROF_SEL | FEATURE_BLACKBOX | FEATURE_VBAT | FEATURE_OSD)

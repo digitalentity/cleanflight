@@ -29,6 +29,7 @@
 #include "common/logic_condition.h"
 
 #include "drivers/accgyro/accgyro.h"
+#include "drivers/camera_control.h"
 #include "drivers/compass/compass.h"
 #include "drivers/sensor.h"
 #include "drivers/serial.h"
@@ -261,6 +262,17 @@ void taskUpdateOsd(timeUs_t currentTimeUs)
 }
 #endif
 
+#ifdef USE_CAMERA_CONTROL
+static void taskCameraControl(timeUs_t currentTimeUs)
+{
+    if (ARMING_FLAG(ARMED)) {
+        return;
+    }
+
+    cameraControlProcess(currentTimeUs);
+}
+#endif
+
 void fcTasksInit(void)
 {
     schedulerInit();
@@ -332,6 +344,9 @@ void fcTasksInit(void)
 #endif
 #ifdef USE_UAV_INTERCONNECT
     setTaskEnabled(TASK_UAV_INTERCONNECT, uavInterconnectBusIsInitialized());
+#endif
+#ifdef USE_CAMERA_CONTROL
+    setTaskEnabled(TASK_CAMCTRL, true);
 #endif
 #ifdef USE_RCDEVICE
     setTaskEnabled(TASK_RCDEVICE, rcdeviceIsEnabled());
@@ -533,6 +548,15 @@ cfTask_t cfTasks[TASK_COUNT] = {
         .taskFunc = rcdeviceUpdate,
         .desiredPeriod = TASK_PERIOD_HZ(10),        // 10 Hz, 100ms
         .staticPriority = TASK_PRIORITY_MEDIUM,
+    },
+#endif
+
+#ifdef USE_CAMERA_CONTROL
+    [TASK_CAMCTRL] = {
+	.taskName = "CAMCTRL", 
+	.taskFunc = taskCameraControl, 
+	.desiredPeriod = TASK_PERIOD_HZ(5), 
+	.staticPriority = TASK_PRIORITY_IDLE,
     },
 #endif
 

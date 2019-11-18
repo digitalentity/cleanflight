@@ -231,7 +231,8 @@
 #define MSP_SENSOR_CONFIG               96
 #define MSP_SET_SENSOR_CONFIG           97
 
-#define MSP_SPECIAL_PARAMETERS          98 // Temporary betaflight parameters before cleanup and keep CF compatibility
+#define MSP_CAMERA_CONTROL              98
+
 #define MSP_SET_SPECIAL_PARAMETERS      99 // Temporary betaflight parameters before cleanup and keep CF compatibility
 
 //

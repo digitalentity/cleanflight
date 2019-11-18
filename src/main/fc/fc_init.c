@@ -48,6 +48,7 @@
 #include "drivers/adc.h"
 #include "drivers/compass/compass.h"
 #include "drivers/bus.h"
+#include "drivers/camera_control.h"
 #include "drivers/dma.h"
 #include "drivers/exti.h"
 #include "drivers/flash_m25p16.h"
@@ -430,6 +431,10 @@ void init(void)
 
 #ifdef USE_PINIO
     pinioInit();
+#endif
+
+#ifdef USE_CAMERA_CONTROL
+    cameraControlInit();
 #endif
 
 #ifdef USE_PINIOBOX

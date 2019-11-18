@@ -125,6 +125,9 @@ tables:
   - name: nav_extra_arming_safety
     values: ["OFF", "ON", "ALLOW_BYPASS"]
     enum: navExtraArmingSafety_e
+  - name: camera_control_mode
+    values: ["HARDWARE_PWM", "SOFTWARE_PWM", "DAC"]
+    enum: cameraControlMode_e
 
 groups:
   - name: PG_GYRO_CONFIG
@@ -1690,6 +1693,34 @@ groups:
     members:
       - name: ledstrip_visual_beeper
         type: bool
+
+  - name: PG_CAMERA_CONTROL_CONFIG
+    type: cameraControlConfig_t
+    headers: ["drivers/camera_control.h"]
+    condition: USE_CAMERA_CONTROL
+    members:
+      - name: camera_control_mode
+        field: mode
+        type: uint8_t
+        table: camera_control_mode        
+      - name: camera_control_ref_voltage
+        field: refVoltage
+        type: uint16_t
+        min: 200
+        max: 400
+      - name: camera_control_key_delay
+        field: keyDelayMs
+        type: uint16_t
+        min: 100
+        max: 500
+      - name: camera_control_internal_resistance
+        field: internalResistance
+        type: uint16_t
+        min: 10
+        max: 1000
+      - name: camera_control_inverted
+        field: inverted
+        type: uint8_t
 
   - name: PG_OSD_CONFIG
     type: osdConfig_t

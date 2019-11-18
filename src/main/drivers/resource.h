@@ -56,6 +56,7 @@ typedef enum {
     OWNER_AIRSPEED,
     OWNER_OLED_DISPLAY,
     OWNER_PINIO,
+    OWNER_CAMERA_CONTROL,
     OWNER_TOTAL_COUNT
 } resourceOwner_e;
 

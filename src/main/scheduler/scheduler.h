@@ -104,6 +104,9 @@ typedef enum {
 #ifdef USE_UAV_INTERCONNECT
     TASK_UAV_INTERCONNECT,
 #endif
+#ifdef USE_CAMERA_CONTROL
+    TASK_CAMCTRL,
+#endif
 #ifdef USE_RCDEVICE
     TASK_RCDEVICE,
 #endif

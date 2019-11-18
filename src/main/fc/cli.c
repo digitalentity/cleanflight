@@ -53,6 +53,7 @@ extern uint8_t __config_end;
 #include "drivers/pwm_mapping.h"
 #include "drivers/buf_writer.h"
 #include "drivers/bus_i2c.h"
+#include "drivers/camera_control.h"
 #include "drivers/compass/compass.h"
 #include "drivers/io.h"
 #include "drivers/io_impl.h"

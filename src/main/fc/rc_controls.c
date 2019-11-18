@@ -35,6 +35,7 @@
 #include "config/parameter_group.h"
 #include "config/parameter_group_ids.h"
 
+#include "drivers/camera_control.h"
 #include "drivers/time.h"
 
 #include "fc/config.h"
@@ -64,6 +65,11 @@
 #define AIRMODE_DEADBAND 25
 #define MIN_RC_TICK_INTERVAL_MS             20
 #define DEFAULT_RC_SWITCH_DISARM_DELAY_MS   250     // Wait at least 250ms before disarming via switch
+
+#define repeatAfter(t) { \
+    rcDelayCommand -= (t); \
+/*   doNotRepeat = false;*/ \
+}
 
 stickPositions_e rcStickPositions;
 
@@ -109,6 +115,8 @@ throttleStatus_e calculateThrottleStatus(void)
 
     return THROTTLE_HIGH;
 }
+
+#define STICK_DELAY_MS      50
 
 rollPitchStatus_e calculateRollPitchCenterStatus(void)
 {
@@ -309,6 +317,27 @@ void processRcStickPositions(throttleStatus_e throttleStatus)
         rcDelayCommand = 10;
         return;
     }
+
+#ifdef USE_CAMERA_CONTROL
+    if (rcSticks == THR_CE + YAW_HI + PIT_CE + ROL_CE) {
+        cameraControlKeyPress(CAMERA_CONTROL_KEY_ENTER, 0);
+        repeatAfter(3 * STICK_DELAY_MS);
+    } else if (rcSticks == THR_CE + YAW_CE + PIT_CE + ROL_LO) {
+        cameraControlKeyPress(CAMERA_CONTROL_KEY_LEFT, 0);
+        repeatAfter(3 * STICK_DELAY_MS);
+    } else if (rcSticks == THR_CE + YAW_CE + PIT_HI + ROL_CE) {
+        cameraControlKeyPress(CAMERA_CONTROL_KEY_UP, 0);
+        repeatAfter(3 * STICK_DELAY_MS);
+    } else if (rcSticks == THR_CE + YAW_CE + PIT_CE + ROL_HI) {
+        cameraControlKeyPress(CAMERA_CONTROL_KEY_RIGHT, 0);
+        repeatAfter(3 * STICK_DELAY_MS);
+    } else if (rcSticks == THR_CE + YAW_CE + PIT_LO + ROL_CE) {
+        cameraControlKeyPress(CAMERA_CONTROL_KEY_DOWN, 0);
+        repeatAfter(3 * STICK_DELAY_MS);
+    } else if (rcSticks == THR_LO + YAW_CE + PIT_HI + ROL_CE) {
+        cameraControlKeyPress(CAMERA_CONTROL_KEY_UP, 2000);
+    }
+#endif
 }
 
 int32_t getRcStickDeflection(int32_t axis) {
