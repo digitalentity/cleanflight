@@ -200,6 +200,9 @@ A shorter form is also supported to enable and disable functions using `serial <
 |  nav_rth_altitude  | 1000 | Used in EXTRA, FIXED and AT_LEAST rth alt modes [cm] (Default 1000 means 10 meters) |
 |  nav_rth_home_altitude  | 0 | Aircraft will climb/descend to this altitude after reaching home if landing is not enabled. Set to 0 to stay at `nav_rth_altitude` (default) [cm] |
 |  nav_rth_abort_threshold  | 50000 | RTH sanity checking feature will notice if distance to home is increasing during RTH and once amount of increase exceeds the threshold defined by this parameter, instead of continuing RTH machine will enter emergency landing, self-level and go down safely. Default is 500m which is safe enough for both multirotor machines and airplanes. [cm] |
+|  geofence_radius  | 0 | Radius of the cylinder centered on the home point out of which the aircraft will enter F/S. A value of 0 disables horizontal geofencing. [m] |
+|  geofence_height  | 0 | Height of the cylinder centered on the home point out of which the aircraft will enter F/S. A value of 0 disables vertical geofencing. [m] |
+|  geofence_buffer  | 10 | A threshold to let the pilot disengage F/S after having crossed the geofence boundaries. Represents the distance towards the home point that can be flown without re-triggering F/S. [m] |
 |  nav_mc_bank_angle  | 30 | Maximum banking angle (deg) that multicopter navigation is allowed to set. Machine must be able to satisfy this angle without loosing altitude |
 |  nav_mc_hover_thr  | 1500 | Multicopter hover throttle hint for altitude controller. Should be set to approximate throttle value when drone is hovering. |
 |  nav_mc_auto_disarm_delay  | 2000 |  |

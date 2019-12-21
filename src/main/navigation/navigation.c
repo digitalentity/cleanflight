@@ -80,7 +80,7 @@ radar_pois_t radar_pois[RADAR_MAX_POIS];
 PG_REGISTER_ARRAY(navWaypoint_t, NAV_MAX_WAYPOINTS, nonVolatileWaypointList, PG_WAYPOINT_MISSION_STORAGE, 0);
 #endif
 
-PG_REGISTER_WITH_RESET_TEMPLATE(navConfig_t, navConfig, PG_NAV_CONFIG, 4);
+PG_REGISTER_WITH_RESET_TEMPLATE(navConfig_t, navConfig, PG_NAV_CONFIG, 5);
 
 PG_RESET_TEMPLATE(navConfig_t, navConfig,
     .general = {
@@ -115,6 +115,9 @@ PG_RESET_TEMPLATE(navConfig_t, navConfig,
         .rth_home_altitude = 0,                 // altitude in centimeters
         .rth_abort_threshold = 50000,           // centimeters - 500m should be safe for all aircraft
         .max_terrain_follow_altitude = 100,     // max altitude in centimeters in terrain following mode
+        .geofence_radius = 0,                   // distance in meters
+        .geofence_height = 0,                   // altitude in meters
+        .geofence_buffer = 10,                  // distance in meters
     },
 
     // MC-specific
@@ -129,7 +132,7 @@ PG_RESET_TEMPLATE(navConfig_t, navConfig,
         .braking_boost_timeout = 750,           // Timout boost after 750ms
         .braking_boost_speed_threshold = 150,   // Boost can happen only above 1.5m/s
         .braking_boost_disengage_speed = 100,   // Disable boost at 1m/s
-        .braking_bank_angle = 40,               // Max braking angle     
+        .braking_bank_angle = 40,               // Max braking angle
         .posDecelerationTime = 120,             // posDecelerationTime * 100
         .posResponseExpo = 10,                  // posResponseExpo * 100
     },
@@ -3093,6 +3096,35 @@ void updateFlightBehaviorModifiers(void)
     posControl.flags.isGCSAssistedNavigationEnabled = IS_RC_MODE_ACTIVE(BOXGCSNAV);
 }
 
+
+bool isOutsideGeofence(void)
+{
+    return (navConfig()->general.geofence_radius > 0 && GPS_distanceToHome > navConfig()->general.geofence_radius) || (navConfig()->general.geofence_height > 0 && posControl.actualState.abs.pos.z > navConfig()->general.geofence_height * 100);
+}
+
+bool isInsideBufferedGeofence(void)
+{
+    uint32_t bufferedRadius = navConfig()->general.geofence_radius - navConfig()->general.geofence_buffer;
+    uint32_t bufferedHeight = navConfig()->general.geofence_height - navConfig()->general.geofence_buffer;
+    return GPS_distanceToHome < (bufferedRadius > 0 ? bufferedRadius : 0) && posControl.actualState.abs.pos.z < (bufferedHeight > 0 ? bufferedHeight : 0) * 100;
+}
+
+void processGeofenceStatus(void)
+{
+    static bool geofenceTriggered = false;
+
+    if (!geofenceTriggered && isOutsideGeofence()) {
+        geofenceTriggered = true;
+        // No need to update status if F/S has already been enforced
+        if (getStateOfForcedRTH() == RTH_IDLE) {
+                activateForcedRTH();
+        }
+    // Only re-enable geofence if the aircraft gets back inside it
+    } else if (isInsideBufferedGeofence()) {
+        geofenceTriggered = false;
+    }
+}
+
 /**
  * Process NAV mode transition and WP/RTH state machine
  *  Update rate: RX (data driven or 50Hz)
@@ -3110,6 +3142,9 @@ void updateWaypointsAndNavigationMode(void)
 
     // Update flight behaviour modifiers
     updateFlightBehaviorModifiers();
+
+    // F/S if out of geofence boundaries
+    processGeofenceStatus();
 
     // Process switch to a different navigation mode (if needed)
     navProcessFSMEvents(selectNavEventFromBoxModeInput());
@@ -3140,7 +3175,7 @@ void navigationUsePIDs(void)
     // Initialize position hold P-controller
     for (int axis = 0; axis < 2; axis++) {
         navPidInit(
-            &posControl.pids.pos[axis], 
+            &posControl.pids.pos[axis],
             (float)pidProfile()->bank_mc.pid[PID_POS_XY].P / 100.0f,
             0.0f,
             0.0f,
@@ -3158,7 +3193,7 @@ void navigationUsePIDs(void)
 
     // Initialize altitude hold PID-controllers (pos_z, vel_z, acc_z
     navPidInit(
-        &posControl.pids.pos[Z], 
+        &posControl.pids.pos[Z],
         (float)pidProfile()->bank_mc.pid[PID_POS_Z].P / 100.0f,
         0.0f,
         0.0f,
