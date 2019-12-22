@@ -104,6 +104,7 @@ typedef struct servoMixer_s {
 #ifdef USE_LOGIC_CONDITIONS
     int8_t conditionId;
 #endif
+    int8_t userParamId;                     // Number of user-parameter multiplier
 } servoMixer_t;
 
 #define MAX_SERVO_RULES (2 * MAX_SUPPORTED_SERVOS)

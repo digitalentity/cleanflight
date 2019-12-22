@@ -71,10 +71,11 @@ void pgResetFn_customServoMixers(servoMixer_t *instance)
             .targetChannel = 0,
             .inputSource = 0,
             .rate = 0,
-            .speed = 0
+            .speed = 0,
 #ifdef USE_LOGIC_CONDITIONS
-            ,.conditionId = -1
+            .conditionId = -1,
 #endif
+            .userParamId = -1
         );
     }
 }
@@ -179,6 +180,11 @@ void loadCustomServoMixer(void)
 
         if (customServoMixers(i)->targetChannel > maxServoIndex) {
             maxServoIndex = customServoMixers(i)->targetChannel;
+        }
+
+        // Sanity check for user parameters
+        if (customServoMixers(i)->userParamId >= MAX_MIXER_USER_PARAMS) {
+            customServoMixersMutable(i)->userParamId = -1;
         }
 
         memcpy(&currentServoMixer[i], customServoMixers(i), sizeof(servoMixer_t));
@@ -327,7 +333,12 @@ void servoMixer(float dT)
          */
         int16_t inputLimited = (int16_t) rateLimitFilterApply4(&servoSpeedLimitFilter[i], input[from], currentServoMixer[i].speed * 10, dT);
 
-        servo[target] += ((int32_t)inputLimited * currentServoMixer[i].rate) / 100;
+        float userParamMultiplier = 1.0f;
+        if (currentServoMixer[i].userParamId >= 0) {
+            userParamMultiplier = constrain(mixerConfig()->userParam[currentServoMixer[i].userParamId], 0, 200) / 100.0f;
+        }
+
+        servo[target] += inputLimited * (currentServoMixer[i].rate / 100.0f) * userParamMultiplier;
     }
 
     for (int i = 0; i < MAX_SUPPORTED_SERVOS; i++) {

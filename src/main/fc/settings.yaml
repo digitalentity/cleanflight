@@ -703,6 +703,14 @@ groups:
         field: fwMinThrottleDownPitchAngle
         min: 0
         max: 450
+      - name: mixer_param_a
+        field: userParam[0]
+        min: 0
+        max: 200
+      - name: mixer_param_b
+        field: userParam[1]
+        min: 0
+        max: 200
 
   - name: PG_MOTOR_3D_CONFIG
     type: flight3DConfig_t

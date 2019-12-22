@@ -37,6 +37,8 @@
 #define DSHOT_3D_DEADBAND_LOW  1047
 #define DSHOT_3D_DEADBAND_HIGH 1048
 
+#define MAX_MIXER_USER_PARAMS   2
+
 typedef enum {
     PLATFORM_MULTIROTOR     = 0,
     PLATFORM_AIRPLANE       = 1,
@@ -64,11 +66,12 @@ PG_DECLARE_ARRAY(motorMixer_t, MAX_SUPPORTED_MOTORS, primaryMotorMixer);
 
 typedef struct mixerConfig_s {
     int8_t yaw_motor_direction;
-    uint16_t yaw_jump_prevention_limit;      // make limit configurable (original fixed value was 100)
+    uint16_t yaw_jump_prevention_limit;         // make limit configurable (original fixed value was 100)
     uint8_t platformType;
     bool hasFlaps;
     int16_t appliedMixerPreset;
     uint16_t fwMinThrottleDownPitchAngle;
+    uint8_t userParam[MAX_MIXER_USER_PARAMS];   // User parameters (purpose is platform-dependent)
 } mixerConfig_t;
 
 PG_DECLARE(mixerConfig_t, mixerConfig);

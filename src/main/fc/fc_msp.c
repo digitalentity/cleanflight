@@ -477,6 +477,7 @@ static bool mspFcProcessOutCommand(uint16_t cmdMSP, sbuf_t *dst, mspPostProcessF
         #else
             sbufWriteU8(dst, -1);
         #endif
+            sbufWriteU8(dst, customServoMixers(i)->userParamId);
         }
         break;
 #ifdef USE_LOGIC_CONDITIONS
@@ -1380,6 +1381,8 @@ static bool mspFcProcessOutCommand(uint16_t cmdMSP, sbuf_t *dst, mspPostProcessF
         sbufWriteU16(dst, mixerConfig()->appliedMixerPreset);
         sbufWriteU8(dst, MAX_SUPPORTED_MOTORS);
         sbufWriteU8(dst, MAX_SUPPORTED_SERVOS);
+        sbufWriteU8(dst, mixerConfig()->userParam[0]);
+        sbufWriteU8(dst, mixerConfig()->userParam[1]);
         break;
 
 #if defined(USE_OSD)
@@ -1890,6 +1893,7 @@ static mspResult_e mspFcProcessInCommand(uint16_t cmdMSP, sbuf_t *src)
         #else
             sbufReadU8(src);
         #endif
+            customServoMixersMutable(tmp_u8)->userParamId = sbufReadU8(src);
             loadCustomServoMixer();
         } else
             return MSP_RESULT_ERROR;
@@ -2710,6 +2714,8 @@ static mspResult_e mspFcProcessInCommand(uint16_t cmdMSP, sbuf_t *src)
         mixerConfigMutable()->appliedMixerPreset = sbufReadU16(src);
         sbufReadU8(src); //Read and ignore MAX_SUPPORTED_MOTORS
         sbufReadU8(src); //Read and ignore MAX_SUPPORTED_SERVOS
+        mixerConfigMutable()->userParam[0] = sbufReadU8(src);
+        mixerConfigMutable()->userParam[1] = sbufReadU8(src);
         mixerUpdateStateFlags();
         break;
 
