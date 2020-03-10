@@ -645,14 +645,11 @@ void init(void)
     // Latch active features AGAIN since some may be modified by init().
     latchActiveFeatures();
     motorControlEnable = true;
+
+    schedulerInit();
     fcTasksInit();
 
-#ifdef USE_OSD
-    if (feature(FEATURE_OSD) && (osdDisplayPort != NULL)) {
-        setTaskEnabled(TASK_OSD, feature(FEATURE_OSD));
-    }
-#endif
-
+/*
 #ifdef USE_RPM_FILTER
     disableRpmFilters();
     if (STATE(ESC_SENSOR_ENABLED) && (rpmFilterConfig()->gyro_filter_enabled || rpmFilterConfig()->dterm_filter_enabled)) {
@@ -660,6 +657,7 @@ void init(void)
         setTaskEnabled(TASK_RPM_FILTER, true);
     }
 #endif
+*/
 
     systemState |= SYSTEM_STATE_READY;
 }

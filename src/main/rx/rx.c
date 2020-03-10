@@ -33,6 +33,7 @@
 #include "config/parameter_group.h"
 #include "config/parameter_group_ids.h"
 
+#include "scheduler/scheduler.h"
 
 #include "drivers/adc.h"
 #include "drivers/rx_pwm.h"
@@ -66,7 +67,27 @@
 #include "rx/xbus.h"
 
 
-//#define DEBUG_RX_SIGNAL_LOSS
+#define FILTERING_SAMPLE_COUNT  5
+
+typedef struct {
+    int16_t samples[MAX_SUPPORTED_RC_CHANNEL_COUNT][FILTERING_SAMPLE_COUNT];
+    int     totalSamplesCollected;
+    bool    enoughSamplesCollected;
+} rxFilterState_t;
+
+typedef struct {
+    rxReceiverStatus_t  rcStatus;
+    rcChannel_t         rcChannels[MAX_SUPPORTED_RC_CHANNEL_COUNT];
+    rxFilterState_t     rcFilterState;
+    timeUs_t            lastDriverUpdateTimeUs;        // Last time we got RX_FRAME_COMPLETE from the driver
+    bool                auxiliaryProcessingRequired;   // Driver asks us to call rcProcessFrameFn()
+    bool                dataProcessingRequired;
+    bool                flightChannelsValid;
+} rxState_t;
+
+static rxState_t        rxState;
+static schdSemaphore_t  rxDataAvailableSemaphore;
+
 
 const char rcChannelLetters[] = "AERT";
 
@@ -80,29 +101,17 @@ static timeUs_t lastMspRssiUpdateUs = 0;
 static rxLinkQualityTracker_e rxLQTracker;
 static rssiSource_e activeRssiSource;
 
-static bool rxDataProcessingRequired = false;
-static bool auxiliaryProcessingRequired = false;
-
 #if defined(USE_RX_MSP) && defined(USE_MSP_RC_OVERRIDE)
 static bool mspOverrideDataProcessingRequired = false;
 #endif
 
-static bool rxSignalReceived = false;
-static bool rxFlightChannelsValid = false;
-static bool rxIsInFailsafeMode = true;
-
-static timeUs_t rxNextUpdateAtUs = 0;
-static timeUs_t needRxSignalBefore = 0;
 static timeUs_t suspendRxSignalUntil = 0;
 static uint8_t skipRxSamples = 0;
-
-static rcChannel_t rcChannels[MAX_SUPPORTED_RC_CHANNEL_COUNT];
 
 #define SKIP_RC_ON_SUSPEND_PERIOD 1500000           // 1.5 second period in usec (call frequency independent)
 #define SKIP_RC_SAMPLES_ON_RESUME  2                // flush 2 samples to drop wrong measurements (timing independent)
 
 rxRuntimeConfig_t rxRuntimeConfig;
-static uint8_t rcSampleIndex = 0;
 
 PG_REGISTER_WITH_RESET_TEMPLATE(rxConfig_t, rxConfig, PG_RX_CONFIG, 9);
 
@@ -252,18 +261,17 @@ void rxInit(void)
     rxRuntimeConfig.rcFrameStatusFn = nullFrameStatus;
     rxRuntimeConfig.rxSignalTimeout = DELAY_10_HZ;
     rxRuntimeConfig.requireFiltering = false;
-    rcSampleIndex = 0;
-
+    
     timeMs_t nowMs = millis();
 
     for (int i = 0; i < MAX_SUPPORTED_RC_CHANNEL_COUNT; i++) {
-        rcChannels[i].raw = PWM_RANGE_MIDDLE;
-        rcChannels[i].data = PWM_RANGE_MIDDLE;
-        rcChannels[i].expiresAt = nowMs + MAX_INVALID_RX_PULSE_TIME;
+        rxState.rcChannels[i].raw = PWM_RANGE_MIDDLE;
+        rxState.rcChannels[i].data = PWM_RANGE_MIDDLE;
+        rxState.rcChannels[i].lastUpdatedMs = nowMs;
     }
 
-    rcChannels[THROTTLE].raw = (feature(FEATURE_REVERSIBLE_MOTORS)) ? PWM_RANGE_MIDDLE : rxConfig()->rx_min_usec;
-    rcChannels[THROTTLE].data = rcChannels[THROTTLE].raw;
+    rxState.rcChannels[THROTTLE].raw = (feature(FEATURE_REVERSIBLE_MOTORS)) ? PWM_RANGE_MIDDLE : rxConfig()->rx_min_usec;
+    rxState.rcChannels[THROTTLE].data = rxState.rcChannels[THROTTLE].raw;
 
     // Initialize ARM switch to OFF position when arming via switch is defined
     for (int i = 0; i < MAX_MODE_ACTIVATION_CONDITION_COUNT; i++) {
@@ -276,9 +284,8 @@ void rxInit(void)
                 value = MODE_STEP_TO_CHANNEL_VALUE((modeActivationConditions(i)->range.endStep + 1));
             }
             // Initialize ARM AUX channel to OFF value
-            rcChannel_t *armChannel = &rcChannels[modeActivationConditions(i)->auxChannelIndex + NON_AUX_CHANNEL_COUNT];
-            armChannel->raw = value;
-            armChannel->data = value;
+            rxState.rcChannels[modeActivationConditions(i)->auxChannelIndex + NON_AUX_CHANNEL_COUNT].raw = value;
+            rxState.rcChannels[modeActivationConditions(i)->auxChannelIndex + NON_AUX_CHANNEL_COUNT].data = value;
         }
     }
 
@@ -382,12 +389,12 @@ uint8_t calculateChannelRemapping(const uint8_t *channelMap, uint8_t channelMapE
 
 bool rxIsReceivingSignal(void)
 {
-    return rxSignalReceived;
+    return rxState.rcStatus == RX_RC_STATUS_OK;
 }
 
 bool rxAreFlightChannelsValid(void)
 {
-    return rxFlightChannelsValid;
+    return rxState.flightChannelsValid;
 }
 
 void suspendRxSignal(void)
@@ -402,171 +409,6 @@ void resumeRxSignal(void)
     suspendRxSignalUntil = micros();
     skipRxSamples = SKIP_RC_SAMPLES_ON_RESUME;
     failsafeOnRxResume();
-}
-
-bool rxUpdateCheck(timeUs_t currentTimeUs, timeDelta_t currentDeltaTime)
-{
-    UNUSED(currentDeltaTime);
-
-    if (rxSignalReceived) {
-        if (currentTimeUs >= needRxSignalBefore) {
-            rxSignalReceived = false;
-        }
-    }
-
-    const uint8_t frameStatus = rxRuntimeConfig.rcFrameStatusFn(&rxRuntimeConfig);
-    if (frameStatus & RX_FRAME_COMPLETE) {
-        rxDataProcessingRequired = true;
-        rxIsInFailsafeMode = (frameStatus & RX_FRAME_FAILSAFE) != 0;
-        rxSignalReceived = !rxIsInFailsafeMode;
-        needRxSignalBefore = currentTimeUs + rxRuntimeConfig.rxSignalTimeout;
-    }
-
-    if (frameStatus & RX_FRAME_PROCESSING_REQUIRED) {
-        auxiliaryProcessingRequired = true;
-    }
-
-    if (cmpTimeUs(currentTimeUs, rxNextUpdateAtUs) > 0) {
-        rxDataProcessingRequired = true;
-    }
-
-    bool result = rxDataProcessingRequired || auxiliaryProcessingRequired;
-
-#if defined(USE_RX_MSP) && defined(USE_MSP_RC_OVERRIDE)
-    if (rxConfig()->receiverType != RX_TYPE_MSP) {
-        mspOverrideDataProcessingRequired = mspOverrideUpdateCheck(currentTimeUs, currentDeltaTime);
-        result = result || mspOverrideDataProcessingRequired;
-    }
-#endif
-
-    return result;
-}
-
-#define FILTERING_SAMPLE_COUNT  5
-static uint16_t applyChannelFiltering(uint8_t chan, uint16_t sample)
-{
-    static int16_t rcSamples[MAX_SUPPORTED_RC_CHANNEL_COUNT][FILTERING_SAMPLE_COUNT];
-    static bool rxSamplesCollected = false;
-
-    // Update the recent samples
-    rcSamples[chan][rcSampleIndex % FILTERING_SAMPLE_COUNT] = sample;
-
-    // Until we have enough data - return unfiltered samples
-    if (!rxSamplesCollected) {
-        if (rcSampleIndex < FILTERING_SAMPLE_COUNT) {
-            return sample;
-        }
-        rxSamplesCollected = true;
-    }
-
-    // Assuming a step transition from 1000 -> 2000 different filters will yield the following output:
-    //  No filter:              1000, 2000, 2000, 2000, 2000        - 0 samples delay
-    //  3-point moving average: 1000, 1333, 1667, 2000, 2000        - 2 samples delay
-    //  3-point median:         1000, 1000, 2000, 2000, 2000        - 1 sample delay
-    //  5-point median:         1000, 1000, 1000, 2000, 2000        - 2 sample delay
-
-    // For the same filters - noise rejection capabilities (2 out of 5 outliers
-    //  No filter:              1000, 2000, 1000, 2000, 1000, 1000, 1000
-    //  3-point MA:             1000, 1333, 1333, 1667, 1333, 1333, 1000    - noise has reduced magnitude, but spread over more samples
-    //  3-point median:         1000, 1000, 1000, 2000, 1000, 1000, 1000    - high density noise is not removed
-    //  5-point median:         1000, 1000, 1000, 1000, 1000, 1000, 1000    - only 3 out of 5 outlier noise will get through
-
-    // Apply 5-point median filtering. This filter has the same delay as 3-point moving average, but better noise rejection
-    return quickMedianFilter5_16(rcSamples[chan]);
-}
-
-bool calculateRxChannelsAndUpdateFailsafe(timeUs_t currentTimeUs)
-{
-    int16_t rcStaging[MAX_SUPPORTED_RC_CHANNEL_COUNT];
-    const timeMs_t currentTimeMs = millis();
-
-#if defined(USE_RX_MSP) && defined(USE_MSP_RC_OVERRIDE)
-    if ((rxConfig()->receiverType != RX_TYPE_MSP) && mspOverrideDataProcessingRequired) {
-        mspOverrideCalculateChannels(currentTimeUs);
-    }
-#endif
-
-    if (auxiliaryProcessingRequired) {
-        auxiliaryProcessingRequired = !rxRuntimeConfig.rcProcessFrameFn(&rxRuntimeConfig);
-    }
-
-    if (!rxDataProcessingRequired) {
-        return false;
-    }
-
-    rxDataProcessingRequired = false;
-    rxNextUpdateAtUs = currentTimeUs + DELAY_50_HZ;
-
-    // only proceed when no more samples to skip and suspend period is over
-    if (skipRxSamples) {
-        if (currentTimeUs > suspendRxSignalUntil) {
-            skipRxSamples--;
-        }
-
-        return true;
-    }
-
-    rxFlightChannelsValid = true;
-
-    // Read and process channel data
-    for (int channel = 0; channel < rxRuntimeConfig.channelCount; channel++) {
-        const uint8_t rawChannel = calculateChannelRemapping(rxConfig()->rcmap, REMAPPABLE_CHANNEL_COUNT, channel);
-
-        // sample the channel
-        uint16_t sample = (*rxRuntimeConfig.rcReadRawFn)(&rxRuntimeConfig, rawChannel);
-
-        // apply the rx calibration to flight channel
-        if (channel < NON_AUX_CHANNEL_COUNT && sample != PPM_RCVR_TIMEOUT) {
-            sample = scaleRange(sample, rxChannelRangeConfigs(channel)->min, rxChannelRangeConfigs(channel)->max, PWM_RANGE_MIN, PWM_RANGE_MAX);
-            sample = MIN(MAX(PWM_PULSE_MIN, sample), PWM_PULSE_MAX);
-        }
-
-        // Store as rxRaw
-        rcChannels[channel].raw = sample;
-
-        // Apply invalid pulse value logic
-        if (!isRxPulseValid(sample)) {
-            sample = rcChannels[channel].data;   // hold channel, replace with old value
-            if ((currentTimeMs > rcChannels[channel].expiresAt) && (channel < NON_AUX_CHANNEL_COUNT)) {
-                rxFlightChannelsValid = false;
-            }
-        } else {
-            rcChannels[channel].expiresAt = currentTimeMs + MAX_INVALID_RX_PULSE_TIME;
-        }
-
-        // Save channel value
-        rcStaging[channel] = sample;
-    }
-
-    // Update channel input value if receiver is not in failsafe mode
-    // If receiver is in failsafe (not receiving signal or sending invalid channel values) - last good input values are retained
-    if (rxFlightChannelsValid && rxSignalReceived) {
-        if (rxRuntimeConfig.requireFiltering) {
-            for (int channel = 0; channel < rxRuntimeConfig.channelCount; channel++) {
-                rcChannels[channel].data = applyChannelFiltering(channel, rcStaging[channel]);
-            }
-        } else {
-            for (int channel = 0; channel < rxRuntimeConfig.channelCount; channel++) {
-                rcChannels[channel].data = rcStaging[channel];
-            }
-        }
-    }
-
-#if defined(USE_RX_MSP) && defined(USE_MSP_RC_OVERRIDE)
-    if (IS_RC_MODE_ACTIVE(BOXMSPRCOVERRIDE) && !mspOverrideIsInFailsafe()) {
-        mspOverrideChannels(rcChannels);
-    }
-#endif
-
-    // Update failsafe
-    if (rxFlightChannelsValid && rxSignalReceived) {
-        failsafeOnValidDataReceived();
-    } else {
-        failsafeOnValidDataFailed();
-    }
-
-    rcSampleIndex++;
-    return true;
 }
 
 void parseRcChannels(const char *input)
@@ -633,7 +475,7 @@ void setRSSIFromMSP(uint8_t newMspRssi)
 static void updateRSSIFromChannel(void)
 {
     if (rxConfig()->rssi_channel > 0) {
-        int pwmRssi = rcChannels[rxConfig()->rssi_channel - 1].raw;
+        int pwmRssi = rxState.rcChannels[rxConfig()->rssi_channel - 1].raw;
         int rawRSSI = (uint16_t)((constrain(pwmRssi - 1000, 0, 1000) / 1000.0f) * (RSSI_MAX_VALUE * 1.0f));
         setRSSIValue(rawRSSI, RSSI_SOURCE_RX_CHANNEL, false);
     }
@@ -695,12 +537,12 @@ uint16_t rxGetRefreshRate(void)
 
 int16_t rxGetChannelValue(unsigned channelNumber)
 {
-    return rcChannels[channelNumber].data;
+    return rxState.rcChannels[channelNumber].data;
 }
 
 int16_t rxGetRawChannelValue(unsigned channelNumber)
 {
-    return rcChannels[channelNumber].raw;
+    return rxState.rcChannels[channelNumber].raw;
 }
 
 void lqTrackerReset(rxLinkQualityTracker_e * lqTracker)
@@ -738,4 +580,192 @@ uint16_t lqTrackerGet(rxLinkQualityTracker_e * lqTracker)
     }
 
     return lqTracker->lqValue;
+}
+
+/*
+bool taskUpdateRxCheck(timeUs_t currentTimeUs, timeDelta_t currentDeltaTime)
+{
+    UNUSED(currentDeltaTime);
+
+    return rxUpdateCheck(currentTimeUs, currentDeltaTime);
+}
+
+void taskUpdateRxMain(timeUs_t currentTimeUs)
+{
+    processRx(currentTimeUs);
+    isRXDataNew = true;
+}
+*/
+
+static uint16_t applyChannelFiltering(rxFilterState_t * state, uint8_t chan, uint16_t sample)
+{
+    // Update the recent samples
+    state->samples[chan][state->totalSamplesCollected % FILTERING_SAMPLE_COUNT] = sample;
+
+    // Until we have enough data - return unfiltered samples
+    if (!state->enoughSamplesCollected) {
+        if (state->totalSamplesCollected < FILTERING_SAMPLE_COUNT) {
+            return sample;
+        }
+        state->enoughSamplesCollected = true;
+    }
+
+    // Assuming a step transition from 1000 -> 2000 different filters will yield the following output:
+    //  No filter:              1000, 2000, 2000, 2000, 2000        - 0 samples delay
+    //  3-point moving average: 1000, 1333, 1667, 2000, 2000        - 2 samples delay
+    //  3-point median:         1000, 1000, 2000, 2000, 2000        - 1 sample delay
+    //  5-point median:         1000, 1000, 1000, 2000, 2000        - 2 sample delay
+
+    // For the same filters - noise rejection capabilities (2 out of 5 outliers
+    //  No filter:              1000, 2000, 1000, 2000, 1000, 1000, 1000
+    //  3-point MA:             1000, 1333, 1333, 1667, 1333, 1333, 1000    - noise has reduced magnitude, but spread over more samples
+    //  3-point median:         1000, 1000, 1000, 2000, 1000, 1000, 1000    - high density noise is not removed
+    //  5-point median:         1000, 1000, 1000, 1000, 1000, 1000, 1000    - only 3 out of 5 outlier noise will get through
+
+    // Apply 5-point median filtering. This filter has the same delay as 3-point moving average, but better noise rejection
+    return quickMedianFilter5_16(state->samples[chan]);
+}
+
+TASK(taskUpdateRx)
+{
+    taskBegin();
+
+    // Protothread has no permanent stack, all variables that should survive yield should be static
+    rxState.rcStatus = RX_RC_STATUS_NO_SIGNAL;
+    rxState.lastDriverUpdateTimeUs = 0;
+    rxState.auxiliaryProcessingRequired = false;
+    rxState.dataProcessingRequired = false;
+    rxState.rcFilterState.totalSamplesCollected = 0;
+    rxState.rcFilterState.enoughSamplesCollected = false;
+
+    taskSemaphoreInit(&rxDataAvailableSemaphore);
+
+    while (1) {
+        // Check driver timeout
+        if ((currentTimeUs - rxState.lastDriverUpdateTimeUs) >= rxRuntimeConfig.rxSignalTimeout) {
+            rxState.rcStatus = RX_RC_STATUS_NO_SIGNAL;
+        }
+
+        // Call driver status function
+        const uint8_t frameStatus = rxRuntimeConfig.rcFrameStatusFn(&rxRuntimeConfig);
+
+        if (frameStatus & RX_FRAME_COMPLETE) {
+            rxState.lastDriverUpdateTimeUs = currentTimeUs;
+            rxState.dataProcessingRequired = true;
+            rxState.rcStatus = ((frameStatus & RX_FRAME_FAILSAFE) != 0) ? RX_RC_STATUS_FAILSAFE : RX_RC_STATUS_OK;
+        }
+
+        if (frameStatus & RX_FRAME_PROCESSING_REQUIRED) {
+            rxState.auxiliaryProcessingRequired = true;
+        }
+
+        // Give up time quant - processing can wait for next wakeup
+        taskYield();
+
+        // Extra frame processing if necessary
+        if (rxState.auxiliaryProcessingRequired) {
+            rxState.auxiliaryProcessingRequired = !rxRuntimeConfig.rcProcessFrameFn(&rxRuntimeConfig);
+        }
+
+        // Process the frame
+        if (rxState.dataProcessingRequired) {
+            int rcStaging[MAX_SUPPORTED_RC_CHANNEL_COUNT];
+            rxState.flightChannelsValid = true;
+            timeMs_t currentTimeMs = millis();
+
+            // Read and process channel data
+            for (int channel = 0; channel < rxRuntimeConfig.channelCount; channel++) {
+                const uint8_t rawChannel = calculateChannelRemapping(rxConfig()->rcmap, REMAPPABLE_CHANNEL_COUNT, channel);
+
+                // sample the channel
+                uint16_t sample = (*rxRuntimeConfig.rcReadRawFn)(&rxRuntimeConfig, rawChannel);
+
+                // apply the rx calibration to flight channel
+                if (channel < NON_AUX_CHANNEL_COUNT && sample != PPM_RCVR_TIMEOUT) {
+                    sample = scaleRange(sample, rxChannelRangeConfigs(channel)->min, rxChannelRangeConfigs(channel)->max, PWM_RANGE_MIN, PWM_RANGE_MAX);
+                    sample = MIN(MAX(PWM_PULSE_MIN, sample), PWM_PULSE_MAX);
+                }
+
+                // Store as rxRaw
+                rxState.rcChannels[channel].raw = sample;
+
+                // Apply invalid pulse value logic
+                if (!isRxPulseValid(sample)) {
+                    sample = rxState.rcChannels[channel].data;   // hold channel, replace with old value
+                    if (((currentTimeMs - rxState.rcChannels[channel].lastUpdatedMs) > MAX_INVALID_RX_PULSE_TIME) && (channel < NON_AUX_CHANNEL_COUNT)) {
+                        rxState.flightChannelsValid = false;
+                    }
+                } else {
+                    rxState.rcChannels[channel].lastUpdatedMs = currentTimeMs;
+                }
+
+                // Save channel value
+                rcStaging[channel] = sample;
+            }
+
+            // If channels are out of range - force 
+            if (!rxState.flightChannelsValid) {
+                rxState.rcStatus = RX_RC_STATUS_FAILSAFE;
+            }
+
+            // Update channel input value if receiver is not in failsafe mode
+            // If receiver is in failsafe (not receiving signal or sending invalid channel values) - last good input values are retained
+            if (rxState.rcStatus == RX_RC_STATUS_OK) {
+                if (rxRuntimeConfig.requireFiltering) {
+                    for (int channel = 0; channel < rxRuntimeConfig.channelCount; channel++) {
+                        rxState.rcChannels[channel].data = applyChannelFiltering(&rxState.rcFilterState, channel, rcStaging[channel]);
+                    }
+                    rxState.rcFilterState.totalSamplesCollected++;
+                } else {
+                    for (int channel = 0; channel < rxRuntimeConfig.channelCount; channel++) {
+                        rxState.rcChannels[channel].data = rcStaging[channel];
+                    }
+                }
+            }
+
+            rxState.dataProcessingRequired = false;
+
+            // Signal new update to taskProcessRx thread
+            taskSemaphoreSignal(&rxDataAvailableSemaphore);
+        }
+
+        taskYield();
+    }
+
+    taskEnd();
+}
+
+extern void signalRxDataNew(void);
+extern void processRx(timeUs_t currentTimeUs);
+
+TASK(taskProcessRx)
+{
+    taskBegin();
+
+    while (1) {
+        // Executed every RX update or at 10HZ
+        taskWaitSemaphoreWithTimeoutUs(&rxDataAvailableSemaphore, HZ2US(10), NULL);
+
+        // Update failsafe system
+        if (rxState.rcStatus == RX_RC_STATUS_OK) {
+            failsafeOnValidDataReceived();
+        } else {
+            failsafeOnValidDataFailed();
+        }
+
+        // Update RSSI
+
+        // Process stick hooks
+
+        // Process box modes
+
+        // Process FLM selection
+
+        // Mark RX data new for RC smoothing
+
+        //processRx(currentTimeUs);
+        //signalRxDataNew();
+    }
+
+    taskEnd();
 }

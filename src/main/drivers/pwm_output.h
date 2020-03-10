@@ -26,7 +26,6 @@ ioTag_t pwmGetMotorPinTag(int motorIndex);
 
 void pwmWriteMotor(uint8_t index, uint16_t value);
 void pwmShutdownPulsesForAllMotors(uint8_t motorCount);
-void pwmCompleteMotorUpdate(void);
 bool isMotorProtocolDigital(void);
 
 void pwmWriteServo(uint8_t index, uint16_t value);

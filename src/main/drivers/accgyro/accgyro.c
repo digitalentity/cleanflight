@@ -41,6 +41,8 @@
 #include "drivers/sensor.h"
 #include "drivers/accgyro/accgyro.h"
 
+#include "scheduler/scheduler.h"
+
 const gyroFilterAndRateConfig_t * chooseGyroConfig(uint8_t desiredLpf, uint16_t desiredRateHz, const gyroFilterAndRateConfig_t * configs, int count)
 {
     int i;
@@ -77,7 +79,7 @@ const gyroFilterAndRateConfig_t * chooseGyroConfig(uint8_t desiredLpf, uint16_t 
 static void gyroIntExtiHandler(extiCallbackRec_t *cb)
 {
     gyroDev_t *gyro = container_of(cb, gyroDev_t, exti);
-    gyro->dataReady = true;
+    taskSemaphoreSignal(&gyro->dataReadySemaphore);
     if (gyro->updateFn) {
         gyro->updateFn(gyro);
     }
@@ -112,16 +114,4 @@ void gyroIntExtiInit(gyroDev_t *gyro)
     EXTIEnable(gyro->busDev->irqPin, true);
 #endif
 #endif
-}
-
-bool gyroCheckDataReady(gyroDev_t* gyro)
-{
-    bool ret;
-    if (gyro->dataReady) {
-        ret = true;
-        gyro->dataReady = false;
-    } else {
-        ret = false;
-    }
-    return ret;
 }

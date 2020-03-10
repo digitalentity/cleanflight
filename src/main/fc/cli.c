@@ -2950,12 +2950,15 @@ static void cliStatus(char *cmdline)
     }
 #endif
 
+/*
+    FIXME: Restore CLI task statistics
     cliPrintf("System load: %d", averageSystemLoadPercent);
     const timeDelta_t pidTaskDeltaTime = getTaskDeltaTime(TASK_GYROPID);
     const int pidRate = pidTaskDeltaTime == 0 ? 0 : (int)(1000000.0f / ((float)pidTaskDeltaTime));
     const int rxRate = getTaskDeltaTime(TASK_RX) == 0 ? 0 : (int)(1000000.0f / ((float)getTaskDeltaTime(TASK_RX)));
     const int systemRate = getTaskDeltaTime(TASK_SYSTEM) == 0 ? 0 : (int)(1000000.0f / ((float)getTaskDeltaTime(TASK_SYSTEM)));
     cliPrintLinef(", cycle time: %d, PID rate: %d, RX rate: %d, System rate: %d",  (uint16_t)cycleTime, pidRate, rxRate, systemRate);
+*/
 #if !defined(CLI_MINIMAL_VERBOSITY)
     cliPrint("Arming disabled flags:");
     uint32_t flags = armingFlags & ARMING_DISABLED_ALL_FLAGS;
@@ -3009,6 +3012,30 @@ static void cliStatus(char *cmdline)
 static void cliTasks(char *cmdline)
 {
     UNUSED(cmdline);
+
+    // Sync with taskState_e
+    const char taskStates[] = "TRSSZ";
+    timeUs_t totalTime = 0;
+
+    cliPrintLinef("Task list          state  prio  total/ms");
+
+    for (int taskId = 0; taskId < MAX_TASKS; taskId++) {
+        const taskInfo_t * taskInfo;
+        taskInfo = schedulerGetTaskInfo(taskId);
+        if (taskInfo) {
+            cliPrintLinef("%2d - %12s   %c     %2d     %5d",
+                    taskId, taskInfo->taskName, taskStates[taskInfo->taskState],
+                    (uint32_t)taskInfo->taskPriority, (uint32_t)(taskInfo->totalExecutionTime / 1000));
+
+            totalTime += taskInfo->totalExecutionTime;
+        }
+    }
+
+    cliPrintLinef("Total time (ms): %d", (uint32_t)(totalTime / 1000));
+
+    /*
+    FIXME: Restore CLI task statistics
+
     int maxLoadSum = 0;
     int averageLoadSum = 0;
     cfCheckFuncInfo_t checkFuncInfo;
@@ -3033,6 +3060,7 @@ static void cliTasks(char *cmdline)
     getCheckFuncInfo(&checkFuncInfo);
     cliPrintLinef("Task check function %13d %7d %25d", (uint32_t)checkFuncInfo.maxExecutionTime, (uint32_t)checkFuncInfo.averageExecutionTime, (uint32_t)checkFuncInfo.totalExecutionTime / 1000);
     cliPrintLinef("Total (excluding SERIAL) %21d.%1d%% %4d.%1d%%", maxLoadSum/10, maxLoadSum%10, averageLoadSum/10, averageLoadSum%10);
+    */
 }
 #endif
 

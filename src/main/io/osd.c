@@ -3160,85 +3160,6 @@ static void osdRefresh(timeUs_t currentTimeUs)
 #endif
 }
 
-/*
- * Called periodically by the scheduler
- */
-void osdUpdate(timeUs_t currentTimeUs)
-{
-    static uint32_t counter = 0;
-
-    // don't touch buffers if DMA transaction is in progress
-    if (displayIsTransferInProgress(osdDisplayPort)) {
-        return;
-    }
-
-    if (!osdDisplayIsReady) {
-        osdCompleteAsyncInitialization();
-        return;
-    }
-
-#if defined(OSD_ALTERNATE_LAYOUT_COUNT) && OSD_ALTERNATE_LAYOUT_COUNT > 0
-    // Check if the layout has changed. Higher numbered
-    // boxes take priority.
-    unsigned activeLayout;
-    if (layoutOverride >= 0) {
-        activeLayout = layoutOverride;
-        // Check for timed override, it will go into effect on
-        // the next OSD iteration
-        if (layoutOverrideUntil > 0 && millis() > layoutOverrideUntil) {
-            layoutOverrideUntil = 0;
-            layoutOverride = -1;
-        }
-    } else if (osdConfig()->osd_failsafe_switch_layout && FLIGHT_MODE(FAILSAFE_MODE)) {
-        activeLayout = 0;
-    } else {
-#if OSD_ALTERNATE_LAYOUT_COUNT > 2
-        if (IS_RC_MODE_ACTIVE(BOXOSDALT3))
-            activeLayout = 3;
-        else
-#endif
-#if OSD_ALTERNATE_LAYOUT_COUNT > 1
-        if (IS_RC_MODE_ACTIVE(BOXOSDALT2))
-            activeLayout = 2;
-        else
-#endif
-        if (IS_RC_MODE_ACTIVE(BOXOSDALT1))
-            activeLayout = 1;
-        else
-            activeLayout = 0;
-    }
-    if (currentLayout != activeLayout) {
-        currentLayout = activeLayout;
-        osdStartFullRedraw();
-    }
-#endif
-
-#define DRAW_FREQ_DENOM     4
-#define STATS_FREQ_DENOM    50
-    counter++;
-
-    if ((counter % STATS_FREQ_DENOM) == 0) {
-        osdUpdateStats();
-    }
-
-    if ((counter & DRAW_FREQ_DENOM) == 0) {
-        // redraw values in buffer
-        osdRefresh(currentTimeUs);
-    } else {
-        // rest of time redraw screen
-        displayDrawScreen(osdDisplayPort);
-    }
-
-#ifdef USE_CMS
-    // do not allow ARM if we are in menu
-    if (displayIsGrabbed(osdDisplayPort)) {
-        ENABLE_ARMING_FLAG(ARMING_DISABLED_OSD_MENU);
-    } else {
-        DISABLE_ARMING_FLAG(ARMING_DISABLED_OSD_MENU);
-    }
-#endif
-}
-
 void osdStartFullRedraw(void)
 {
     fullRedraw = true;
@@ -3282,6 +3203,98 @@ displayCanvas_t *osdGetDisplayPortCanvas(void)
     }
 #endif
     return NULL;
+}
+
+static void osdUpdateActiveLayout(void)
+{
+#if defined(OSD_ALTERNATE_LAYOUT_COUNT) && OSD_ALTERNATE_LAYOUT_COUNT > 0
+    // Check if the layout has changed. Higher numbered
+    // boxes take priority.
+    unsigned activeLayout;
+    if (layoutOverride >= 0) {
+        activeLayout = layoutOverride;
+        // Check for timed override, it will go into effect on
+        // the next OSD iteration
+        if (layoutOverrideUntil > 0 && millis() > layoutOverrideUntil) {
+            layoutOverrideUntil = 0;
+            layoutOverride = -1;
+        }
+    } else if (osdConfig()->osd_failsafe_switch_layout && FLIGHT_MODE(FAILSAFE_MODE)) {
+        activeLayout = 0;
+    } else {
+#if OSD_ALTERNATE_LAYOUT_COUNT > 2
+        if (IS_RC_MODE_ACTIVE(BOXOSDALT3))
+            activeLayout = 3;
+        else
+#endif
+#if OSD_ALTERNATE_LAYOUT_COUNT > 1
+        if (IS_RC_MODE_ACTIVE(BOXOSDALT2))
+            activeLayout = 2;
+        else
+#endif
+        if (IS_RC_MODE_ACTIVE(BOXOSDALT1))
+            activeLayout = 1;
+        else
+            activeLayout = 0;
+    }
+
+    if (currentLayout != activeLayout) {
+        currentLayout = activeLayout;
+        osdStartFullRedraw();
+    }
+#endif
+}
+
+TASK(taskUpdateOsd)
+{
+    static uint32_t counter = 0;
+
+    taskBegin();
+
+    while(1) {
+        // OSD is not time-critical, no need for a timer
+        taskDelayUs(HZ2US(250));
+
+        // don't touch buffers if DMA transaction is in progress
+        if (displayIsTransferInProgress(osdDisplayPort)) {
+            continue;
+        }
+
+        if (!osdDisplayIsReady) {
+            osdCompleteAsyncInitialization();
+            continue;
+        }
+
+        osdUpdateActiveLayout();
+
+#define DRAW_FREQ_DENOM     4
+#define STATS_FREQ_DENOM    50
+        counter++;
+
+        if ((counter % STATS_FREQ_DENOM) == 0) {
+            osdUpdateStats();
+            taskYield();
+        }
+
+        if ((counter & DRAW_FREQ_DENOM) == 0) {
+            // redraw values in buffer
+            osdRefresh(currentTimeUs);
+        } else {
+            // rest of time redraw screen
+            displayDrawScreen(osdDisplayPort);
+        }
+
+#ifdef USE_CMS
+        // do not allow ARM if we are in menu
+        if (displayIsGrabbed(osdDisplayPort)) {
+            ENABLE_ARMING_FLAG(ARMING_DISABLED_OSD_MENU);
+        } else {
+            DISABLE_ARMING_FLAG(ARMING_DISABLED_OSD_MENU);
+        }
+#endif
+    }
+
+    taskEnd();
 }
 
 #endif // OSD

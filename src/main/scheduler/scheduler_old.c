@@ -32,6 +32,8 @@
 
 #include "drivers/time.h"
 
+#if 0
+
 STATIC_FASTRAM cfTask_t *currentTask = NULL;
 
 STATIC_FASTRAM uint32_t totalWaitingTasks;
@@ -324,3 +326,5 @@ void FAST_CODE NOINLINE scheduler(void)
 #endif
     }
 }
+
+#endif

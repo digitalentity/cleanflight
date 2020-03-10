@@ -295,3 +295,8 @@
 #endif
 
 #define PCA9685_I2C_BUS         I2C_EXT_BUS
+
+
+#undef USE_RANGEFINDER
+#undef USE_HOTT_TEXTMODE
+#undef USE_TELEMETRY_IBUS

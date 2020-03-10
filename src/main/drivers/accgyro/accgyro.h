@@ -21,6 +21,7 @@
 #include "common/axis.h"
 #include "drivers/exti.h"
 #include "drivers/sensor.h"
+#include "scheduler/scheduler.h"
 
 #define GYRO_LPF_256HZ      0
 #define GYRO_LPF_188HZ      1
@@ -42,16 +43,15 @@ typedef struct gyroDev_s {
     sensorGyroInitFuncPtr initFn;                       // initialize function
     sensorGyroReadFuncPtr readFn;                       // read 3 axis data function
     sensorGyroReadDataFuncPtr temperatureFn;            // read temperature if available
-    sensorGyroInterruptStatusFuncPtr intStatusFn;
     sensorGyroUpdateFuncPtr updateFn;
     extiCallbackRec_t exti;
+    schdSemaphore_t dataReadySemaphore;
     float scale;                                        // scalefactor
     int16_t gyroADCRaw[XYZ_AXIS_COUNT];
     int16_t gyroZero[XYZ_AXIS_COUNT];
     uint8_t imuSensorToUse;
     uint8_t lpf;                                        // Configuration value: Hardware LPF setting
     uint32_t requestedSampleIntervalUs;                 // Requested sample interval
-    volatile bool dataReady;
     uint32_t sampleRateIntervalUs;                      // Gyro driver should set this to actual sampling rate as signaled by IRQ
     sensor_align_e gyroAlign;
 } gyroDev_t;

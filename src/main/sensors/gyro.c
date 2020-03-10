@@ -61,8 +61,6 @@
 #include "io/beeper.h"
 #include "io/statusindicator.h"
 
-#include "scheduler/scheduler.h"
-
 #include "sensors/boardalignment.h"
 #include "sensors/gyro.h"
 #include "sensors/sensors.h"
@@ -276,6 +274,9 @@ bool gyroInit(void)
         return false;
     }
 
+    // Make sure Sync semaphore is ready
+    taskSemaphoreInit(&gyroDev0.dataReadySemaphore);
+
     // Driver initialisation
     gyroDev0.lpf = gyroConfig()->gyro_lpf;
     gyroDev0.requestedSampleIntervalUs = gyroConfig()->looptime;
@@ -381,7 +382,7 @@ STATIC_UNIT_TESTED void performGyroCalibration(gyroDev_t *dev, zeroCalibrationVe
         dev->gyroZero[2] = v.v[2];
 
         LOG_D(GYRO, "Gyro calibration complete (%d, %d, %d)", dev->gyroZero[0], dev->gyroZero[1], dev->gyroZero[2]);
-        schedulerResetTaskStatistics(TASK_SELF); // so calibration cycles do not pollute tasks statistics
+        //schedulerResetTaskStatistics(TASK_SELF); // so calibration cycles do not pollute tasks statistics
     }
     else {
         dev->gyroZero[0] = 0;
@@ -449,6 +450,7 @@ void FAST_CODE NOINLINE gyroUpdate()
             DEBUG_SET(DEBUG_DYNAMIC_FILTER, axis + 3, gyroADCf);
         }
 #endif
+
         gyro.gyroADCf[axis] = gyroADCf;
     }
 
@@ -488,10 +490,7 @@ int16_t gyroRateDps(int axis)
     return lrintf(gyro.gyroADCf[axis] / gyroDev0.scale);
 }
 
-bool gyroSyncCheckUpdate(void)
+schdSemaphore_t * gyroGetSyncSemaphore(void)
 {
-    if (!gyroDev0.intStatusFn)
-        return false;
-
-    return gyroDev0.intStatusFn(&gyroDev0);
+    return &gyroDev0.dataReadySemaphore;
 }

@@ -43,6 +43,8 @@
 #include "fc/rc_modes.h"
 #include "fc/runtime_config.h"
 
+#include "scheduler/scheduler.h"
+
 #include "config/feature.h"
 
 #include "io/beeper.h"
@@ -295,7 +297,7 @@ void beeperGpsStatus(void)
  * Beeper handler function to be called periodically in loop. Updates beeper
  * state via time schedule.
  */
-void beeperUpdate(timeUs_t currentTimeUs)
+static void beeperUpdate(timeUs_t currentTimeUs)
 {
     // If beeper option from AUX switch has been selected
     if (IS_RC_MODE_ACTIVE(BOXBEEPERON)) {
@@ -401,4 +403,16 @@ const char *beeperNameForTableIndex(int idx)
 int beeperTableEntryCount(void)
 {
     return (int)BEEPER_TABLE_ENTRY_COUNT;
+}
+
+TASK(taskBeeper)
+{
+    taskBegin();
+
+    while (1) {
+        beeperUpdate(currentTimeUs);
+        taskYield();
+    }
+
+    taskEnd();
 }

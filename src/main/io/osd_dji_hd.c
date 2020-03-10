@@ -419,7 +419,7 @@ static mspResult_e djiProcessMspCommand(mspPacket_t *cmd, mspPacket_t *reply, ms
                 sbufWriteData(dst, &flightModeBitmask, 4);        // unconditional part of flags, first 32 bits
                 sbufWriteU8(dst, getConfigProfile());
 
-                sbufWriteU16(dst, constrain(averageSystemLoadPercent, 0, 100));
+                sbufWriteU16(dst, schedulerGetAverageSystemLoadPercent());
                 if (cmd->cmd == MSP_STATUS_EX) {
                     sbufWriteU8(dst, 3);            // PID_PROFILE_COUNT
                     sbufWriteU8(dst, 1);            // getCurrentControlRateProfileIndex()

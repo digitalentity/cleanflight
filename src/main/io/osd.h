@@ -18,10 +18,9 @@
 #pragma once
 
 #include "common/time.h"
-
 #include "config/parameter_group.h"
-
 #include "drivers/osd.h"
+#include "scheduler/scheduler.h"
 
 #ifndef OSD_ALTERNATE_LAYOUT_COUNT
 #define OSD_ALTERNATE_LAYOUT_COUNT 3
@@ -253,7 +252,6 @@ typedef struct displayPort_s displayPort_t;
 typedef struct displayCanvas_s displayCanvas_t;
 
 void osdInit(displayPort_t *osdDisplayPort);
-void osdUpdate(timeUs_t currentTimeUs);
 void osdStartFullRedraw(void);
 // Sets a fixed OSD layout ignoring the RC input. Set it
 // to -1 to disable the override. If layout is >= 0 and
@@ -278,3 +276,6 @@ void osdFormatAltitudeSymbol(char *buff, int32_t alt);
 void osdFormatVelocityStr(char* buff, int32_t vel, bool _3D);
 // Returns a heading angle in degrees normalized to [0, 360).
 int osdGetHeadingAngle(int angle);
+
+// OSD update task entry point
+TASK(taskUpdateOsd);

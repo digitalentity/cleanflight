@@ -443,6 +443,7 @@ void releaseSharedTelemetryPorts(void) {
 void tryArm(void)
 {
     updateArmingStatus();
+
 #ifdef USE_GLOBAL_FUNCTIONS
     if (
         !isArmingDisabled() || 
@@ -513,9 +514,6 @@ void tryArm(void)
 
 void processRx(timeUs_t currentTimeUs)
 {
-    // Calculate RPY channel data
-    calculateRxChannelsAndUpdateFailsafe(currentTimeUs);
-
     // in 3D mode, we need to be able to disarm by switch at any time
     if (feature(FEATURE_REVERSIBLE_MOTORS)) {
         if (!IS_RC_MODE_ACTIVE(BOXARM))
@@ -701,43 +699,71 @@ void processRx(timeUs_t currentTimeUs)
         }
     }
 #endif
-
 }
 
-// Function for loop trigger
-void FAST_CODE NOINLINE taskGyro(timeUs_t currentTimeUs) {
-    // getTaskDeltaTime() returns delta time frozen at the moment of entering the scheduler. currentTime is frozen at the very same point.
-    // To make busy-waiting timeout work we need to account for time spent within busy-waiting loop
-    const timeDelta_t currentDeltaTime = getTaskDeltaTime(TASK_SELF);
-    timeUs_t gyroUpdateUs = currentTimeUs;
+static schdSemaphore_t ahrsSymaphore;
 
-    if (gyroConfig()->gyroSync) {
-        while (true) {
-            gyroUpdateUs = micros();
-            if (gyroSyncCheckUpdate()) {
-                gyroSyncFailureCount = 0;
-                break;
-            }
-            else if ((currentDeltaTime + cmpTimeUs(gyroUpdateUs, currentTimeUs)) >= (timeDelta_t)(getLooptime() + GYRO_WATCHDOG_DELAY)) {
+TASK(taskGyro)
+{
+    taskBegin();
+
+    static schdTimer_t gyroTimer;
+    taskTimerInit(&gyroTimer, getLooptime());
+    taskSemaphoreInit(&ahrsSymaphore);
+
+    while(1) {
+        // This is either timer-driven (for !gyrosync) or timer-measured (for gyrosync)
+        schdSemaphore_t * gyroSyncSemaphore = gyroGetSyncSemaphore();
+        if (gyroConfig()->gyroSync && gyroSyncSemaphore) {
+            taskWaitUnblockReason_e unblockReason;
+
+            taskWaitSemaphoreWithTimeoutUs(gyroSyncSemaphore, getLooptime() + GYRO_WATCHDOG_DELAY, &unblockReason);
+            taskTimerTrigger(&gyroTimer);
+
+            // If semaphore wait timed out - count this as a failure
+            if (unblockReason == TASK_WAIT_REASON_TIMEOUT) {
                 gyroSyncFailureCount++;
-                break;
+            }
+            else {
+                gyroSyncFailureCount = 0;
+            }
+
+            // If we detect gyro sync failure - disable gyro sync
+            if (gyroSyncFailureCount > GYRO_SYNC_MAX_CONSECUTIVE_FAILURES) {
+                gyroConfigMutable()->gyroSync = false;
             }
         }
-
-        // If we detect gyro sync failure - disable gyro sync
-        if (gyroSyncFailureCount > GYRO_SYNC_MAX_CONSECUTIVE_FAILURES) {
-            gyroConfigMutable()->gyroSync = false;
+        else {
+            taskWaitTimer(&gyroTimer);
         }
-    }
 
-    /* Update actual hardware readings */
-    gyroUpdate();
+        /* Update actual hardware readings */
+        gyroUpdate();
 
 #ifdef USE_OPFLOW
-    if (sensors(SENSOR_OPFLOW)) {
-        opflowGyroUpdateCallback((timeUs_t)currentDeltaTime + (gyroUpdateUs - currentTimeUs));
-    }
+        if (sensors(SENSOR_OPFLOW)) {
+            opflowGyroUpdateCallback(taskTimerGetLastInterval(&gyroTimer));
+        }
 #endif
+
+        taskSemaphoreSignal(&ahrsSymaphore);
+    }
+
+    taskEnd();
+}
+
+TASK(taskAHRS)
+{
+    taskBegin();
+
+    while(1) {
+        // Sync to GYRO task, but execute separately from Gyro
+        taskWaitSemaphore(&ahrsSymaphore);
+        imuUpdateAccelerometer();
+        imuUpdateAttitude(currentTimeUs);
+    }
+
+    taskEnd();
 }
 
 static float calculateThrottleTiltCompensationFactor(uint8_t throttleTiltCompensationStrength)
@@ -750,19 +776,15 @@ static float calculateThrottleTiltCompensationFactor(uint8_t throttleTiltCompens
     }
 }
 
-void taskMainPidLoop(timeUs_t currentTimeUs)
+static void doPidLoop(timeUs_t currentTimeUs, timeUs_t lastIntervalTimeUs)
 {
-    cycleTime = getTaskDeltaTime(TASK_SELF);
+    cycleTime = lastIntervalTimeUs;
     dT = (float)cycleTime * 0.000001f;
 
     if (ARMING_FLAG(ARMED) && (!STATE(FIXED_WING_LEGACY) || !isNavLaunchEnabled() || (isNavLaunchEnabled() && (isFixedWingLaunchDetected() || isFixedWingLaunchFinishedOrAborted())))) {
         flightTime += cycleTime;
         updateAccExtremes();
     }
-
-    taskGyro(currentTimeUs);
-    imuUpdateAccelerometer();
-    imuUpdateAttitude(currentTimeUs);
 
     annexCode();
 
@@ -841,31 +863,39 @@ void taskMainPidLoop(timeUs_t currentTimeUs)
 #endif
 }
 
+TASK(taskMainPidLoop)
+{
+    taskBegin();
+
+    static schdTimer_t pidTimer;
+    taskTimerInit(&pidTimer, getLooptime());
+
+    while(1) {
+        taskWaitTimer(&pidTimer);
+        doPidLoop(currentTimeUs, taskTimerGetLastInterval(&pidTimer));
+    }
+
+    taskEnd();
+}
+
 // This function is called in a busy-loop, everything called from here should do it's own
 // scheduling and avoid doing heavy calculations
-void taskRunRealtimeCallbacks(timeUs_t currentTimeUs)
-{
-    UNUSED(currentTimeUs);
-
 #ifdef USE_SDCARD
-    afatfs_poll();
+TASK(taskRealtimeSDCard)
+{
+    taskBegin();
+
+    while(1) {
+        afatfs_poll();
+        taskYield();
+    }
+
+    taskEnd();
+}
 #endif
 
-#ifdef USE_DSHOT
-    pwmCompleteMotorUpdate();
-#endif
-}
-
-bool taskUpdateRxCheck(timeUs_t currentTimeUs, timeDelta_t currentDeltaTime)
+void signalRxDataNew(void)
 {
-    UNUSED(currentDeltaTime);
-
-    return rxUpdateCheck(currentTimeUs, currentDeltaTime);
-}
-
-void taskUpdateRxMain(timeUs_t currentTimeUs)
-{
-    processRx(currentTimeUs);
     isRXDataNew = true;
 }
 

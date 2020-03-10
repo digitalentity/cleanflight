@@ -136,7 +136,7 @@ COMMON_SRC = \
             rx/sumh.c \
             rx/uib_rx.c \
             rx/xbus.c \
-            scheduler/scheduler.c \
+            scheduler/scheduler_ng.c \
             sensors/acceleration.c \
             sensors/battery.c \
             sensors/temperature.c \

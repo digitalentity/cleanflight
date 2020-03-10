@@ -158,9 +158,9 @@ typedef struct rxRuntimeConfig_s {
 } rxRuntimeConfig_t;
 
 typedef struct rcChannel_s {
-    int16_t raw;        // Value received via RX - [1000;2000]
-    int16_t data;       // Value after processing - [1000;2000]
-    timeMs_t expiresAt; // Time when this value becomes too old and it's discarded
+    int16_t raw;            // Value received via RX - [1000;2000]
+    int16_t data;           // Value after processing - [1000;2000]
+    timeMs_t lastUpdatedMs; // Time when the channel was last updated
 } rcChannel_t;
 
 typedef enum {
@@ -171,6 +171,12 @@ typedef enum {
     RSSI_SOURCE_RX_PROTOCOL,
     RSSI_SOURCE_MSP,
 } rssiSource_e;
+
+typedef enum {
+    RX_RC_STATUS_NO_SIGNAL = 0,     // Driver update timeout
+    RX_RC_STATUS_FAILSAFE,          // Driver updates normal, but indicate failsafe
+    RX_RC_STATUS_OK,                // All green
+} rxReceiverStatus_t;
 
 extern rxRuntimeConfig_t rxRuntimeConfig; //!!TODO remove this extern, only needed once for channelCount
 
@@ -184,7 +190,6 @@ void rxUpdateRSSISource(void);
 bool rxUpdateCheck(timeUs_t currentTimeUs, timeDelta_t currentDeltaTime);
 bool rxIsReceivingSignal(void);
 bool rxAreFlightChannelsValid(void);
-bool calculateRxChannelsAndUpdateFailsafe(timeUs_t currentTimeUs);
 bool isRxPulseValid(uint16_t pulseDuration);
 
 uint8_t calculateChannelRemapping(const uint8_t *channelMap, uint8_t channelMapEntryCount, uint8_t channelToRemap);

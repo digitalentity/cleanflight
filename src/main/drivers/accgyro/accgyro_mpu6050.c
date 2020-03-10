@@ -210,7 +210,6 @@ bool mpu6050GyroDetect(gyroDev_t *gyro)
 
     gyro->initFn = mpu6050AccAndGyroInit;
     gyro->readFn = mpuGyroReadScratchpad;
-    gyro->intStatusFn = gyroCheckDataReady;
     gyro->temperatureFn = mpuTemperatureReadScratchpad;
     gyro->scale = 1.0f / 16.4f;     // 16.4 dps/lsb scalefactor
 

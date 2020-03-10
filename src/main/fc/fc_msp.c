@@ -445,7 +445,7 @@ static bool mspFcProcessOutCommand(uint16_t cmdMSP, sbuf_t *dst, mspPostProcessF
             sbufWriteU8(dst, getConfigProfile());
 
             if (cmdMSP == MSP_STATUS_EX) {
-                sbufWriteU16(dst, averageSystemLoadPercent);
+                sbufWriteU16(dst, schedulerGetAverageSystemLoadPercent());
                 sbufWriteU16(dst, armingFlags);
                 sbufWriteU8(dst, accGetCalibrationAxisFlags());
             }
@@ -465,7 +465,7 @@ static bool mspFcProcessOutCommand(uint16_t cmdMSP, sbuf_t *dst, mspPostProcessF
             sbufWriteU16(dst, 0);
 #endif
             sbufWriteU16(dst, packSensorStatus());
-            sbufWriteU16(dst, averageSystemLoadPercent);
+            sbufWriteU16(dst, schedulerGetAverageSystemLoadPercent());
             sbufWriteU8(dst, (getConfigBatteryProfile() << 4) | getConfigProfile());
             sbufWriteU32(dst, armingFlags);
             sbufWriteData(dst, &mspBoxModeFlags, sizeof(mspBoxModeFlags));

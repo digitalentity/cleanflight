@@ -23,6 +23,7 @@
 #include "common/time.h"
 #include "config/parameter_group.h"
 #include "drivers/sensor.h"
+#include "scheduler/scheduler.h"
 
 typedef enum {
     GYRO_NONE = 0,
@@ -88,4 +89,4 @@ bool gyroIsCalibrationComplete(void);
 bool gyroReadTemperature(void);
 int16_t gyroGetTemperature(void);
 int16_t gyroRateDps(int axis);
-bool gyroSyncCheckUpdate(void);
+schdSemaphore_t * gyroGetSyncSemaphore(void);

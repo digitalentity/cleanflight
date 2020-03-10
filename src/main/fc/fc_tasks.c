@@ -34,6 +34,7 @@
 #include "drivers/sensor.h"
 #include "drivers/serial.h"
 #include "drivers/stack_check.h"
+#include "drivers/pwm_output.h"
 
 #include "fc/cli.h"
 #include "fc/config.h"
@@ -88,92 +89,147 @@
 
 #include "uav_interconnect/uav_interconnect.h"
 
-void taskHandleSerial(timeUs_t currentTimeUs)
+TASK(taskHandleSerial)
 {
-    UNUSED(currentTimeUs);
-    // in cli mode, all serial stuff goes to here. enter cli mode by sending #
-    if (cliMode) {
-        cliProcess();
-    }
+    taskBegin();
 
-    // Allow MSP processing even if in CLI mode
-    mspSerialProcess(ARMING_FLAG(ARMED) ? MSP_SKIP_NON_MSP_DATA : MSP_EVALUATE_NON_MSP_DATA, mspFcProcessCommand);
+    while(1) {
+        // in cli mode, all serial stuff goes to here. enter cli mode by sending #
+        if (cliMode) {
+            cliProcess();
+        }
+
+        // Allow MSP processing even if in CLI mode
+        mspSerialProcess(ARMING_FLAG(ARMED) ? MSP_SKIP_NON_MSP_DATA : MSP_EVALUATE_NON_MSP_DATA, mspFcProcessCommand);
 
 #if defined(USE_DJI_HD_OSD)
-    // DJI OSD uses a special flavour of MSP (subset of Betaflight 4.1.1 MSP) - process as part of serial task
-    djiOsdSerialProcess();
+        // DJI OSD uses a special flavour of MSP (subset of Betaflight 4.1.1 MSP) - process as part of serial task
+        djiOsdSerialProcess();
 #endif
-}
 
-void taskUpdateBattery(timeUs_t currentTimeUs)
-{
-    static timeUs_t batMonitoringLastServiced = 0;
-    timeUs_t BatMonitoringTimeSinceLastServiced = cmpTimeUs(currentTimeUs, batMonitoringLastServiced);
-
-    if (isAmperageConfigured())
-        currentMeterUpdate(BatMonitoringTimeSinceLastServiced);
-#ifdef USE_ADC
-    if (feature(FEATURE_VBAT))
-        batteryUpdate(BatMonitoringTimeSinceLastServiced);
-    if (feature(FEATURE_VBAT) && isAmperageConfigured()) {
-        powerMeterUpdate(BatMonitoringTimeSinceLastServiced);
-        sagCompensatedVBatUpdate(currentTimeUs, BatMonitoringTimeSinceLastServiced);
+        taskYield();
     }
-#endif
-    batMonitoringLastServiced = currentTimeUs;
+
+    taskEnd();
 }
 
-void taskUpdateTemperature(timeUs_t currentTimeUs)
+#ifdef USE_BARO
+TASK(taskBaroUpdate)
 {
-    UNUSED(currentTimeUs);
-    temperatureUpdate();
+    taskBegin();
+
+    while(sensors(SENSOR_BARO)) {
+        const timeUs_t newDeadline = baroUpdate();
+        updatePositionEstimator_BaroTopic(currentTimeUs);
+
+        if (newDeadline != 0) {
+            taskDelayUs(newDeadline);
+        }
+        else {
+            taskYield();
+        }
+    }
+
+    taskEnd();
+}
+#endif
+
+TASK(taskBatteryUpdate)
+{
+    taskBegin();
+
+    static schdTimer_t batTimer;
+    taskTimerInit(&batTimer, HZ2US(50));
+
+    while(1) {
+        taskWaitTimer(&batTimer);
+        timeUs_t batDeltaUs = taskTimerGetLastInterval(&batTimer);
+
+        if (isAmperageConfigured()) {
+            currentMeterUpdate(batDeltaUs);
+        }
+
+#ifdef USE_ADC
+        if (feature(FEATURE_VBAT)) {
+            batteryUpdate(batDeltaUs);
+        }
+
+        if (feature(FEATURE_VBAT) && isAmperageConfigured()) {
+            powerMeterUpdate(batDeltaUs);
+            sagCompensatedVBatUpdate(currentTimeUs, batDeltaUs);
+        }
+#endif
+    }
+
+    taskEnd();
+}
+
+TASK(taskUpdateTemp)
+{
+    taskBegin();
+
+    static schdTimer_t tempTimer;
+    taskTimerInit(&tempTimer, HZ2US(100));
+
+    while(1) {
+        taskWaitTimer(&tempTimer);
+        temperatureUpdate();
+    }
+
+    taskEnd();
 }
 
 #ifdef USE_GPS
-void taskProcessGPS(timeUs_t currentTimeUs)
+TASK(taskProcessGPS)
 {
-    // if GPS feature is enabled, gpsThread() will be called at some intervals to check for stuck
-    // hardware, wrong baud rates, init GPS if needed, etc. Don't use SENSOR_GPS here as gpsThread() can and will
-    // change this based on available hardware
-    if (feature(FEATURE_GPS)) {
+    taskBegin();
+
+    static schdTimer_t gpsTimer;
+    taskTimerInit(&gpsTimer, HZ2US(50));
+
+    while(1) {
+        taskWaitTimer(&gpsTimer);
+
         if (gpsUpdate()) {
 #ifdef USE_WIND_ESTIMATOR
             updateWindEstimator(currentTimeUs);
 #endif
         }
+
+        if (sensors(SENSOR_GPS)) {
+            updateGpsIndicator(currentTimeUs);
+        }
     }
 
-    if (sensors(SENSOR_GPS)) {
-        updateGpsIndicator(currentTimeUs);
-    }
+    taskEnd();
 }
 #endif
 
 #ifdef USE_MAG
-void taskUpdateCompass(timeUs_t currentTimeUs)
+TASK(taskUpdateCompass)
 {
-    if (sensors(SENSOR_MAG)) {
+    taskBegin();
+
+    static schdTimer_t magTimer;
+
+    // fixme temporary solution for AK6983 via slave I2C on MPU9250
+    if (detectedSensors[SENSOR_INDEX_MAG] == MAG_MPU9250) {
+        taskTimerInit(&magTimer, HZ2US(40));
+    }
+    else {
+        taskTimerInit(&magTimer, HZ2US(10));
+    }
+
+    while(1) {
+        taskWaitTimer(&magTimer);
         compassUpdate(currentTimeUs);
     }
+
+    taskEnd();
 }
 #endif
 
-#ifdef USE_BARO
-void taskUpdateBaro(timeUs_t currentTimeUs)
-{
-    if (!sensors(SENSOR_BARO)) {
-        return;
-    }
-
-    const uint32_t newDeadline = baroUpdate();
-    if (newDeadline != 0) {
-        rescheduleTask(TASK_SELF, newDeadline);
-    }
-
-    updatePositionEstimator_BaroTopic(currentTimeUs);
-}
-#endif
-
+/*
 #ifdef USE_PITOT
 void taskUpdatePitot(timeUs_t currentTimeUs)
 {
@@ -200,9 +256,7 @@ void taskUpdateRangefinder(timeUs_t currentTimeUs)
         rescheduleTask(TASK_SELF, newDeadline);
     }
 
-    /*
-     * Process raw rangefinder readout
-     */
+    // Process raw rangefinder readout
     if (rangefinderProcess(calculateCosTiltAngle())) {
         updatePositionEstimator_SurfaceTopic(currentTimeUs, rangefinderGetLatestAltitude());
     }
@@ -259,46 +313,73 @@ void taskSyncPwmDriver(timeUs_t currentTimeUs)
     }
 }
 #endif
-
-#ifdef USE_OSD
-void taskUpdateOsd(timeUs_t currentTimeUs)
-{
-    if (feature(FEATURE_OSD)) {
-        osdUpdate(currentTimeUs);
-    }
-}
-#endif
+*/
 
 void fcTasksInit(void)
 {
-    schedulerInit();
+    taskCreate(taskGyro,                    "GYRO",         TASK_PRIORITY_HIGHEST,      NULL);
+    taskCreate(taskAHRS,                    "AHRS",         TASK_PRIORITY_HIGHEST,      NULL);
+    taskCreate(taskMainPidLoop,             "PID",          TASK_PRIORITY_HIGHEST,      NULL);
+    taskCreate(taskHandleSerial,            "SERIAL",       TASK_PRIORITY_LOW,          NULL);
 
-    rescheduleTask(TASK_GYROPID, getLooptime());
-    setTaskEnabled(TASK_GYROPID, true);
-
-    setTaskEnabled(TASK_SERIAL, true);
 #ifdef BEEPER
-    setTaskEnabled(TASK_BEEPER, true);
+    taskCreate(taskBeeper,                  "BEEPER",       TASK_PRIORITY_LOWEST,       NULL);
 #endif
+
+#ifdef USE_SDCARD
+    taskCreate(taskRealtimeSDCard,          "SDCARD",       TASK_PRIORITY_HIGHEST,      NULL);
+#endif
+
+#ifdef USE_DSHOT
+    if (isMotorProtocolDigital()) {
+        taskCreate(taskRealtimeMotorUpdate, "MOTOR/DSHOT",  TASK_PRIORITY_HIGHEST,      NULL);
+    }
+#endif
+
+#ifdef USE_BARO
+    if (sensors(SENSOR_BARO)) {
+        taskCreate(taskBaroUpdate,          "BARO",         TASK_PRIORITY_LOW,          NULL);
+    }
+#endif
+
+    if (feature(FEATURE_VBAT) || isAmperageConfigured()) {
+        taskCreate(taskBatteryUpdate,       "BATTERY",      TASK_PRIORITY_LOW,          NULL);
+    }
+
+    taskCreate(taskUpdateRx,                "RX_UPDATE",    TASK_PRIORITY_MEDIUM,       NULL);
+    taskCreate(taskProcessRx,               "RX_PROCESS",   TASK_PRIORITY_LOW,          NULL);
+
+    taskCreate(taskUpdateTemp,              "TEMPERATURE",  TASK_PRIORITY_LOW,          NULL);
+
+#ifdef USE_GPS
+    if (feature(FEATURE_GPS)) {
+        taskCreate(taskProcessGPS,          "GPS",          TASK_PRIORITY_MEDIUM,       NULL);
+    }
+#endif
+
+#ifdef USE_MAG
+    if (sensors(SENSOR_MAG)) {
+        taskCreate(taskUpdateCompass,       "COMPASS",      TASK_PRIORITY_MEDIUM,       NULL);
+    }
+#endif
+
+#ifdef USE_OSD
+    if (feature(FEATURE_OSD) && (osdGetDisplayPort() != NULL)) {
+        taskCreate(taskUpdateOsd,           "OSD",          TASK_PRIORITY_LOW,          NULL);
+    }
+#endif
+
+
 #ifdef USE_LIGHTS
+    taskCreate(taskLights,                  "LIGHTS",       TASK_PRIORITY_LOW,          NULL);
+    lightsUpdate
     setTaskEnabled(TASK_LIGHTS, true);
 #endif
-    setTaskEnabled(TASK_BATTERY, feature(FEATURE_VBAT) || isAmperageConfigured());
-    setTaskEnabled(TASK_TEMPERATURE, true);
-    setTaskEnabled(TASK_RX, true);
-#ifdef USE_GPS
-    setTaskEnabled(TASK_GPS, feature(FEATURE_GPS));
-#endif
-#ifdef USE_MAG
-    setTaskEnabled(TASK_COMPASS, sensors(SENSOR_MAG));
-#if defined(USE_MAG_MPU9250)
-    // fixme temporary solution for AK6983 via slave I2C on MPU9250
-    rescheduleTask(TASK_COMPASS, TASK_PERIOD_HZ(40));
-#endif
-#endif
-#ifdef USE_BARO
-    setTaskEnabled(TASK_BARO, sensors(SENSOR_BARO));
-#endif
+}
+
+/*
+void fcTasksInit(void)
+{
 #ifdef USE_PITOT
     setTaskEnabled(TASK_PITOT, sensors(SENSOR_PITOT));
 #endif
@@ -387,46 +468,6 @@ cfTask_t cfTasks[TASK_COUNT] = {
     },
 #endif
 
-    [TASK_BATTERY] = {
-        .taskName = "BATTERY",
-        .taskFunc = taskUpdateBattery,
-        .desiredPeriod = TASK_PERIOD_HZ(50),      // 50 Hz
-        .staticPriority = TASK_PRIORITY_MEDIUM,
-    },
-
-    [TASK_TEMPERATURE] = {
-        .taskName = "TEMPERATURE",
-        .taskFunc = taskUpdateTemperature,
-        .desiredPeriod = TASK_PERIOD_HZ(100),     // 100 Hz
-        .staticPriority = TASK_PRIORITY_LOW,
-    },
-
-    [TASK_RX] = {
-        .taskName = "RX",
-        .checkFunc = taskUpdateRxCheck,
-        .taskFunc = taskUpdateRxMain,
-        .desiredPeriod = TASK_PERIOD_HZ(50),      // If event-based scheduling doesn't work, fallback to periodic scheduling
-        .staticPriority = TASK_PRIORITY_HIGH,
-    },
-
-#ifdef USE_GPS
-    [TASK_GPS] = {
-        .taskName = "GPS",
-        .taskFunc = taskProcessGPS,
-        .desiredPeriod = TASK_PERIOD_HZ(50),      // GPS usually don't go raster than 10Hz
-        .staticPriority = TASK_PRIORITY_MEDIUM,
-    },
-#endif
-
-#ifdef USE_MAG
-    [TASK_COMPASS] = {
-        .taskName = "COMPASS",
-        .taskFunc = taskUpdateCompass,
-        .desiredPeriod = TASK_PERIOD_HZ(10),      // Compass is updated at 10 Hz
-        .staticPriority = TASK_PRIORITY_MEDIUM,
-    },
-#endif
-
 #ifdef USE_BARO
     [TASK_BARO] = {
         .taskName = "BARO",
@@ -499,15 +540,6 @@ cfTask_t cfTasks[TASK_COUNT] = {
     },
 #endif
 
-#ifdef USE_OSD
-    [TASK_OSD] = {
-        .taskName = "OSD",
-        .taskFunc = taskUpdateOsd,
-        .desiredPeriod = TASK_PERIOD_HZ(250),
-        .staticPriority = TASK_PRIORITY_LOW,
-    },
-#endif
-
 #ifdef USE_CMS
     [TASK_CMS] = {
         .taskName = "CMS",
@@ -577,3 +609,4 @@ cfTask_t cfTasks[TASK_COUNT] = {
     },
 #endif
 };
+*/

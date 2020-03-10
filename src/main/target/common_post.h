@@ -35,9 +35,11 @@
 #define USE_CANVAS
 #endif
 
+/*
 #ifdef USE_ESC_SENSOR
     #define USE_RPM_FILTER
 #endif
+*/
 
 #ifdef USE_ITCM_RAM
 #define FAST_CODE                   __attribute__((section(".tcm_code")))

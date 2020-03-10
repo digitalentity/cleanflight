@@ -20,12 +20,15 @@
 #include <stdint.h>
 
 #include "common/time.h"
+#include "scheduler/scheduler.h"
 
-void taskMainPidLoopChecker(timeUs_t currentTimeUs);
-bool taskUpdateRxCheck(timeUs_t currentTimeUs, timeDelta_t currentDeltaTime);
-void taskUpdateRxMain(timeUs_t currentTimeUs);
-
-void taskMainPidLoop(timeUs_t currentTimeUs);
-void taskGyro(timeUs_t currentTimeUs);
+TASK(taskRealtimeSDCard);
+TASK(taskRealtimeMotorUpdate);
+TASK(taskMainPidLoop);
+TASK(taskGyro);
+TASK(taskAHRS);
+TASK(taskBeeper);
+TASK(taskUpdateRx);
+TASK(taskProcessRx);
 
 void fcTasksInit(void);

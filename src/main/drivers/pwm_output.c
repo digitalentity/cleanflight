@@ -42,6 +42,9 @@
 #include "fc/config.h"
 #include "fc/runtime_config.h"
 
+#include "scheduler/scheduler.h"
+
+
 #define MULTISHOT_5US_PW    (MULTISHOT_TIMER_HZ * 5 / 1000000.0f)
 #define MULTISHOT_20US_MULT (MULTISHOT_TIMER_HZ * 20 / 1000000.0f / 1000.0f)
 
@@ -94,7 +97,6 @@ static pwmWriteFuncPtr         servoWritePtr = NULL;    // Function to write val
 
 #if defined(USE_DSHOT) || defined(USE_SERIALSHOT)
 static timeUs_t digitalMotorUpdateIntervalUs = 0;
-static timeUs_t digitalMotorLastUpdateUs;
 #endif
 
 #ifdef BEEPER_PWM
@@ -296,7 +298,6 @@ static uint16_t prepareDshotPacket(const uint16_t value, bool requestTelemetry)
 static void motorConfigDigitalUpdateInterval(uint16_t motorPwmRateHz)
 {
     digitalMotorUpdateIntervalUs = 1000000 / motorPwmRateHz;
-    digitalMotorLastUpdateUs = 0;
 }
 
 static void pwmWriteDigital(uint8_t index, uint16_t value)
@@ -333,26 +334,9 @@ void pwmRequestMotorTelemetry(int motorIndex)
     }
 }
 
-void pwmCompleteMotorUpdate(void)
+static void pwmCompleteDigitalMotorUpdate(void)
 {
-    // This only makes sense for digital motor protocols
-    if (!isMotorProtocolDigital()) {
-        return;
-    }
-
     int motorCount = getMotorCount();
-    timeUs_t currentTimeUs = micros();
-
-#ifdef USE_ESC_SENSOR
-    escSensorUpdate(currentTimeUs);
-#endif
-
-    // Enforce motor update rate
-    if ((digitalMotorUpdateIntervalUs == 0) || ((currentTimeUs - digitalMotorLastUpdateUs) <= digitalMotorUpdateIntervalUs)) {
-        return;
-    }
-
-    digitalMotorLastUpdateUs = currentTimeUs;
 
 #ifdef USE_DSHOT
     if (isMotorProtocolDshot()) {
@@ -384,6 +368,29 @@ void pwmCompleteMotorUpdate(void)
         serialshotSendUpdate();
     }
 #endif
+}
+
+// This is a DSHOT update task, driven by scheduler
+TASK(taskRealtimeMotorUpdate)
+{
+    taskBegin();
+
+    // This only makes sense for digital motor protocols
+    if (isMotorProtocolDigital() && (digitalMotorUpdateIntervalUs != 0)) {
+        static schdTimer_t motorTimer;
+        taskTimerInit(&motorTimer, digitalMotorUpdateIntervalUs);
+
+        while(1) {
+            taskWaitTimer(&motorTimer);
+
+#ifdef USE_ESC_SENSOR
+            escSensorUpdate(currentTimeUs);
+#endif
+            pwmCompleteDigitalMotorUpdate();
+        }
+    }
+
+    taskEnd();
 }
 #endif
 
