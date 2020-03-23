@@ -1489,6 +1489,9 @@ groups:
       - name: nav_rth_home_altitude
         field: general.rth_home_altitude
         max: 65000
+      - name: nav_rth_home_wait
+        field: general.rth_home_wait
+        max: 65000
       - name: nav_rth_home_offset_distance
         field: general.rth_home_offset_distance
         max: 65000

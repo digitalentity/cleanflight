@@ -200,6 +200,7 @@ A shorter form is also supported to enable and disable functions using `serial <
 |  nav_rth_alt_mode  | AT_LEAST | Configure how the aircraft will manage altitude on the way home, see Navigation modes on wiki for more details |
 |  nav_rth_altitude  | 1000 | Used in EXTRA, FIXED and AT_LEAST rth alt modes [cm] (Default 1000 means 10 meters) |
 |  nav_rth_home_altitude  | 0 | Aircraft will climb/descend to this altitude after reaching home if landing is not enabled. Set to 0 to stay at `nav_rth_altitude` (default) [cm] |
+|  nav_rth_home_wait  | 0 | Aircraft will wait after reaching home and at this same time climb/descend to nav_rth_home_altitude (if enabled) and then landing (if enabled). Set to 0 to disabled (default) [s] |
 |  nav_rth_abort_threshold  | 50000 | RTH sanity checking feature will notice if distance to home is increasing during RTH and once amount of increase exceeds the threshold defined by this parameter, instead of continuing RTH machine will enter emergency landing, self-level and go down safely. Default is 500m which is safe enough for both multirotor machines and airplanes. [cm] |
 |  nav_rth_home_offset_distance  | 0 | Distance offset from GPS established home to "safe" position used for RTH (cm, 0 disables) |
 |  nav_rth_home_offset_direction | 0 | Direction offset from GPS established home to "safe" position used for RTH (degrees, 0=N, 90=E, 180=S, 270=W, requires non-zero offset distance) |
