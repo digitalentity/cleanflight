@@ -166,7 +166,7 @@ static bool deviceDetect(busDevice_t * busDev)
 
         bool ack = busRead(busDev, BMP280_CHIP_ID_REG, &chipId);
 
-        if (ack && chipId == BMP280_DEFAULT_CHIP_ID) {
+        if (ack && (chipId == BMP280_DEFAULT_CHIP_ID || chipId == BME280_DEFAULT_CHIP_ID)) {
             return true;
         }
     };
