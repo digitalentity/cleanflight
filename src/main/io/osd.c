@@ -72,6 +72,7 @@ FILE_COMPILE_FOR_SPEED
 #include "io/vtx.h"
 #include "io/vtx_string.h"
 
+#include "fc/cli.h"
 #include "fc/config.h"
 #include "fc/controlrate_profile.h"
 #include "fc/fc_core.h"
@@ -1259,6 +1260,19 @@ static void osdDisplayAdjustableDecimalValue(uint8_t elemPosX, uint8_t elemPosY,
     if (isAdjustmentFunctionSelected(adjFunc))
         TEXT_ATTRIBUTES_ADD_BLINK(elemAttr);
     displayWriteWithAttr(osdDisplayPort, elemPosX + strlen(str) + 1 + valueOffset, elemPosY, buff, elemAttr);
+}
+
+// Get field size required to display all values between minimum and maximum with ndecs decimal places
+size_t osdGetFieldSize(int minimum, int maximum, int ndecs)
+{
+	char buf[32];
+  size_t fsize;
+	int limiter=MAX(ABS(maximum),ABS(minimum));
+	tfp_sprintf(buf, "%d", limiter);
+	fsize = strlen(buf);
+	if (minimum < 0 || maximum < 0)fsize++;      // Space for possible minus sign
+	if (ndecs > 0)fsize += ndecs + 1;            // Space for decimals
+	return fsize;
 }
 
 static bool osdDrawSingleElement(uint8_t item)
@@ -2489,6 +2503,93 @@ static bool osdDrawSingleElement(uint8_t item)
         }
 #endif
 
+    case OSD_RC_CHAN_0:
+    {
+      FALLTHROUGH;
+    }
+    case OSD_RC_CHAN_1:
+    {
+      FALLTHROUGH;
+    }
+    case OSD_RC_CHAN_2:
+    {
+      FALLTHROUGH;
+    }
+    case OSD_RC_CHAN_3:
+    {
+      int16_t slot=item-OSD_RC_CHAN_0;
+      int16_t channel=osdConfig()->rc_chan[slot].channel;
+
+      // If channel has been specified then get info, convert and display
+      if(channel>0){
+
+        int16_t rcval=rxGetChannelValue(channel-1);      // Get value of required channel.
+
+        float fraction = ((float)rcval - PWM_RANGE_MIN) / (PWM_RANGE_MAX-PWM_RANGE_MIN);                    // convert to user value
+
+        int16_t minimum=osdConfig()->rc_chan[slot].minimum;
+        int16_t maximum=osdConfig()->rc_chan[slot].maximum;
+        int8_t decimals=osdConfig()->rc_chan[slot].decimals;
+
+        char prefix[4];
+        strncpy(prefix,osdConfig()->rc_chan[slot].prefix,4);
+        char postfix[4];
+        strncpy(postfix,osdConfig()->rc_chan[slot].postfix,4);
+
+        float userval = (float)minimum + (float)(maximum-minimum) * fraction;
+
+        // Find size required to display this field  by checking max and min
+        size_t fsize=osdGetFieldSize(minimum, maximum, decimals);
+
+        // Convert float to string
+        char buf0[30];
+        ftoa_decs(userval, buf0,decimals);
+
+        // We need to pad this string with spaces for justification
+        // Construct buffer with correct number of spaces
+
+        size_t npad = fsize - strlen(buf0);
+        sl_rightShift(buf0,npad,' ');
+        //size_t npad = fsize - strlen(buf0);
+        //if(npad>19)npad=19;
+
+        //char pad[20];
+        //pad[0] = '\0';
+        //for (size_t i = 0; i < npad; i++)strcat(pad, " ");
+
+        // If prefix or postfix are integers then assume they are character symbols
+        if(isInteger(prefix))
+        {
+          unsigned symbol;
+          symbol=fastA2I(prefix);
+          prefix[0]=symbol;
+          prefix[1]='\0';
+        }
+
+        if(isInteger(postfix))
+        {
+          unsigned symbol;
+          symbol=fastA2I(postfix);
+          postfix[0]=symbol;
+          postfix[1]='\0';
+        }
+
+        // And generate output string
+        tfp_sprintf(buff, "%s%s%s", prefix,buf0,postfix);
+
+        // Add Blink if required
+        if((userval < (float)osdConfig()->rc_chan[slot].minAlarm && osdConfig()->rc_chan[slot].minAlarm !=0) ||
+           (userval > (float)osdConfig()->rc_chan[slot].maxAlarm && osdConfig()->rc_chan[slot].maxAlarm !=0)){
+            TEXT_ATTRIBUTES_ADD_BLINK(elemAttr);
+        }
+
+      }else{
+        // If channel is zero then we print NC (Not Configured)
+        tfp_sprintf(buff,"%s","NC");
+      }
+      break;
+    }
+
     default:
         return false;
     }
@@ -2768,6 +2869,8 @@ void pgResetFn_osdConfig(osdConfig_t *osdConfig)
     osdConfig->estimations_wind_compensation = true;
     osdConfig->coordinate_digits = 9;
 
+    for(int ii=0;ii<OSD_RCCHAN_COUNT;ii++) OsdChan_Reset(&osdConfig->rc_chan[ii]);
+    
     osdConfig->osd_failsafe_switch_layout = false;
 
     osdConfig->plus_code_digits = 11;

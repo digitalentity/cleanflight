@@ -19,6 +19,7 @@
 
 #include "string_light.h"
 #include "typeconversion.h"
+#include <string.h>
 
 int sl_isalnum(int c)
 {
@@ -71,4 +72,19 @@ int sl_strncasecmp(const char * s1, const char * s2, int n)
     }
 
     return d;
+}
+
+// Shift string by nplaces to the right. Space is filled with char nchar
+// Make sure outBuf has space for the output!
+void sl_rightShift(char * buffer,int nplaces,char nchar)
+{
+	if (nplaces <= 0)return;
+
+	int len = strlen(buffer);
+	for(int ii=len-1;ii>=0;ii--)
+	{
+		buffer[ii + nplaces] = buffer[ii];
+	}
+	for (int ii = 0; ii < nplaces; ii++)buffer[ii] = nchar;
+	buffer[len + nplaces] = '\0';
 }

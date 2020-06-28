@@ -26,3 +26,5 @@ int sl_toupper(int c);
 
 int sl_strcasecmp(const char * s1, const char * s2);
 int sl_strncasecmp(const char * s1, const char * s2, int n);
+
+void sl_rightShift(char * buffer,int nplaces,char nchar);

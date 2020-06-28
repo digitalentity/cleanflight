@@ -18,6 +18,8 @@
 #include <string.h>
 #include <math.h>
 #include "build/build_config.h"
+#include "printf.h"
+#include "common/string_light.h"
 
 #include "maths.h"
 #include "platform.h"
@@ -329,4 +331,76 @@ int fastA2I(const char *s)
     }
 
     return sign * num;
+}
+
+// Converts floating point value to string with a specified number of decimal places.
+// Decimal places to be between 0 and 4
+// lenstring is the size of field
+// ndecs is number of decimal places required
+// Convert float to character with fixed ndecs decimal places
+// Make sure outBuf has space for the output!
+void ftoa_decs(float x, char *outBuf,int ndecs)
+{
+	//limit decimal places to 4
+	int8_t ldecs = ndecs;
+	if (ldecs > 4)ldecs = 4;
+	if (ldecs < 0)ldecs = 0;
+
+	// Calculate exponent for rounding
+	int tdecs = ldecs;
+	int32_t exp = 1;
+	while (tdecs) { exp *= 10; tdecs--; }
+
+	// Remove sign
+	char csign[2];
+	if (x < 0) { x *= -1; strcpy(csign, "-"); }
+	else {csign[0] = '\0';}
+
+	// Rounding
+	long rr = round((double)x*(double)exp);
+
+	// Convert to string
+	char buf[30];
+	itoa(rr, buf,10);
+	int len = strlen(buf);
+
+	// Make sure we have enough characters in outbuf - need at least cndecs+1 being ndecs plus integer part.
+	// If the integer part is zero then we need to add 0s at the beginning
+
+	sl_rightShift(buf, ldecs - len + 1, '0');
+
+	len = strlen(buf);
+
+	// Find the address where the decimal point should go
+	char * dpoint = buf +len-ldecs;
+
+	// Copy data to fraction buffer and terminate it
+	char frac[10];
+	strncpy(frac, dpoint, ldecs);
+	frac[ldecs] = '\0';
+
+	// Now terminate the outBuf at the decimal point.
+	dpoint[0] = '\0';
+
+	if (ldecs == 0)tfp_sprintf(outBuf, "%s%s", csign,buf);
+	else tfp_sprintf(outBuf, "%s%s%s%s", csign,buf, ".", frac);
+
+}
+
+
+
+int isInteger(const char *s)
+{
+	int ind = 0;
+	while (*s) {
+		if (ind == 0 && *s == '-')
+		{
+			s++;
+			continue;
+		}
+		if (sl_isdigit(*s++) == 0) return 0;
+		ind++;
+	}
+
+	return 1;
 }

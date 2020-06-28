@@ -28,7 +28,8 @@ char *ftoa(float x, char *floatString);
 float fastA2F(const char *p);
 unsigned long int fastA2UL(const char *p);
 int fastA2I(const char *s);
-
+void ftoa_decs(float x, char *outBuf, int ndecs);
+int isInteger(const char *s);
 #ifndef HAVE_ITOA_FUNCTION
 char *itoa(int i, char *a, int r);
 #endif

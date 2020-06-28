@@ -2339,6 +2339,247 @@ static void cliOsdLayout(char *cmdline)
     }
 }
 
+// Reset to defaults
+void OsdChan_Reset(osdRCChan_t * rcchan)
+{
+  rcchan->channel = 0;
+  rcchan->minimum = PWM_RANGE_MIN;
+  rcchan->maximum = PWM_RANGE_MAX;
+  rcchan->decimals = 0;
+  rcchan->minAlarm=0;
+  rcchan->maxAlarm=0;
+  rcchan->prefix[0]='\0';
+  rcchan->postfix[0]='\0';
+}
+
+bool OSDChan_Compare(const osdRCChan_t *rcchan1, const osdRCChan_t *rcchan2)
+{
+	bool OK;
+	OK = (
+          rcchan1->channel == rcchan2->channel &&
+          rcchan1->minimum == rcchan2->minimum &&
+          rcchan1->maximum == rcchan2->maximum &&
+          rcchan1->decimals == rcchan2->decimals &&
+          rcchan1->minAlarm == rcchan2->minAlarm &&
+          rcchan1->maxAlarm == rcchan2->maxAlarm &&
+          strcmp(rcchan1->prefix,rcchan2->prefix)==0 &&
+          strcmp(rcchan1->postfix,rcchan2->postfix)==0);
+	return OK;
+}
+
+static void printOsdChan(uint8_t dumpMask, const osdConfig_t *osdConfig, const osdConfig_t *osdConfigDefault, int index)
+{
+
+  // index chan scale offset Ndecimals prefix postfix
+  // If index is -1 we print all osdchans - otherwise only print index
+
+    const char *format = "osd_rcchan %d %d %d %d %d %d %d %s %s";
+
+    for (int ii = 0; ii < OSD_RCCHAN_COUNT; ii++) {
+
+        if (index != -1 && index != ii) {
+           continue;
+        }
+
+        bool equalsDefault=OSDChan_Compare(&osdConfig->rc_chan[ii],&osdConfigDefault->rc_chan[ii]);
+
+        cliDefaultPrintLinef(dumpMask, equalsDefault, format,
+                ii,
+                osdConfigDefault->rc_chan[ii].channel,
+                osdConfigDefault->rc_chan[ii].minimum,
+                osdConfigDefault->rc_chan[ii].maximum,
+                osdConfigDefault->rc_chan[ii].decimals,
+                osdConfigDefault->rc_chan[ii].minAlarm,
+                osdConfigDefault->rc_chan[ii].maxAlarm,
+                osdConfigDefault->rc_chan[ii].prefix,
+                osdConfigDefault->rc_chan[ii].postfix);
+
+        cliDumpPrintLinef(dumpMask, equalsDefault, format,
+                ii,
+                osdConfig->rc_chan[ii].channel,
+                osdConfig->rc_chan[ii].minimum,
+                osdConfig->rc_chan[ii].maximum,
+                osdConfig->rc_chan[ii].decimals,
+                osdConfig->rc_chan[ii].minAlarm,
+                osdConfig->rc_chan[ii].maxAlarm,
+                osdConfig->rc_chan[ii].prefix,
+                osdConfig->rc_chan[ii].postfix);
+    }
+}
+
+
+static void cliOsdChannel(char *cmdline)
+{
+  char * saveptr;
+
+// define structure to hold previous config values
+  osdRCChan_t rcchan_Revised;
+  int16_t index;
+
+  char *tok = strtok_r(cmdline, " ", &saveptr);
+
+  int ii;
+  for (ii = 0; tok != NULL; ii++, tok = strtok_r(NULL, " ", &saveptr)) {
+
+  // All parameters should be positive integers
+  // Check here for integer - because fastA2I returns 0 for non integer strings
+
+    if (ii<7 && !isInteger(tok))
+    {
+      cliShowParseError();
+      return;
+    }
+
+    switch (ii) {
+
+      // Index
+      case 0:
+        index = fastA2I(tok);
+        if (index < 0 || index > OSD_RCCHAN_COUNT-1) {
+          cliShowParseError();
+          return;
+        }
+        // save previous values for this index
+        rcchan_Revised=osdConfig()->rc_chan[index];
+        break;
+
+      //Channel
+      case 1:;
+        int8_t channel = fastA2I(tok);
+        if (channel < 0 || channel > 16) {
+          cliShowParseError();
+          return;
+        }
+        // If channel is zero then we reset defaults
+        if(channel==0){
+            OsdChan_Reset(&osdConfigMutable()->rc_chan[index]);
+            printOsdChan(DUMP_MASTER,osdConfig(),osdConfig(),index);
+            return;
+        }
+        rcchan_Revised.channel=channel;
+        break;
+
+      // Minimum
+      case 2:;
+        int16_t minimum = fastA2I(tok);
+        if (minimum < -5000 || minimum > 5000) {
+          cliShowParseError();
+          return;
+        }
+        rcchan_Revised.minimum=minimum;
+        break;
+
+      //Maximum
+      case 3:;
+        int16_t maximum = fastA2I(tok);
+        if (maximum < -5000 || maximum > 5000) {
+          cliShowParseError();
+          return;
+        }
+        rcchan_Revised.maximum=maximum;
+        break;
+
+      //Decimals
+      case 4:;
+        int8_t decimals = fastA2I(tok);
+        if (decimals < 0 || decimals > 4 ){
+          cliShowParseError();
+          return;
+        }
+        rcchan_Revised.decimals=decimals;
+        break;
+
+      //minAlarm
+      case 5:;
+        int16_t minAlarm = fastA2I(tok);
+        // limit alarm to active range
+        if (minAlarm!=0 && (minAlarm < rcchan_Revised.minimum || minAlarm > rcchan_Revised.maximum)) {
+          cliShowParseError();
+          return;
+        }
+        rcchan_Revised.minAlarm=minAlarm;
+        break;
+
+      //maxAlarm
+      case 6:;
+        int16_t maxAlarm = fastA2I(tok);
+        // Limit alarm to active range
+        if (maxAlarm!=0 && (maxAlarm < rcchan_Revised.minimum || maxAlarm > rcchan_Revised.maximum)) {
+          cliShowParseError();
+          return;
+        }
+        rcchan_Revised.maxAlarm=maxAlarm;
+        break;
+
+      //Prefix
+      case 7:
+        if(strlen(tok)>3) {
+          cliShowParseError();
+          return;
+        }
+        strncpy(rcchan_Revised.prefix,tok,4);
+        break;
+
+      //Postfix
+      case 8:
+        if(strlen(tok)>3) {
+          cliShowParseError();
+          return;
+        }
+        strncpy(rcchan_Revised.postfix,tok,4);
+        break;
+
+      default:
+        cliShowParseError();
+        return;
+      }
+    }
+
+    switch (ii) {
+      case 0:
+
+  // No args provided - print all OSDRCChans
+        printOsdChan(DUMP_MASTER,osdConfig(),osdConfig(),-1);
+        break;
+      case 1:
+
+  // One arg provided - print requested OSCRCChan
+        printOsdChan(DUMP_MASTER,osdConfig(),osdConfig(),index);
+        break;
+
+  // Otherwise we set the parameters using default as appropriate
+    case 2:
+      FALLTHROUGH;
+    case 3:
+      FALLTHROUGH;
+    case 4:
+      FALLTHROUGH;
+    case 5:
+      FALLTHROUGH;
+    case 6:
+      FALLTHROUGH;
+    case 7:
+      FALLTHROUGH;
+    case 8:
+      FALLTHROUGH;
+    case 9:
+  // Save the parameters
+      if(rcchan_Revised.minimum==rcchan_Revised.maximum)
+      {
+        cliShowParseError();
+        return;
+      }
+      osdConfigMutable()->rc_chan[index]=rcchan_Revised;
+
+      printOsdChan(DUMP_MASTER,osdConfig(),osdConfig(),index);
+      break;
+
+    default:
+  // Unhandled
+      cliShowParseError();
+    }
+}
+
 #endif
 
 static void printFeature(uint8_t dumpMask, const featureConfig_t *featureConfig, const featureConfig_t *featureConfigDefault)
@@ -3381,6 +3622,9 @@ static void printConfig(const char *cmdline, bool doDiff)
 #ifdef USE_OSD
         cliPrintHashLine("osd_layout");
         printOsdLayout(dumpMask, &osdConfig_Copy, osdConfig(), -1, -1);
+
+        cliPrintHashLine("osd_rcchan");
+        printOsdChan(dumpMask,&osdConfig_Copy,osdConfig(),-1);
 #endif
 
         cliPrintHashLine("master");
@@ -3610,6 +3854,7 @@ const clicmd_t cmdTable[] = {
 #endif
 #ifdef USE_OSD
     CLI_COMMAND_DEF("osd_layout", "get or set the layout of OSD items", "[<layout> [<item> [<col> <row> [<visible>]]]]", cliOsdLayout),
+    CLI_COMMAND_DEF("osd_rcchan", "get or set the channels for OSD display", "[<index> [<channel> <minimum> <maximum> <decimals> <minAlarm> <maxAlarm> <prefix> <postfix>]]", cliOsdChannel),
 #endif
 };
 

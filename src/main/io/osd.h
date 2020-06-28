@@ -152,6 +152,12 @@ typedef enum {
     OSD_VTX_POWER,
     OSD_ESC_RPM,
     OSD_ESC_TEMPERATURE,
+
+    OSD_RC_CHAN_0,
+    OSD_RC_CHAN_1,
+    OSD_RC_CHAN_2,
+    OSD_RC_CHAN_3,
+
     OSD_ITEM_COUNT // MUST BE LAST
 } osd_items_e;
 
@@ -192,6 +198,23 @@ typedef enum {
     OSD_AHI_STYLE_DEFAULT,
     OSD_AHI_STYLE_LINE,
 } osd_ahi_style_e;
+
+// Declarations for osdRCChan
+// if OSD_RCCHAN_COUNT is changed, changes in osd.c will also be required
+
+#define OSD_RCCHAN_COUNT 4    // The number of RCChannels available for display
+
+typedef struct osdRCChan_s {
+    int8_t channel;       // The rc channel to be displayed
+    int16_t minimum;      // The value to be displayed at receiver=1000
+    int16_t maximum;      // The value to be displayed at receiver=2000
+    int8_t decimals;      // The number of decimals to be displayed
+    int16_t minAlarm;     // Values below this limit will blink
+    int16_t maxAlarm;     // Values above this value will blink
+    char prefix[4];       // Prefix -  Max 3 characters. If integer then assume symbol
+    char postfix[4];      // Postfix - Max 3 characters. If integer then assume symbol
+} osdRCChan_t;
+
 
 typedef struct osdConfig_s {
     // Layouts
@@ -239,8 +262,9 @@ typedef struct osdConfig_s {
     uint16_t hud_radar_range_min;
     uint16_t hud_radar_range_max;
     uint16_t hud_radar_nearest;
+
     uint8_t hud_wp_disp;
-    
+ 
     uint8_t left_sidebar_scroll; // from osd_sidebar_scroll_e
     uint8_t right_sidebar_scroll; // from osd_sidebar_scroll_e
     uint8_t sidebar_scroll_arrows;
@@ -251,9 +275,13 @@ typedef struct osdConfig_s {
     bool    estimations_wind_compensation; // use wind compensation for estimated remaining flight/distance
     uint8_t coordinate_digits;
 
+    osdRCChan_t rc_chan[OSD_RCCHAN_COUNT];
+
     bool osd_failsafe_switch_layout;
     uint8_t plus_code_digits; // Number of digits to use in OSD_PLUS_CODE
+
     uint8_t osd_ahi_style;
+
 } osdConfig_t;
 
 PG_DECLARE(osdConfig_t, osdConfig);
@@ -285,5 +313,6 @@ void osdCrosshairPosition(uint8_t *x, uint8_t *y);
 bool osdFormatCentiNumber(char *buff, int32_t centivalue, uint32_t scale, int maxDecimals, int maxScaledDecimals, int length);
 void osdFormatAltitudeSymbol(char *buff, int32_t alt);
 void osdFormatVelocityStr(char* buff, int32_t vel, bool _3D);
+
 // Returns a heading angle in degrees normalized to [0, 360).
 int osdGetHeadingAngle(int angle);
