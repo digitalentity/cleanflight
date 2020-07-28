@@ -94,6 +94,8 @@ FASTRAM float rMat[3][3];
 STATIC_FASTRAM imuRuntimeConfig_t imuRuntimeConfig;
 STATIC_FASTRAM pt1Filter_t rotRateFilter;
 
+/* Feedback from GPS */
+STATIC_FASTRAM bool gpsNewDataAvailable;
 STATIC_FASTRAM bool gpsHeadingInitialized;
 
 PG_REGISTER_WITH_RESET_TEMPLATE(imuConfig_t, imuConfig, PG_IMU_CONFIG, 2);
@@ -107,6 +109,11 @@ PG_RESET_TEMPLATE(imuConfig_t, imuConfig,
     .acc_ignore_rate = 0,
     .acc_ignore_slope = 0
 );
+
+void gpsNotifyNewData_IMU(void)
+{
+    gpsNewDataAvailable = true;
+}
 
 STATIC_UNIT_TESTED void imuComputeRotationMatrix(void)
 {
@@ -291,7 +298,7 @@ static void imuCheckAndResetOrientationQuaternion(const fpQuaternion_t * quat, c
 #endif
 }
 
-static void imuMahonyAHRSupdate(float dt, const fpVector3_t * gyroBF, const fpVector3_t * accBF, const fpVector3_t * magBF, bool useCOG, float courseOverGround, float accWScaler, float magWScaler)
+static void imuMahonyAHRSupdate(float dt, const fpVector3_t * gyroBF, const fpVector3_t * accBF, const fpVector3_t * magBF, bool useCOG, float courseOverGround, float accWScaler, float magWScaler, const fpVector3_t * velEF, bool velEFNew)
 {
     STATIC_FASTRAM fpVector3_t vGyroDriftEstimate = { 0 };
 
@@ -386,14 +393,96 @@ static void imuMahonyAHRSupdate(float dt, const fpVector3_t * gyroBF, const fpVe
     /* Step 2: Roll and pitch correction -  use measured acceleration vector */
     if (accBF) {
         static const fpVector3_t vGravity = { .v = { 0.0f, 0.0f, 1.0f } };
-        fpVector3_t vEstGravity, vAcc, vErr;
 
-        // Calculate estimated gravity vector in body frame
-        quaternionRotateVector(&vEstGravity, &vGravity, &orientation);    // EF -> BF
+        static bool         vVelEF_initialized;
+        static fpVector3_t  vVelEF_prev;
+        static fpVector3_t  vVelEF_AccIntegal;      // Integrated accelerometer value in EF
+        static float        vVelEF_integralTime;
+        static fpVector3_t  vVelEF_errorVector;
 
-        // Error is sum of cross product between estimated direction and measured direction of gravity
-        vectorNormalize(&vAcc, accBF);
-        vectorCrossProduct(&vErr, &vAcc, &vEstGravity);
+        fpVector3_t         vErr;
+
+        if (velEF && vVelEF_initialized) {
+            // We have valid velocity from GPS, use that to calculate correction vector
+            fpVector3_t vAccEF;
+
+            // Rotate ACC from BF to EF and accumulate
+            quaternionRotateVectorInv(&vAccEF, accBF, &orientation);
+            vectorScale(&vAccEF, &vAccEF, dt);
+            vectorAdd(&vVelEF_AccIntegal, &vVelEF_AccIntegal, &vAccEF);
+            vVelEF_integralTime += dt;
+
+            // Now if we got a GPS update we can calculate error vector according to
+            // the paper by Bill Premerlani (Roll-Pitch Gyro Drift Compensation)
+            if (velEFNew) {
+                fpVector3_t vTmp1, vTmp2, vGravityCMSS;
+
+                // Calculate (V2 - V1) / (T2 - T1)
+                // Here T2-T1 = vVelEF_integralTime (accumulated time between two GPS updates, also time window we used to integrate accelerometer)
+                vectorSub(&vTmp1, velEF, &vVelEF_prev);
+                vectorScale(&vTmp1, &vTmp1, 1.0f / vVelEF_integralTime);
+
+                // Calculate Ge - (V2 - V1) / (T2 - T1)
+                // Scale G vector to CMSS first, to match vVelEF units
+                vectorScale(&vGravityCMSS, &vGravity, GRAVITY_CMSS);
+                vectorSub(&vTmp1, &vGravityCMSS, &vTmp1);
+
+                if (sqrtf(vectorNormSquared(&vTmp1)) > 0.01f) {
+                    // Calculate acceleration by taking a derivative of acceleration integral
+                    // This effectively calculates average acceleration, but in a way that's more immune to jitter
+                    vectorScale(&vTmp2, &vVelEF_AccIntegal, 1.0f / vVelEF_integralTime);
+
+                    // At this point:
+                    //   vTmp1 - average G-A vector in Earth frame as seen by the accelerometer
+                    //   vTmp2 - average G-A in Earth frame as seen by GPS
+
+                    // For computing attitude we care only about direction of actual and measured gravity so we normalize both
+                    vectorNormalize(&vTmp1, &vTmp1);
+                    vectorNormalize(&vTmp2, &vTmp2);
+
+                    // Calculate cross product between accelerometer and VelEF/dT
+                    vectorCrossProduct(&vVelEF_errorVector, &vTmp2, &vTmp1);
+
+                    // Rotate error vector back to body frame
+                    quaternionRotateVector(&vVelEF_errorVector, &vVelEF_errorVector, &orientation);
+                }
+                else {
+                    // Free fall. No way of figuring reference vector - keep error at zero
+                    vectorZero(&vVelEF_errorVector);
+                }
+
+                // Get ready for next GPS update
+                vectorZero(&vVelEF_AccIntegal);
+                vVelEF_prev = *velEF;
+                vVelEF_integralTime = 0;
+            }
+
+            vErr = vVelEF_errorVector;
+        }
+        else if (velEF && !vVelEF_initialized && velEFNew) {
+            // Initial update - acquiring GPS
+            vectorZero(&vVelEF_AccIntegal);
+            vectorZero(&vVelEF_errorVector);
+            vVelEF_prev = *velEF;
+            vVelEF_integralTime = 0;
+            vVelEF_initialized = true;
+
+            vErr = vVelEF_errorVector;
+        }
+        else {
+            // We don't have velocity data in earth frame
+            vVelEF_initialized = false;
+
+            // Use plain vector as measured by accelerometer and hope for the best
+            fpVector3_t vEstGravity, vAcc;
+
+            // Calculate estimated gravity vector in body frame
+            quaternionRotateVector(&vEstGravity, &vGravity, &orientation);    // EF -> BF
+
+            // Error is sum of cross product between estimated direction and measured direction of gravity
+            vectorNormalize(&vAcc, accBF);
+            vectorCrossProduct(&vErr, &vAcc, &vEstGravity);
+        }
 
         // Compute and apply integral feedback if enabled
         if (imuRuntimeConfig.dcm_ki_acc > 0.0f) {
@@ -570,6 +659,8 @@ static void imuCalculateEstimatedAttitude(float dT)
     }
 #endif
 
+    bool useGPSVelEF = isImuHeadingValid() && sensors(SENSOR_GPS) && STATE(GPS_FIX) && gpsSol.numSat>8 && gpsSol.flags.validVelNE && gpsSol.flags.validVelD;
+    fpVector3_t gpsVelEF = { .v = { gpsSol.velNED[X], gpsSol.velNED[Y], gpsSol.velNED[Z] } };
     fpVector3_t measuredMagBF = { .v = { mag.magADC[X], mag.magADC[Y], mag.magADC[Z] } };
 
     const float magWeight = imuGetPGainScaleFactor() * 1.0f;
@@ -581,8 +672,12 @@ static void imuCalculateEstimatedAttitude(float dT)
                             useMag ? &measuredMagBF : NULL,
                             useCOG, courseOverGround,
                             accWeight,
-                            magWeight);
+                            magWeight,
+                            useGPSVelEF ? &gpsVelEF : NULL, gpsNewDataAvailable);
 
+    // Consumed GPS data
+    gpsNewDataAvailable = false;
+    
     imuUpdateEulerAngles();
 }
 

@@ -105,6 +105,18 @@ static inline fpVector3_t * vectorAdd(fpVector3_t * result, const fpVector3_t * 
     return result;
 }
 
+static inline fpVector3_t * vectorSub(fpVector3_t * result, const fpVector3_t * a, const fpVector3_t * b)
+{
+    fpVector3_t ab;
+
+    ab.x = a->x - b->x;
+    ab.y = a->y - b->y;
+    ab.z = a->z - b->z;
+
+    *result = ab;
+    return result;
+}
+
 static inline fpVector3_t * vectorScale(fpVector3_t * result, const fpVector3_t * a, const float b)
 {
     fpVector3_t ab;

@@ -151,6 +151,11 @@ typedef struct {
 extern gpsSolutionData_t gpsSol;
 extern gpsStatistics_t   gpsStats;
 
+/* Callbacks */
+void gpsNotifyNewData(void);
+void gpsNotifyNewData_Navigation(void);
+void gpsNotifyNewData_IMU(void);
+
 struct magDev_s;
 bool gpsMagDetect(struct magDev_s *mag);
 void gpsPreInit(void);

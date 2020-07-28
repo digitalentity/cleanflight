@@ -185,7 +185,7 @@ static bool detectGPSGlitch(timeUs_t currentTimeUs)
  * Update GPS topic
  *  Function is called on each GPS update
  */
-void onNewGPSData(void)
+void gpsNotifyNewData_Navigation(void)
 {
     static timeUs_t lastGPSNewDataTime;
     static int32_t previousLat;

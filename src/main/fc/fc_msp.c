@@ -2392,7 +2392,7 @@ static mspResult_e mspFcProcessInCommand(uint16_t cmdMSP, sbuf_t *src)
             gpsSol.epv = 100;
             // Feed data to navigation
             sensorsSet(SENSOR_GPS);
-            onNewGPSData();
+            gpsNotifyNewData();
         } else
             return MSP_RESULT_ERROR;
         break;
