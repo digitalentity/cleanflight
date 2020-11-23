@@ -218,6 +218,7 @@ typedef enum {
     OSD_GVAR_3,
     OSD_TPA,
     OSD_NAV_FW_CONTROL_SMOOTHNESS,
+    OSD_VTX_MW,
     OSD_ITEM_COUNT // MUST BE LAST
 } osd_items_e;
 
