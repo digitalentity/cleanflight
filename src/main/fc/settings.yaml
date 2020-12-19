@@ -1286,6 +1286,12 @@ groups:
         field: gpsMinSats
         min: 5
         max: 10
+      - name: gps_cog_min_velocity
+        description: "GPS Course Over Ground is considered valid when ground speed is above this value in cm/s"
+        field: cogMinVelocity
+        default_value: "300"
+        min: 200
+        max: 1000
 
   - name: PG_RC_CONTROLS_CONFIG
     type: rcControlsConfig_t
