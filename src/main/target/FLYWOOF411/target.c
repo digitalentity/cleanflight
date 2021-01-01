@@ -25,17 +25,32 @@
 
 
 const timerHardware_t timerHardware[] = {
-    DEF_TIM(TIM9, CH1, PA2,   TIM_USE_PPM,   0, 0), // PPM IN
+//  DEF_TIM(TIM9, CH1, PA2,  TIM_USE_PPM,   0, 0), // PPM IN
+    DEF_TIM(TIM1, CH1, PA8,  TIM_USE_MC_MOTOR | TIM_USE_FW_SERVO,  0, 1),
+#if defined(FLYWOOF411GV2)
+    DEF_TIM(TIM2, CH2, PB3,  TIM_USE_MC_MOTOR | TIM_USE_FW_SERVO,  0, 0), 
+    DEF_TIM(TIM2, CH3, PB10, TIM_USE_MC_MOTOR | TIM_USE_FW_SERVO,  0, 0), 
+    DEF_TIM(TIM2, CH1, PA15, TIM_USE_MC_MOTOR | TIM_USE_FW_MOTOR,  0, 0), 
+#else
+    DEF_TIM(TIM1, CH2, PA9,  TIM_USE_MC_MOTOR | TIM_USE_FW_SERVO,  0, 1), 
+    DEF_TIM(TIM1, CH3, PA10, TIM_USE_MC_MOTOR | TIM_USE_FW_SERVO,  0, 0), 
+    DEF_TIM(TIM3, CH3, PB0,  TIM_USE_MC_MOTOR | TIM_USE_FW_MOTOR,  0, 0), 
+#endif    
 
-    DEF_TIM(TIM1, CH1, PA8,  TIM_USE_MC_MOTOR | TIM_USE_FW_SERVO,  0, 1), // S1_OUT 2,1
-    DEF_TIM(TIM1, CH2, PA9,  TIM_USE_MC_MOTOR | TIM_USE_FW_SERVO,  0, 1), // S2_OUT 2,2
-    DEF_TIM(TIM1, CH3, PA10, TIM_USE_MC_MOTOR | TIM_USE_FW_SERVO,  0, 0), // S3_OUT 2,6
-    DEF_TIM(TIM3, CH3, PB0,  TIM_USE_MC_MOTOR | TIM_USE_FW_MOTOR,  0, 0), // S4_OUT 1,7
-
+#if defined(FLYWOOF411GV2)
+//  DEF_TIM(TIM5, CH4, PA3,  TIM_USE_ANY,   0, 1), //  RX2
+    DEF_TIM(TIM5, CH1, PA0,  TIM_USE_LED,   0, 0), //  LED
+    DEF_TIM(TIM4, CH1, PB6,  TIM_USE_ANY,   0, 0), //  SOFTSERIAL TX
+    DEF_TIM(TIM4, CH2, PB7,  TIM_USE_ANY,   0, 0), //  SOFTSERIAL RX
+#elif defined(FLYWOOF411GV1)
+    DEF_TIM(TIM5, CH4, PA3,  TIM_USE_ANY,   0, 1), //  RX2    1,0
+    DEF_TIM(TIM2, CH1, PA15, TIM_USE_LED,   0, 0), //  LED    1,5
+    DEF_TIM(TIM3, CH1, PB4,  TIM_USE_ANY,   0, 0), //  SOFTSERIAL M5
+#else
     DEF_TIM(TIM3, CH4, PB1,  TIM_USE_ANY,   0, 0), //  RSSI   1,2
     DEF_TIM(TIM5, CH4, PA3,  TIM_USE_ANY,   0, 1), //  RX2    1,0
     DEF_TIM(TIM2, CH1, PA15, TIM_USE_LED,   0, 0), //  LED    1,5
-
+#endif   
 };
 
 const int timerHardwareCount = sizeof(timerHardware) / sizeof(timerHardware[0]);
