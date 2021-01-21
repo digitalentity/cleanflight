@@ -758,7 +758,9 @@ int16_t getHeadingHoldTarget() {
 static uint8_t getHeadingHoldState(void)
 {
     // Don't apply heading hold if overall tilt is greater than maximum angle inclination
+    static bool bigangledisabledmag = false;
     if (calculateCosTiltAngle() < headingHoldCosZLimit) {
+        bigangledisabledmag = true;
         return HEADING_HOLD_DISABLED;
     }
 
@@ -774,11 +776,15 @@ static uint8_t getHeadingHoldState(void)
     else
 #endif
     if (ABS(rcCommand[YAW]) == 0 && FLIGHT_MODE(HEADING_MODE)) {
+         if (bigangledisabledmag){
+              bigangledisabledmag = false;
+              return HEADING_HOLD_UPDATE_HEADING;
+         }
         return HEADING_HOLD_ENABLED;
     } else {
+        bigangledisabledmag = false;
         return HEADING_HOLD_UPDATE_HEADING;
     }
-
     return HEADING_HOLD_UPDATE_HEADING;
 }
 
