@@ -14,10 +14,12 @@ typedef struct statsConfig_s {
 uint32_t getFlyingEnergy(void);
 void statsOnArm(void);
 void statsOnDisarm(void);
+void statsOnLoop(void);
 
 #else
 
 #define statsOnArm()    do {} while (0)
 #define statsOnDisarm() do {} while (0)
+#define statsOnLoop()   do {} while (0)
 
 #endif

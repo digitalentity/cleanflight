@@ -576,6 +576,8 @@ static void applyStepAdjustment(controlRateConfig_t *controlRateConfig, uint8_t 
         default:
             break;
     };
+
+    setConfigDirty();
 }
 
 #ifdef USE_INFLIGHT_PROFILE_ADJUSTMENT
@@ -596,6 +598,8 @@ static void applySelectAdjustment(uint8_t adjustmentFunction, uint8_t position)
     if (applied) {
         beeperConfirmationBeeps(position + 1);
     }
+
+    setConfigDirty();
 }
 #endif
 

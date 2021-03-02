@@ -120,6 +120,9 @@ void saveConfigAndNotify(void);
 void validateAndFixConfig(void);
 void validateAndFixTargetConfig(void);
 
+void setConfigDirty(void);
+bool isConfigDirty(void);
+
 uint8_t getConfigProfile(void);
 bool setConfigProfile(uint8_t profileIndex);
 void setConfigProfileAndWriteEEPROM(uint8_t profileIndex);

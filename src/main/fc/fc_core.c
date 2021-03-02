@@ -746,6 +746,8 @@ void processRx(timeUs_t currentTimeUs)
     }
 #endif
 
+    /* allow the stats collector to do periodic tasks */
+    statsOnLoop();
 }
 
 // Function for loop trigger

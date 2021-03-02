@@ -11,10 +11,15 @@
 #include "navigation/navigation.h"
 
 #include "fc/config.h"
+#include "fc/runtime_config.h"
 #include "config/parameter_group.h"
 #include "config/parameter_group_ids.h"
 
+#include "io/beeper.h"
+
+
 #define MIN_FLIGHT_TIME_TO_RECORD_STATS_S 10    //prevent recording stats for that short "flights" [s]
+#define STATS_SAVE_DELAY_MS              500    //let disarming complete and save stats after this time
 
 
 PG_REGISTER_WITH_RESET_TEMPLATE(statsConfig_t, statsConfig, PG_STATS_CONFIG, 1);
@@ -30,6 +35,7 @@ PG_RESET_TEMPLATE(statsConfig_t, statsConfig,
 
 static uint32_t arm_millis;
 static uint32_t arm_distance_cm;
+static uint32_t save_pending_millis;  // 0 = none
 
 #ifdef USE_ADC
 static uint32_t arm_mWhDrawn;
@@ -63,8 +69,34 @@ void statsOnDisarm(void)
                 flyingEnergy += energy;
             }
 #endif
-            writeEEPROM();
+            /* signal that stats need to be saved but don't execute time consuming flash operation
+               now - let the disarming process complete and then execute the actual save */
+            save_pending_millis = millis();
         }
+    }
+}
+
+void statsOnLoop(void)
+{
+    /* check for pending flash write */
+    if (save_pending_millis && millis()-save_pending_millis > STATS_SAVE_DELAY_MS) {
+        if (ARMING_FLAG(ARMED)) {
+            /* re-armed - don't save! */
+        }
+        else {
+            if (isConfigDirty()) {
+                /* There are some adjustments made in the configuration and we don't want
+                   to implicitly save it... We can't currently save part of the configuration,
+                   so we simply don't execute the stats save operation at all.
+                   This will result in lost stats *if* rc-adjustments were used during the flight */
+            }
+            else {
+                writeEEPROM();
+                /* repeat disarming beep indicating the stats save is complete */
+                beeper(BEEPER_DISARMING);
+            }
+        }
+        save_pending_millis = 0;
     }
 }
 

@@ -78,6 +78,8 @@
 
 #include "navigation/navigation.h"
 
+static bool configIsDirty; /* someone indicated that the config is modified and it is not yet saved */
+
 #ifndef DEFAULT_FEATURES
 #define DEFAULT_FEATURES 0
 #endif
@@ -383,6 +385,7 @@ void writeEEPROM(void)
     suspendRxSignal();
 
     writeConfigToEEPROM();
+    configIsDirty = false;
 
     resumeRxSignal();
 }
@@ -406,6 +409,16 @@ void saveConfigAndNotify(void)
     writeEEPROM();
     readEEPROM();
     beeperConfirmationBeeps(1);
+}
+
+void setConfigDirty(void)
+{
+    configIsDirty = true;
+}
+
+bool isConfigDirty(void)
+{
+    return configIsDirty;
 }
 
 uint8_t getConfigProfile(void)
