@@ -62,7 +62,7 @@ FILE_COMPILE_FOR_SPEED
 #include "telemetry/frsky.h"
 #include "telemetry/msp_shared.h"
 
-// these data identifiers are obtained from https://github.com/opentx/opentx/blob/master/radio/src/telemetry/frsky_hub.h
+// these data identifiers are obtained from https://github.com/opentx/opentx/blob/2.3/radio/src/telemetry/frsky.h
 enum
 {
     FSSP_DATAID_SPEED      = 0x0830 ,
@@ -91,7 +91,8 @@ enum
     FSSP_DATAID_GPS_ALT    = 0x0820 ,
     FSSP_DATAID_ASPD       = 0x0A00 ,
     FSSP_DATAID_A3         = 0x0900 ,
-    FSSP_DATAID_A4         = 0x0910
+    FSSP_DATAID_A4         = 0x0910 ,
+    FSSP_DATAID_AZIMUTH    = 0x0460
 };
 
 const uint16_t frSkyDataIdTable[] = {
@@ -123,6 +124,7 @@ const uint16_t frSkyDataIdTable[] = {
     FSSP_DATAID_ASPD      ,
     // FSSP_DATAID_A3        ,
     FSSP_DATAID_A4        ,
+    FSSP_DATAID_AZIMUTH ,
     0
 };
 
@@ -522,6 +524,20 @@ void processSmartPortTelemetry(smartPortPayload_t *payload, volatile bool *clear
             case FSSP_DATAID_FPV       :
                 if (smartPortShouldSendGPSData()) {
                     smartPortSendPackage(id, gpsSol.groundCourse); // given in 10*deg
+                    *clearToSend = false;
+                }
+                break;
+            case FSSP_DATAID_AZIMUTH    :
+                if (smartPortShouldSendGPSData()) {
+                    int16_t h = GPS_directionToHome;
+                    if (h < 0) {
+                        h += 360;
+                    }
+                    if(h >= 180)
+                        h = h - 180;
+                    else
+                        h = h + 180;
+                    smartPortSendPackage(id, h *10); // given in 10*deg
                     *clearToSend = false;
                 }
                 break;
