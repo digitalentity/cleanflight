@@ -506,8 +506,7 @@ static void saSendFrame(uint8_t *buf, int len)
     // XXX: Workaround for early AKK SAudio-enabled VTX bug,
     // shouldn't cause any problems with VTX with properly
     // implemented SAudio.
-	//Update: causes problem with new AKK AIO camera connected to SoftUART
-    if (vtxConfig()->smartAudioEarlyAkkWorkaroundEnable) serialWrite(smartAudioSerialPort, 0x00);
+    serialWrite(smartAudioSerialPort, 0x00);
 
     sa_lastTransmissionMs = millis();
     saStat.pktsent++;

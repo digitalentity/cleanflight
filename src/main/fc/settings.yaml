@@ -3276,11 +3276,6 @@ groups:
         default_value: "ON"
         field: halfDuplex
         type: bool
-      - name: vtx_smartaudio_early_akk_workaround
-        description: "Enable workaround for early AKK SAudio-enabled VTX bug."
-        default_value: "ON"
-        field: smartAudioEarlyAkkWorkaroundEnable
-        type: bool
 
   - name: PG_VTX_SETTINGS_CONFIG
     type: vtxSettingsConfig_t
