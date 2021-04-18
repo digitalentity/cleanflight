@@ -93,6 +93,7 @@ typedef struct motorConfig_s {
     float throttleScale;                    // Scaling factor for throttle.
     uint8_t motorPoleCount;                 // Magnetic poles in the motors for calculating actual RPM from eRPM provided by ESC telemetry
     uint8_t flipOverAfterPowerFactor;       // Power factor from 0 to 100% of flip over after crash
+    int8_t thrExpo;
 } motorConfig_t;
 
 PG_DECLARE(motorConfig_t, motorConfig);

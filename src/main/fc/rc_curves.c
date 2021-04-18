@@ -36,42 +36,68 @@
 #define YAW_LOOKUP_LENGTH 7
 #define THROTTLE_LOOKUP_LENGTH 11
 
-static EXTENDED_FASTRAM int16_t lookupThrottleRC[THROTTLE_LOOKUP_LENGTH];    // lookup table for expo & mid THROTTLE
-int16_t lookupThrottleRCMid;                         // THROTTLE curve mid point
+static EXTENDED_FASTRAM uint16_t lookupThrottleRC[THROTTLE_LOOKUP_LENGTH];       // lookup table for expo & mid THROTTLE
+static EXTENDED_FASTRAM uint16_t lookupThrottleLin[THROTTLE_LOOKUP_LENGTH];      // lookup table for expo & mid THROTTLE
+int16_t lookupThrottleRCMid;                                                    // THROTTLE curve mid point
 
-void generateThrottleCurve(const controlRateConfig_t *controlRateConfig)
+static void generateThrottleCurve(uint16_t *lookupTable, uint8_t mid, uint8_t expo)
 {
     const int minThrottle = getThrottleIdleValue();
-    lookupThrottleRCMid = minThrottle + (int32_t)(motorConfig()->maxthrottle - minThrottle) * controlRateConfig->throttle.rcMid8 / 100; // [MINTHROTTLE;MAXTHROTTLE]
+    lookupThrottleRCMid = minThrottle + (int32_t)(motorConfig()->maxthrottle - minThrottle) * mid / 100; // [MINTHROTTLE;MAXTHROTTLE]
 
     for (int i = 0; i < THROTTLE_LOOKUP_LENGTH; i++) {
-        const int16_t tmp = 10 * i - controlRateConfig->throttle.rcMid8;
+        int16_t tmp = 10 * i - mid;
         uint8_t y = 1;
-        if (tmp > 0)
-            y = 100 - controlRateConfig->throttle.rcMid8;
-        if (tmp < 0)
-            y = controlRateConfig->throttle.rcMid8;
-        lookupThrottleRC[i] = 10 * controlRateConfig->throttle.rcMid8 + tmp * (100 - controlRateConfig->throttle.rcExpo8 + (int32_t) controlRateConfig->throttle.rcExpo8 * (tmp * tmp) / (y * y)) / 10;
-        lookupThrottleRC[i] = minThrottle + (int32_t) (motorConfig()->maxthrottle - minThrottle) * lookupThrottleRC[i] / 1000; // [MINTHROTTLE;MAXTHROTTLE]
+        if (tmp > 0) y = 100 - mid;
+        if (tmp < 0) y = mid;
+        tmp = 10 * mid + tmp * (100 - expo + (int32_t)expo * (tmp * tmp) / (y * y)) / 10;
+        lookupTable[i] = minThrottle + (int32_t)(motorConfig()->maxthrottle - minThrottle) * tmp / 1000; // [MINTHROTTLE;MAXTHROTTLE]
     }
 }
 
-int16_t rcLookup(int32_t stickDeflection, uint8_t expo)
+void generateRCThrottleCurve(const controlRateConfig_t *controlRateConfig)
+{
+    generateThrottleCurve(lookupThrottleRC, controlRateConfig->throttle.rcMid8, controlRateConfig->throttle.rcExpo8);
+}
+
+void generateLinThrottleCurve(void)
+{
+    generateThrottleCurve(lookupThrottleLin, (motorConfig()->thrExpo < 0 ? 100 : 0), ABS(motorConfig()->thrExpo));
+}
+
+int16_t rcLookup(int16_t stickDeflection, uint8_t expo)
 {
     float tmpf = stickDeflection / 100.0f;
     return lrintf((2500.0f + (float)expo * (tmpf * tmpf - 25.0f)) * tmpf / 25.0f);
 }
 
-uint16_t rcLookupThrottle(uint16_t absoluteDeflection)
+static uint16_t lookupThrottle(uint16_t *lookupTable, uint16_t throttle)
 {
-    if (absoluteDeflection > 999)
+    const int minThrottle = getThrottleIdleValue();
+
+    if (throttle < minThrottle)
+        return minThrottle;
+
+    throttle = (int32_t)(throttle - minThrottle) * PWM_RANGE_MIN / (PWM_RANGE_MAX - minThrottle);       // [MINTHROTTLE;2000] -> [0;999]
+
+    if (throttle > 999)
         return motorConfig()->maxthrottle;
 
-    const uint8_t lookupStep = absoluteDeflection / 100;
-    return lookupThrottleRC[lookupStep] + (absoluteDeflection - lookupStep * 100) * (lookupThrottleRC[lookupStep + 1] - lookupThrottleRC[lookupStep]) / 100;
+    const uint8_t lookupStep = throttle / 100;
+    return lookupTable[lookupStep] + (throttle - lookupStep * 100) * (lookupTable[lookupStep + 1] - lookupTable[lookupStep]) / 100;
 }
 
-int16_t rcLookupThrottleMid(void)
+uint16_t rcLookupThrottle(uint16_t throttle)
+{
+    return lookupThrottle(lookupThrottleRC, throttle);
+}
+
+uint16_t linLookupThrottle(uint16_t throttle)
+{
+    return lookupThrottle(lookupThrottleLin, throttle);
+}
+
+uint16_t rcLookupThrottleMid(void)
 {
     return lookupThrottleRCMid;
 }

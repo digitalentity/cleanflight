@@ -40,6 +40,7 @@ FILE_COMPILE_FOR_SPEED
 
 #include "fc/config.h"
 #include "fc/rc_controls.h"
+#include "fc/rc_curves.h"
 #include "fc/rc_modes.h"
 #include "fc/runtime_config.h"
 #include "fc/controlrate_profile.h"
@@ -118,6 +119,7 @@ PG_RESET_TEMPLATE(motorConfig_t, motorConfig,
 #ifdef USE_DSHOT
     .flipOverAfterPowerFactor = SETTING_FLIP_OVER_AFTER_CRASH_POWER_FACTOR_DEFAULT,
 #endif
+    .thrExpo = 0
 );
 
 PG_REGISTER_ARRAY(motorMixer_t, MAX_SUPPORTED_MOTORS, primaryMotorMixer, PG_MOTOR_MIXER, 0);
@@ -653,8 +655,10 @@ void FAST_CODE mixTable(const float dT)
             }
 
             // Motor stop handling
-            if (currentMotorStatus != MOTOR_RUNNING) {
+            if (ARMING_FLAG(ARMED) && (currentMotorStatus != MOTOR_RUNNING)) {
                 motor[i] = motorValueWhenStopped;
+            } else {
+                motor[i] = linLookupThrottle(motor[i]);
             }
         }
     } else {

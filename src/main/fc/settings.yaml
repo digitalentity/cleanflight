@@ -846,6 +846,12 @@ groups:
         condition: "USE_DSHOT"
         min: 0
         max: 100
+      - name: motor_thr_expo
+        description: "Amount of inverse exposition applied to the throttle to cancel the ESC's throttle curve and make the thrust linear with requested throttle"
+        default_value: 0
+        field: thrExpo
+        min: -100
+        max: 100
 
   - name: PG_FAILSAFE_CONFIG
     type: failsafeConfig_t

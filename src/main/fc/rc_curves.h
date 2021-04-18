@@ -17,9 +17,12 @@
 
 #pragma once
 
-struct controlRateConfig_s;
-void generateThrottleCurve(const struct controlRateConfig_s *controlRateConfig);
+#include "fc/controlrate_profile.h"
 
-int16_t rcLookup(int32_t stickDeflection, uint8_t expo);
-uint16_t rcLookupThrottle(uint16_t tmp);
-int16_t rcLookupThrottleMid(void);
+void generateRCThrottleCurve(const controlRateConfig_t *controlRateConfig);
+void generateLinThrottleCurve(void);
+
+int16_t rcLookup(int16_t stickDeflection, uint8_t expo);
+uint16_t rcLookupThrottle(uint16_t throttle);
+uint16_t linLookupThrottle(uint16_t throttle);
+uint16_t rcLookupThrottleMid(void);
