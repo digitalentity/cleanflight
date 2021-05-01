@@ -107,7 +107,7 @@
 #endif
 
 typedef enum {
-    OSD_RSSI_VALUE,
+    OSD_RSSI_VALUE = 0,
     OSD_MAIN_BATT_VOLTAGE,
     OSD_CROSSHAIRS,
     OSD_ARTIFICIAL_HORIZON,

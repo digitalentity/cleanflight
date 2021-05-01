@@ -248,6 +248,8 @@ static const OSD_Entry menuOsdElemsEntries[] =
     OSD_ELEMENT_ENTRY("M YAW RATE", OSD_MANUAL_YAW_RATE),
     OSD_ELEMENT_ENTRY("CRUISE THR", OSD_NAV_FW_CRUISE_THR),
     OSD_ELEMENT_ENTRY("PITCH TO THR", OSD_NAV_FW_PITCH2THR),
+    OSD_ELEMENT_ENTRY("TPA", OSD_TPA),
+    OSD_ELEMENT_ENTRY("CONTROL SMOOTHNESS", OSD_NAV_FW_CONTROL_SMOOTHNESS),
     OSD_ELEMENT_ENTRY("ROLL PIDS", OSD_ROLL_PIDS),
     OSD_ELEMENT_ENTRY("PITCH PIDS", OSD_PITCH_PIDS),
     OSD_ELEMENT_ENTRY("YAW PIDS", OSD_YAW_PIDS),
@@ -275,9 +277,9 @@ static const OSD_Entry menuOsdElemsEntries[] =
     OSD_ELEMENT_ENTRY("WIND VERT", OSD_WIND_SPEED_VERTICAL),
 
     OSD_ELEMENT_ENTRY("G-FORCE", OSD_GFORCE),
-    OSD_ELEMENT_ENTRY("G-FORCE X", OSD_GFORCE),
-    OSD_ELEMENT_ENTRY("G-FORCE Y", OSD_GFORCE),
-    OSD_ELEMENT_ENTRY("G-FORCE Z", OSD_GFORCE),
+    OSD_ELEMENT_ENTRY("G-FORCE X", OSD_GFORCE_X),
+    OSD_ELEMENT_ENTRY("G-FORCE Y", OSD_GFORCE_Y),
+    OSD_ELEMENT_ENTRY("G-FORCE Z", OSD_GFORCE_Z),
 
 #if defined(USE_RX_MSP) && defined(USE_MSP_RC_OVERRIDE)
     OSD_ELEMENT_ENTRY("RC SOURCE", OSD_RC_SOURCE),
@@ -306,14 +308,22 @@ static const OSD_Entry menuOsdElemsEntries[] =
     OSD_ELEMENT_ENTRY("ESC TEMPERATURE", OSD_ESC_TEMPERATURE),
 #endif
 
+    OSD_ELEMENT_ENTRY("GLOBAL VARIABLE 0", OSD_GVAR_0),
+    OSD_ELEMENT_ENTRY("GLOBAL VARIABLE 1", OSD_GVAR_1),
+    OSD_ELEMENT_ENTRY("GLOBAL VARIABLE 2", OSD_GVAR_2),
+    OSD_ELEMENT_ENTRY("GLOBAL VARIABLE 3", OSD_GVAR_3),
+
+    OSD_ELEMENT_ENTRY("VERSION", OSD_VERSION),
+
     OSD_BACK_AND_END_ENTRY,
 };
 
-#if defined(USE_GPS) && defined(USE_BARO) && defined(USE_PITOT) && defined(USE_TEMPERATURE_SENSOR) && defined(USE_RX_MSP) && defined(USE_MSP_RC_OVERRIDE)
+#if defined(USE_GPS) && defined(USE_BARO) && defined(USE_PITOT) && defined(USE_TEMPERATURE_SENSOR) && defined(USE_RX_MSP) && defined(USE_MSP_RC_OVERRIDE) && defined(USE_SERIALRX_CRSF) && defined(USE_ESC_SENSOR)
 // All CMS OSD elements should be enabled in this case. The menu has 2 extra
 // elements (label, back+end), but there's an OSD element that we intentionally
-// don't show here (OSD_DEBUG).
-_Static_assert(ARRAYLEN(menuOsdElemsEntries) - 2 + 1 == OSD_ITEM_COUNT, "missing OSD elements in CMS");
+// don't show here (OSD_DEBUG). Additionally 4 CRSF entries are grouped in 1 submenu.
+#define EXPECTED_OSD_CMS_ARRAYLEN (OSD_ITEM_COUNT + 2 - 1 - 4 + 1)
+_Static_assert(ARRAYLEN(menuOsdElemsEntries) == EXPECTED_OSD_CMS_ARRAYLEN, "Wrong number of OSD elements in CMS");
 #endif
 
 const CMS_Menu menuOsdElements = {
