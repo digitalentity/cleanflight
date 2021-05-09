@@ -3350,6 +3350,12 @@ groups:
         min: -36
         max: 36
 
+      - name: osd_system_msg_display_time
+        description: System message display cycle time for multiple messages (milliseconds).
+        field: system_msg_display_time
+        default_value: 1000
+        min: 500
+        max: 5000
 
   - name: PG_SYSTEM_CONFIG
     type: systemConfig_t

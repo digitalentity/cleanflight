@@ -2903,7 +2903,7 @@ PG_RESET_TEMPLATE(osdConfig_t, osdConfig,
     .osd_home_position_arm_screen = SETTING_OSD_HOME_POSITION_ARM_SCREEN_DEFAULT,
     .pan_servo_index = SETTING_OSD_PAN_SERVO_INDEX_DEFAULT,
     .pan_servo_pwm2centideg = SETTING_OSD_PAN_SERVO_PWM2CENTIDEG_DEFAULT,
-
+    .system_msg_display_time = SETTING_OSD_SYSTEM_MSG_DISPLAY_TIME_DEFAULT,
     .units = SETTING_OSD_UNITS_DEFAULT,
     .main_voltage_decimals = SETTING_OSD_MAIN_VOLTAGE_DECIMALS_DEFAULT,
 
@@ -3758,6 +3758,18 @@ displayCanvas_t *osdGetDisplayPortCanvas(void)
     return NULL;
 }
 
+timeMs_t systemMessageCycleTime(unsigned messageCount, const char **messages){
+    uint8_t i = 0;
+    float factor = 1.0f;
+    while (i < messageCount) {
+        if ((float)strlen(messages[i]) / 15.0f > factor) {
+            factor = (float)strlen(messages[i]) / 15.0f;
+        }
+        i++;
+    }
+    return osdConfig()->system_msg_display_time * factor;
+}
+
 textAttributes_t osdGetSystemMessage(char *buff, size_t buff_size, bool isCenteredText)
 {
     textAttributes_t elemAttr = TEXT_ATTRIBUTES_NONE;
@@ -3792,7 +3804,7 @@ textAttributes_t osdGetSystemMessage(char *buff, size_t buff_size, bool isCenter
 				}
 #endif
                 if (messageCount > 0) {
-                    message = messages[OSD_ALTERNATING_CHOICES(1000, messageCount)];
+                    message = messages[OSD_ALTERNATING_CHOICES(systemMessageCycleTime(messageCount, messages), messageCount)];
                     if (message == failsafeInfoMessage) {
                         // failsafeInfoMessage is not useful for recovering
                         // a lost model, but might help avoiding a crash.
@@ -3862,17 +3874,16 @@ textAttributes_t osdGetSystemMessage(char *buff, size_t buff_size, bool isCenter
                         messages[messageCount++] = OSD_MESSAGE_STR(OSD_MSG_HEADFREE);
                     }
                 }
-                // Pick one of the available messages. Each message lasts
-                // a second.
+                // Pick one of the available messages. Message duration variable based on longest message length
                 if (messageCount > 0) {
-                    message = messages[OSD_ALTERNATING_CHOICES(1000, messageCount)];
+                    message = messages[OSD_ALTERNATING_CHOICES(systemMessageCycleTime(messageCount, messages), messageCount)];
                 }
             }
         } else if (ARMING_FLAG(ARMING_DISABLED_ALL_FLAGS)) {
             unsigned invalidIndex;
             // Check if we're unable to arm for some reason
             if (ARMING_FLAG(ARMING_DISABLED_INVALID_SETTING) && !settingsValidate(&invalidIndex)) {
-                if (OSD_ALTERNATING_CHOICES(1000, 2) == 0) {
+                if (OSD_ALTERNATING_CHOICES(osdConfig()->system_msg_display_time, 2) == 0) {
                     const setting_t *setting = settingGet(invalidIndex);
                     settingGetName(setting, messageBuf);
                     for (int ii = 0; messageBuf[ii]; ii++) {
@@ -3884,7 +3895,7 @@ textAttributes_t osdGetSystemMessage(char *buff, size_t buff_size, bool isCenter
                     TEXT_ATTRIBUTES_ADD_INVERTED(elemAttr);
                 }
             } else {
-                if (OSD_ALTERNATING_CHOICES(1000, 2) == 0) {
+                if (OSD_ALTERNATING_CHOICES(osdConfig()->system_msg_display_time, 2) == 0) {
                     message = OSD_MESSAGE_STR(OSD_MSG_UNABLE_ARM);
                     TEXT_ATTRIBUTES_ADD_INVERTED(elemAttr);
                 } else {
