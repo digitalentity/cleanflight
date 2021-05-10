@@ -47,7 +47,7 @@ uint16_t frskyGetFlightMode(void)
     // thousands column
     if (FLIGHT_MODE(NAV_RTH_MODE))
         tmpi += 1000;
-    if (FLIGHT_MODE(NAV_CRUISE_MODE)) // intentionally out of order and 'else-ifs' to prevent column overflow
+    if (FLIGHT_MODE(NAV_COURSE_HOLD_MODE)) // intentionally out of order and 'else-ifs' to prevent column overflow
         tmpi += 8000;
     else if (FLIGHT_MODE(NAV_WP_MODE))
         tmpi += 2000;

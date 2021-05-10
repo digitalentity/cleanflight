@@ -39,6 +39,7 @@
 #define L3GD20_CS_PIN                   PE3
 
 #define IMU_L3GD20_ALIGN       CW270_DEG
+#define IMU_LSM303DLHC_ALIGN   CW0_DEG
 #define IMU_MPU6050_ALIGN      CW0_DEG
 
 #define USE_BARO
@@ -47,7 +48,6 @@
 
 #define USE_MAG
 #define MAG_I2C_BUS             BUS_I2C1
-#define MAG_AK8975_ALIGN        CW90_DEG_FLIP
 #define USE_MAG_AK8975
 #define USE_MAG_HMC5883
 #define USE_MAG_QMC5883

@@ -50,6 +50,7 @@
 
 #include "fc/config.h"
 #include "fc/runtime_config.h"
+#include "fc/settings.h"
 
 #include "sensors/boardalignment.h"
 #include "sensors/gyro.h"
@@ -78,9 +79,9 @@ static float opflowCalibrationFlowAcc;
 PG_REGISTER_WITH_RESET_TEMPLATE(opticalFlowConfig_t, opticalFlowConfig, PG_OPFLOW_CONFIG, 2);
 
 PG_RESET_TEMPLATE(opticalFlowConfig_t, opticalFlowConfig,
-    .opflow_hardware = OPFLOW_NONE,
-    .opflow_align = CW0_DEG_FLIP,
-    .opflow_scale = 10.5f,
+    .opflow_hardware = SETTING_OPFLOW_HARDWARE_DEFAULT,
+    .opflow_align = SETTING_ALIGN_OPFLOW_DEFAULT,
+    .opflow_scale = SETTING_OPFLOW_SCALE_DEFAULT,
 );
 
 static bool opflowDetect(opflowDev_t * dev, uint8_t opflowHardwareToUse)

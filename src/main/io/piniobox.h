@@ -26,6 +26,12 @@
 #include "common/time.h"
 #include "drivers/pinio.h"
 
+
+#define BOX_PERMANENT_ID_USER1      47
+#define BOX_PERMANENT_ID_USER2      48
+#define BOX_PERMANENT_ID_NONE       255       // A permanent ID for no box mode
+
+
 typedef struct pinioBoxConfig_s {
     uint8_t permanentId[PINIO_COUNT];
 } pinioBoxConfig_t;

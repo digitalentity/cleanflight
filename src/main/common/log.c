@@ -39,6 +39,7 @@
 #include "io/serial.h"
 
 #include "fc/config.h"
+#include "fc/settings.h"
 
 #include "msp/msp.h"
 #include "msp/msp_serial.h"
@@ -53,6 +54,11 @@ static serialPort_t * logPort = NULL;
 static mspPort_t * mspLogPort = NULL;
 
 PG_REGISTER(logConfig_t, logConfig, PG_LOG_CONFIG, 0);
+
+PG_RESET_TEMPLATE(logConfig_t, logConfig,
+    .level = SETTING_LOG_LEVEL_DEFAULT,
+    .topics = SETTING_LOG_TOPICS_DEFAULT
+);
 
 void logInit(void)
 {

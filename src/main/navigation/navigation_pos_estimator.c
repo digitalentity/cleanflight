@@ -37,8 +37,10 @@
 #include "drivers/time.h"
 
 #include "fc/config.h"
+#include "fc/settings.h"
 
 #include "flight/imu.h"
+#include "flight/secondary_imu.h"
 
 #include "io/gps.h"
 
@@ -58,39 +60,39 @@ PG_REGISTER_WITH_RESET_TEMPLATE(positionEstimationConfig_t, positionEstimationCo
 
 PG_RESET_TEMPLATE(positionEstimationConfig_t, positionEstimationConfig,
         // Inertial position estimator parameters
-        .automatic_mag_declination = 1,
-        .reset_altitude_type = NAV_RESET_ON_FIRST_ARM,
-        .reset_home_type = NAV_RESET_ON_FIRST_ARM,
-        .gravity_calibration_tolerance = 5,     // 5 cm/s/s calibration error accepted (0.5% of gravity)
-        .use_gps_velned = 1,                    // "Disabled" is mandatory with gps_dyn_model = Pedestrian
-        .use_gps_no_baro = 0,                   // Use GPS altitude if no baro is available on all aircrafts
-        .allow_dead_reckoning = 0,
+        .automatic_mag_declination = SETTING_INAV_AUTO_MAG_DECL_DEFAULT,
+        .reset_altitude_type = SETTING_INAV_RESET_ALTITUDE_DEFAULT,
+        .reset_home_type = SETTING_INAV_RESET_HOME_DEFAULT,
+        .gravity_calibration_tolerance = SETTING_INAV_GRAVITY_CAL_TOLERANCE_DEFAULT,  // 5 cm/s/s calibration error accepted (0.5% of gravity)
+        .use_gps_velned = SETTING_INAV_USE_GPS_VELNED_DEFAULT,                        // "Disabled" is mandatory with gps_dyn_model = Pedestrian
+        .use_gps_no_baro = SETTING_INAV_USE_GPS_NO_BARO_DEFAULT,                      // Use GPS altitude if no baro is available on all aircrafts
+        .allow_dead_reckoning = SETTING_INAV_ALLOW_DEAD_RECKONING_DEFAULT,
 
-        .max_surface_altitude = 200,
+        .max_surface_altitude = SETTING_INAV_MAX_SURFACE_ALTITUDE_DEFAULT,
 
-        .w_xyz_acc_p = 1.0f,
+        .w_xyz_acc_p = SETTING_INAV_W_XYZ_ACC_P_DEFAULT,
 
-        .w_z_baro_p = 0.35f,
+        .w_z_baro_p = SETTING_INAV_W_Z_BARO_P_DEFAULT,
 
-        .w_z_surface_p = 3.500f,
-        .w_z_surface_v = 6.100f,
+        .w_z_surface_p = SETTING_INAV_W_Z_SURFACE_P_DEFAULT,
+        .w_z_surface_v = SETTING_INAV_W_Z_SURFACE_V_DEFAULT,
 
-        .w_z_gps_p = 0.2f,
-        .w_z_gps_v = 0.1f,
+        .w_z_gps_p = SETTING_INAV_W_Z_GPS_P_DEFAULT,
+        .w_z_gps_v = SETTING_INAV_W_Z_GPS_V_DEFAULT,
 
-        .w_xy_gps_p = 1.0f,
-        .w_xy_gps_v = 2.0f,
+        .w_xy_gps_p = SETTING_INAV_W_XY_GPS_P_DEFAULT,
+        .w_xy_gps_v = SETTING_INAV_W_XY_GPS_V_DEFAULT,
 
-        .w_xy_flow_p = 1.0f,
-        .w_xy_flow_v = 2.0f,
+        .w_xy_flow_p = SETTING_INAV_W_XY_FLOW_P_DEFAULT,
+        .w_xy_flow_v = SETTING_INAV_W_XY_FLOW_V_DEFAULT,
 
-        .w_z_res_v = 0.5f,
-        .w_xy_res_v = 0.5f,
+        .w_z_res_v = SETTING_INAV_W_Z_RES_V_DEFAULT,
+        .w_xy_res_v = SETTING_INAV_W_XY_RES_V_DEFAULT,
 
-        .w_acc_bias = 0.01f,
+        .w_acc_bias = SETTING_INAV_W_ACC_BIAS_DEFAULT,
 
-        .max_eph_epv = 1000.0f,
-        .baro_epv = 100.0f
+        .max_eph_epv = SETTING_INAV_MAX_EPH_EPV_DEFAULT,
+        .baro_epv = SETTING_INAV_BARO_EPV_DEFAULT
 );
 
 #define resetTimer(tim, currentTimeUs) { (tim)->deltaTime = 0; (tim)->lastTriggeredTime = currentTimeUs; }
@@ -214,7 +216,11 @@ void onNewGPSData(void)
         if(STATE(GPS_FIX_HOME)){
             static bool magDeclinationSet = false;
             if (positionEstimationConfig()->automatic_mag_declination && !magDeclinationSet) {
-                imuSetMagneticDeclination(geoCalculateMagDeclination(&newLLH));
+                const float declination = geoCalculateMagDeclination(&newLLH); 
+                imuSetMagneticDeclination(declination);
+#ifdef USE_SECONDARY_IMU
+                secondaryImuSetMagneticDeclination(declination);
+#endif
                 magDeclinationSet = true;
             }
         }
@@ -605,6 +611,15 @@ static bool estimationCalculateCorrection_Z(estimationContext_t * ctx)
 
         return true;
     }
+
+    DEBUG_SET(DEBUG_ALTITUDE, 0, posEstimator.est.pos.z);       // Position estimate
+    DEBUG_SET(DEBUG_ALTITUDE, 2, posEstimator.baro.alt);        // Baro altitude
+    DEBUG_SET(DEBUG_ALTITUDE, 4, posEstimator.gps.pos.z);       // GPS altitude
+    DEBUG_SET(DEBUG_ALTITUDE, 6, accGetVibrationLevel());       // Vibration level
+    DEBUG_SET(DEBUG_ALTITUDE, 1, posEstimator.est.vel.z);       // Vertical speed estimate
+    DEBUG_SET(DEBUG_ALTITUDE, 3, posEstimator.imu.accelNEU.z);  // Vertical acceleration on earth frame
+    DEBUG_SET(DEBUG_ALTITUDE, 5, posEstimator.gps.vel.z);       // GPS vertical speed
+    DEBUG_SET(DEBUG_ALTITUDE, 7, accGetClipCount());            // Clip count
 
     return false;
 }

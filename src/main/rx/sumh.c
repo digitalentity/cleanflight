@@ -69,7 +69,7 @@ static void sumhDataReceive(uint16_t c, void *rxCallbackData)
     sumhTime = micros();
     sumhTimeInterval = cmpTimeUs(sumhTime, sumhTimeLast);
     sumhTimeLast = sumhTime;
-    if (sumhTimeInterval > 5000) {
+    if (sumhTimeInterval > MS2US(5)) {
         sumhFramePosition = 0;
     }
 

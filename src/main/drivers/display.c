@@ -30,6 +30,7 @@
 #include "drivers/display_font_metadata.h"
 #include "drivers/time.h"
 
+#include "fc/settings.h"
 
 #define SW_BLINK_CYCLE_MS 200 // 200ms on / 200ms off
 
@@ -43,7 +44,7 @@
 PG_REGISTER_WITH_RESET_TEMPLATE(displayConfig_t, displayConfig, PG_DISPLAY_CONFIG, 0);
 
 PG_RESET_TEMPLATE(displayConfig_t, displayConfig,
-    .force_sw_blink = false,
+    .force_sw_blink = SETTING_DISPLAY_FORCE_SW_BLINK_DEFAULT
 );
 
 static bool displayAttributesRequireEmulation(displayPort_t *instance, textAttributes_t attr)

@@ -61,7 +61,7 @@ typedef enum {
     BOXOSDALT1       = 32,
     BOXOSDALT2       = 33,
     BOXOSDALT3       = 34,
-    BOXNAVCRUISE     = 35,
+    BOXNAVCOURSEHOLD = 35,
     BOXBRAKING       = 36,
     BOXUSER1         = 37,
     BOXUSER2         = 38,
@@ -69,14 +69,15 @@ typedef enum {
     BOXLOITERDIRCHN  = 40,
     BOXMSPRCOVERRIDE = 41,
     BOXPREARM        = 42,
-    BOXFLIPOVERAFTERCRASH = 43,
+    BOXTURTLE        = 43,
+    BOXNAVCRUISE     = 44,
     CHECKBOX_ITEM_COUNT
 } boxId_e;
 
 // type to hold enough bits for CHECKBOX_ITEM_COUNT. Struct used for value-like behavior
 typedef struct boxBitmask_s { BITARRAY_DECLARE(bits, CHECKBOX_ITEM_COUNT); } boxBitmask_t;
 
-#define MAX_MODE_ACTIVATION_CONDITION_COUNT 20
+#define MAX_MODE_ACTIVATION_CONDITION_COUNT 40
 
 #define CHANNEL_RANGE_MIN 900
 #define CHANNEL_RANGE_MAX 2100

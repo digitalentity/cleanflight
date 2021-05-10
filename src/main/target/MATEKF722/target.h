@@ -159,3 +159,5 @@
 #define USE_DSHOT
 #define USE_ESC_SENSOR
 #define USE_SERIALSHOT
+
+#define BNO055_I2C_BUS          BUS_I2C1

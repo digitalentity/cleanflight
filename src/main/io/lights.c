@@ -31,9 +31,9 @@ PG_REGISTER_WITH_RESET_TEMPLATE(lightsConfig_t, lightsConfig, PG_LIGHTS_CONFIG, 
 
 PG_RESET_TEMPLATE(lightsConfig_t, lightsConfig,
         .failsafe = {
-            .enabled = true,
-            .flash_period = 1000,
-            .flash_on_time = 100
+            .enabled = SETTING_FAILSAFE_LIGHTS_DEFAULT,
+            .flash_period = SETTING_FAILSAFE_LIGHTS_FLASH_PERIOD_DEFAULT,
+            .flash_on_time = SETTING_FAILSAFE_LIGHTS_FLASH_ON_TIME_DEFAULT
         }
 );
 

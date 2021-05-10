@@ -168,7 +168,7 @@ void ltm_sframe(sbuf_t *dst)
         lt_flightmode = LTM_MODE_RTH;
     else if (FLIGHT_MODE(NAV_POSHOLD_MODE))
         lt_flightmode = LTM_MODE_GPSHOLD;
-    else if (FLIGHT_MODE(NAV_CRUISE_MODE))
+    else if (FLIGHT_MODE(NAV_COURSE_HOLD_MODE))
         lt_flightmode = LTM_MODE_CRUISE;
     else if (FLIGHT_MODE(NAV_LAUNCH_MODE))
         lt_flightmode = LTM_MODE_LAUNCH;

@@ -54,5 +54,5 @@ bool pwmServoConfig(const struct timerHardware_s *timerHardware, uint8_t servoIn
 void pwmWriteBeeper(bool onoffBeep);
 void beeperPwmInit(ioTag_t tag, uint16_t frequency);
 
-void sendDShotCommand(dshotCommands_e directionSpin);
+void sendDShotCommand(dshotCommands_e cmd);
 void initDShotCommands(void);

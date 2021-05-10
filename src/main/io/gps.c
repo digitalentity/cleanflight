@@ -58,6 +58,7 @@
 
 #include "fc/config.h"
 #include "fc/runtime_config.h"
+#include "fc/settings.h"
 
 typedef struct {
     bool                isDriverBased;
@@ -125,13 +126,13 @@ static gpsProviderDescriptor_t  gpsProviders[GPS_PROVIDER_COUNT] = {
 PG_REGISTER_WITH_RESET_TEMPLATE(gpsConfig_t, gpsConfig, PG_GPS_CONFIG, 0);
 
 PG_RESET_TEMPLATE(gpsConfig_t, gpsConfig,
-    .provider = GPS_UBLOX,
-    .sbasMode = SBAS_NONE,
-    .autoConfig = GPS_AUTOCONFIG_ON,
-    .autoBaud = GPS_AUTOBAUD_ON,
-    .dynModel = GPS_DYNMODEL_AIR_1G,
-    .gpsMinSats = 6,
-    .ubloxUseGalileo = false
+    .provider = SETTING_GPS_PROVIDER_DEFAULT,
+    .sbasMode = SETTING_GPS_SBAS_MODE_DEFAULT,
+    .autoConfig = SETTING_GPS_AUTO_CONFIG_DEFAULT,
+    .autoBaud = SETTING_GPS_AUTO_BAUD_DEFAULT,
+    .dynModel = SETTING_GPS_DYN_MODEL_DEFAULT,
+    .gpsMinSats = SETTING_GPS_MIN_SATS_DEFAULT,
+    .ubloxUseGalileo = SETTING_GPS_UBLOX_USE_GALILEO_DEFAULT
 );
 
 void gpsSetState(gpsState_e state)
@@ -192,6 +193,8 @@ static void gpsResetSolution(void)
 {
     gpsSol.eph = 9999;
     gpsSol.epv = 9999;
+    gpsSol.numSat = 0;
+    gpsSol.hdop = 9999;
 
     gpsSol.fixType = GPS_NO_FIX;
 

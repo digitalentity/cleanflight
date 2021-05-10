@@ -25,7 +25,7 @@ Throttle tilt compensation attempts to maintain constant vertical thrust when co
 Position hold requires GPS, accelerometer and compass sensors. Flight modes that require a compass (POSHOLD, RTH) are locked until compass is properly calibrated.
 When activated, this mode will attempt to keep copter where it is (based on GPS coordinates). From inav 2.0, POSHOLD is a full 3D position hold. Heading hold in this mode is assumed and activated automatically.
 
-### CLI parameters affecting ALTHOLD mode:
+### CLI parameters affecting POSHOLD mode:
 * *nav_user_control_mode* - can be set to "0" (GPS_ATTI) or "1" (GPS_CRUISE), controls how firmware will respond to roll/pitch stick movement. When in GPS_ATTI mode, right stick controls attitude, when it is released, new position is recorded and held. When in GPS_CRUISE mode right stick controls velocity and firmware calculates required attitude on its own.
 
 ### Related PIDs

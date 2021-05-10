@@ -157,7 +157,7 @@ typedef enum {
     TYPE_TIMER
 } channelType_t;
 
-uint8_t timerClockDivisor(TIM_TypeDef *tim);
+uint32_t timerClock(TIM_TypeDef *tim);
 uint32_t timerGetBaseClockHW(const timerHardware_t * timHw);
 
 const timerHardware_t * timerGetByUsageFlag(timerUsageFlag_e flag);

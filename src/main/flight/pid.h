@@ -24,7 +24,7 @@
 #define PID_SUM_LIMIT_MIN           100
 #define PID_SUM_LIMIT_MAX           1000
 #define PID_SUM_LIMIT_DEFAULT       500
-#define PID_SUM_LIMIT_YAW_DEFAULT   350
+#define PID_SUM_LIMIT_YAW_DEFAULT   400
 
 #define HEADING_HOLD_RATE_LIMIT_MIN 10
 #define HEADING_HOLD_RATE_LIMIT_MAX 250
@@ -138,30 +138,51 @@ typedef struct pidProfile_s {
     uint8_t iterm_relax_cutoff;             // This cutoff frequency specifies a low pass filter which predicts average response of the quad to setpoint
     uint8_t iterm_relax;                    // Enable iterm suppression during stick input
 
+#ifdef USE_D_BOOST
     float dBoostFactor;
     float dBoostMaxAtAlleceleration;
     uint8_t dBoostGyroDeltaLpfHz;
+#endif
+
+#ifdef USE_ANTIGRAVITY
     float antigravityGain;
     float antigravityAccelerator;
     uint8_t antigravityCutoff;
+#endif
 
     uint16_t navFwPosHdgPidsumLimit;
     uint8_t controlDerivativeLpfHz;
+
+#ifdef USE_GYRO_KALMAN
     uint16_t kalman_q;
     uint16_t kalman_w;
     uint16_t kalman_sharpness;
     uint8_t kalmanEnabled;
+#endif
 
     float fixedWingLevelTrim;
+#ifdef USE_SMITH_PREDICTOR
+    float smithPredictorStrength;
+    float smithPredictorDelay;
+    uint16_t smithPredictorFilterHz;
+#endif
 } pidProfile_t;
 
 typedef struct pidAutotuneConfig_s {
-    uint16_t    fw_overshoot_time;          // Time [ms] to detect sustained overshoot
-    uint16_t    fw_undershoot_time;         // Time [ms] to detect sustained undershoot
-    uint8_t     fw_max_rate_threshold;      // Threshold [%] of max rate to consider autotune detection
+    uint16_t    fw_detect_time;             // Time [ms] to detect sustained undershoot or overshoot
+    uint8_t     fw_min_stick;               // Minimum stick input required to update rates and gains
     uint8_t     fw_ff_to_p_gain;            // FF to P gain (strength relationship) [%]
+    uint8_t     fw_p_to_d_gain;             // P to D gain (strength relationship) [%]
     uint16_t    fw_ff_to_i_time_constant;   // FF to I time (defines time for I to reach the same level of response as FF) [ms]
+    uint8_t     fw_rate_adjustment;         // Adjust rate settings during autotune?
+    uint8_t     fw_max_rate_deflection;     // Percentage of max mixer output used for calculating the rates
 } pidAutotuneConfig_t;
+
+typedef enum {
+    FIXED,
+    LIMIT,
+    AUTO,
+} fw_autotune_rate_adjustment_e;
 
 PG_DECLARE_PROFILE(pidProfile_t, pidProfile);
 PG_DECLARE(pidAutotuneConfig_t, pidAutotuneConfig);
@@ -175,6 +196,9 @@ extern int32_t axisPID_P[], axisPID_I[], axisPID_D[], axisPID_Setpoint[];
 void pidInit(void);
 bool pidInitFilters(void);
 void pidResetErrorAccumulators(void);
+void pidReduceErrorAccumulators(int8_t delta, uint8_t axis);
+float getAxisIterm(uint8_t axis);
+float getTotalRateTarget(void);
 void pidResetTPAFilter(void);
 
 struct controlRateConfig_s;

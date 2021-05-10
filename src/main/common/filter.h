@@ -56,6 +56,18 @@ typedef struct firFilter_s {
     uint8_t coeffsLength;
 } firFilter_t;
 
+typedef struct alphaBetaGammaFilter_s {
+    float a, b, g, e;
+    float ak; // derivative of system velociy (ie: acceleration)
+    float vk; // derivative of system state (ie: velocity)
+    float xk; // current system state (ie: position)
+    float jk; // derivative of system acceleration (ie: jerk)
+    float rk; // residual error
+    float dT, dT2, dT3;
+    float halfLife, boost;
+    pt1Filter_t boostFilter;
+} alphaBetaGammaFilter_t;
+
 typedef float (*filterApplyFnPtr)(void *filter, float input);
 typedef float (*filterApply4FnPtr)(void *filter, float input, float f_cut, float dt);
 
@@ -86,3 +98,6 @@ float biquadFilterReset(biquadFilter_t *filter, float value);
 float biquadFilterApplyDF1(biquadFilter_t *filter, float input);
 float filterGetNotchQ(float centerFrequencyHz, float cutoffFrequencyHz);
 void biquadFilterUpdate(biquadFilter_t *filter, float filterFreq, uint32_t refreshRate, float Q, biquadFilterType_e filterType);
+
+void alphaBetaGammaFilterInit(alphaBetaGammaFilter_t *filter, float alpha, float boostGain, float halfLife, float dT);
+float alphaBetaGammaFilterApply(alphaBetaGammaFilter_t *filter, float input);

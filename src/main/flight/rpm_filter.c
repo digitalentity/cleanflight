@@ -38,6 +38,7 @@
 #include "flight/mixer.h"
 #include "sensors/esc_sensor.h"
 #include "fc/config.h"
+#include "fc/settings.h"
 
 #ifdef USE_RPM_FILTER
 
@@ -48,10 +49,10 @@
 PG_REGISTER_WITH_RESET_TEMPLATE(rpmFilterConfig_t, rpmFilterConfig, PG_RPM_FILTER_CONFIG, 1);
 
 PG_RESET_TEMPLATE(rpmFilterConfig_t, rpmFilterConfig,
-                  .gyro_filter_enabled = 0,
-                  .gyro_harmonics = 1,
-                  .gyro_min_hz = 100,
-                  .gyro_q = 500, );
+                  .gyro_filter_enabled = SETTING_RPM_GYRO_FILTER_ENABLED_DEFAULT,
+                  .gyro_harmonics = SETTING_RPM_GYRO_HARMONICS_DEFAULT,
+                  .gyro_min_hz = SETTING_RPM_GYRO_MIN_HZ_DEFAULT,
+                  .gyro_q = SETTING_RPM_GYRO_Q_DEFAULT, );
 
 typedef struct
 {

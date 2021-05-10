@@ -58,6 +58,7 @@ FILE_COMPILE_FOR_SPEED
 
 #include "fc/config.h"
 #include "fc/runtime_config.h"
+#include "fc/settings.h"
 
 #include "io/beeper.h"
 
@@ -93,22 +94,22 @@ PG_REGISTER_WITH_RESET_FN(accelerometerConfig_t, accelerometerConfig, PG_ACCELER
 void pgResetFn_accelerometerConfig(accelerometerConfig_t *instance)
 {
     RESET_CONFIG_2(accelerometerConfig_t, instance,
-        .acc_align = ALIGN_DEFAULT,
-        .acc_hardware = ACC_AUTODETECT,
-        .acc_lpf_hz = 15,
-        .acc_notch_hz = 0,
-        .acc_notch_cutoff = 1,
-        .acc_soft_lpf_type = FILTER_BIQUAD
+        .acc_align = SETTING_ALIGN_ACC_DEFAULT,
+        .acc_hardware = SETTING_ACC_HARDWARE_DEFAULT,
+        .acc_lpf_hz = SETTING_ACC_LPF_HZ_DEFAULT,
+        .acc_notch_hz = SETTING_ACC_NOTCH_HZ_DEFAULT,
+        .acc_notch_cutoff = SETTING_ACC_NOTCH_CUTOFF_DEFAULT,
+        .acc_soft_lpf_type = SETTING_ACC_LPF_TYPE_DEFAULT
     );
     RESET_CONFIG_2(flightDynamicsTrims_t, &instance->accZero,
-        .raw[X] = 0,
-        .raw[Y] = 0,
-        .raw[Z] = 0
+        .raw[X] = SETTING_ACCZERO_X_DEFAULT,
+        .raw[Y] = SETTING_ACCZERO_Y_DEFAULT,
+        .raw[Z] = SETTING_ACCZERO_Z_DEFAULT
     );
     RESET_CONFIG_2(flightDynamicsTrims_t, &instance->accGain,
-         .raw[X] = 4096,
-         .raw[Y] = 4096,
-         .raw[Z] = 4096
+         .raw[X] = SETTING_ACCGAIN_X_DEFAULT,
+         .raw[Y] = SETTING_ACCGAIN_Y_DEFAULT,
+         .raw[Z] = SETTING_ACCGAIN_Z_DEFAULT
     );
 }
 

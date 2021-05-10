@@ -57,7 +57,7 @@ typedef enum {
     /* In this phase, the connection from the receiver
      * has been confirmed as lost and it will either
      * transition into FAILSAFE_RX_LOSS_RECOVERED if the
-     * RX link is recovered inmmediately or one of the
+     * RX link is recovered immediately or one of the
      * recovery phases otherwise (as configured via
      * failsafe_procedure) or into FAILSAFE_RX_LOSS_IDLE
      * if failsafe_procedure is NONE.

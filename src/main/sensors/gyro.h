@@ -61,24 +61,32 @@ extern gyro_t gyro;
 typedef struct gyroConfig_s {
     sensor_align_e gyro_align;              // gyro alignment
     uint8_t  gyroMovementCalibrationThreshold; // people keep forgetting that moving model while init results in wrong gyro offsets. and then they never reset gyro. so this is now on by default.
-    uint8_t  gyroSync;                      // Enable interrupt based loop
     uint16_t looptime;                      // imu loop time in us
     uint8_t  gyro_lpf;                      // gyro LPF setting - values are driver specific, in case of invalid number, a reasonable default ~30-40HZ is chosen.
-    uint8_t  gyro_soft_lpf_hz;
-    uint8_t  gyro_soft_lpf_type;
+    uint8_t  gyro_anti_aliasing_lpf_hz;
+    uint8_t  gyro_anti_aliasing_lpf_type;
+#ifdef USE_DUAL_GYRO
     uint8_t  gyro_to_use;
+#endif
     uint16_t gyro_notch_hz;
     uint16_t gyro_notch_cutoff;
-    uint16_t gyro_stage2_lowpass_hz;
-    uint8_t gyro_stage2_lowpass_type;
+    uint16_t gyro_main_lpf_hz;
+    uint8_t gyro_main_lpf_type;
     uint8_t useDynamicLpf;
     uint16_t gyroDynamicLpfMinHz;
     uint16_t gyroDynamicLpfMaxHz;
     uint8_t gyroDynamicLpfCurveExpo;
+#ifdef USE_DYNAMIC_FILTERS
     uint8_t dynamicGyroNotchRange;
     uint16_t dynamicGyroNotchQ;
     uint16_t dynamicGyroNotchMinHz;
     uint8_t dynamicGyroNotchEnabled;
+#endif
+#ifdef USE_ALPHA_BETA_GAMMA_FILTER
+    float alphaBetaGammaAlpha;
+    float alphaBetaGammaBoost;
+    float alphaBetaGammaHalfLife;
+#endif
 } gyroConfig_t;
 
 PG_DECLARE(gyroConfig_t, gyroConfig);
@@ -86,10 +94,10 @@ PG_DECLARE(gyroConfig_t, gyroConfig);
 bool gyroInit(void);
 void gyroGetMeasuredRotationRate(fpVector3_t *imuMeasuredRotationBF);
 void gyroUpdate(void);
+void gyroFilter(void);
 void gyroStartCalibration(void);
 bool gyroIsCalibrationComplete(void);
 bool gyroReadTemperature(void);
 int16_t gyroGetTemperature(void);
 int16_t gyroRateDps(int axis);
-bool gyroSyncCheckUpdate(void);
 void gyroUpdateDynamicLpf(float cutoffFreq);

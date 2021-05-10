@@ -72,11 +72,11 @@
 
 #define USE_RANGEFINDER
 #define USE_RANGEFINDER_HCSR04_I2C
+#define USE_RANGEFINDER_US42
 #define RANGEFINDER_I2C_BUS     BUS_I2C2
-
 #define PITOT_I2C_BUS           BUS_I2C2
-
 #define TEMPERATURE_I2C_BUS     BUS_I2C2
+#define BNO055_I2C_BUS          BUS_I2C2
 
 
 // *************** SPI2 OSD ***************************

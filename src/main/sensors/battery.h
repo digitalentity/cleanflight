@@ -69,10 +69,12 @@ typedef enum {
 
 typedef struct batteryMetersConfig_s {
 
+#ifdef USE_ADC
     struct {
         uint16_t scale;
         voltageSensor_e type;
     } voltage;
+#endif
 
     struct {
         int16_t scale;          // scale the current sensor output voltage to milliamps. Value in 1/10th mV/A
@@ -92,6 +94,7 @@ typedef struct batteryMetersConfig_s {
 
 typedef struct batteryProfile_s {
 
+#ifdef USE_ADC
     uint8_t cells;
 
     struct {
@@ -100,6 +103,7 @@ typedef struct batteryProfile_s {
         uint16_t cellMin;       // minimum voltage per cell, this triggers battery critical alarm, in 0.01V units, default is 330 (3.3V)
         uint16_t cellWarning;   // warning voltage per cell, this triggers battery warning alarm, in 0.01V units, default is 350 (3.5V)
     } voltage;
+#endif
 
     struct {
         uint32_t value;         // mAh or mWh (see capacity.unit)
@@ -147,14 +151,19 @@ uint16_t getPowerSupplyImpedance(void);
 
 bool isAmperageConfigured(void);
 int16_t getAmperage(void);
+int16_t getAmperageSample(void);
 int32_t getPower(void);
 int32_t getMAhDrawn(void);
 int32_t getMWhDrawn(void);
 
+#ifdef USE_ADC
 void batteryUpdate(timeUs_t timeDelta);
-void currentMeterUpdate(timeUs_t timeDelta);
 void sagCompensatedVBatUpdate(timeUs_t currentTime, timeUs_t timeDelta);
 void powerMeterUpdate(timeUs_t timeDelta);
+uint16_t getVBatSample(void);
+#endif
+
+void currentMeterUpdate(timeUs_t timeDelta);
 
 uint8_t calculateBatteryPercentage(void);
 float calculateThrottleCompensationFactor(void);

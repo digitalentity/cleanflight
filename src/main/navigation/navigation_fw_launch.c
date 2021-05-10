@@ -391,10 +391,6 @@ static fixedWingLaunchEvent_t fwLaunchState_FW_LAUNCH_STATE_IN_PROGRESS(timeUs_t
         return FW_LAUNCH_EVENT_ABORT; // cancel the launch and do the FW_LAUNCH_STATE_IDLE state
     }
 
-    if (isLaunchMaxAltitudeReached()) {
-        return FW_LAUNCH_EVENT_SUCCESS; // cancel the launch and do the FW_LAUNCH_STATE_FINISH state
-    }
-
     if (currentStateElapsedMs(currentTimeUs) > navConfig()->fw.launch_timeout) {
         return FW_LAUNCH_EVENT_SUCCESS; // launch timeout. go to FW_LAUNCH_STATE_FINISH
     }
@@ -456,7 +452,7 @@ void resetFixedWingLaunchController(timeUs_t currentTimeUs)
 
 bool isFixedWingLaunchDetected(void)
 {
-    return fwLaunch.currentState == FW_LAUNCH_STATE_DETECTED;
+    return fwLaunch.currentState >= FW_LAUNCH_STATE_DETECTED;
 }
 
 void enableFixedWingLaunchController(timeUs_t currentTimeUs)

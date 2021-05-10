@@ -354,7 +354,7 @@ static bool osdCanvasDrawArtificialHorizonWidget(displayPort_t *display, display
         }
         if (!configured) {
             widgetAHIStyle_e ahiStyle = 0;
-            switch ((osd_ahi_style_e)osdConfig()->osd_ahi_style) {
+            switch ((osd_ahi_style_e)osdConfig()->ahi_style) {
                 case OSD_AHI_STYLE_DEFAULT:
                     ahiStyle = DISPLAY_WIDGET_AHI_STYLE_STAIRCASE;
                     break;
@@ -377,8 +377,13 @@ static bool osdCanvasDrawArtificialHorizonWidget(displayPort_t *display, display
             }
             configured = true;
         }
+        // The widget displays 270degs before fixing the bar at the top/bottom
+        // so that's 135degs each direction. Map that to the configured limit.
+        const float halfRange = 135.0f;
+        const float limit = halfRange / 180.0f * M_PIf;
+        float multiplier = osdConfig()->ahi_style == OSD_AHI_STYLE_DEFAULT ? 1.0f : halfRange / osdConfig()->ahi_max_pitch;
         widgetAHIData_t data = {
-            .pitch = pitchAngle,
+            .pitch = constrainf(pitchAngle * multiplier, -limit, limit),
             .roll = rollAngle,
         };
         if (displayWidgetsDrawAHI(&widgets, instance, &data)) {
@@ -408,7 +413,7 @@ void osdCanvasDrawArtificialHorizon(displayPort_t *display, displayCanvas_t *can
     if ((now > nextDrawMinMs && totalError > 0.05f)|| now > nextDrawMaxMs) {
 
         if (!osdCanvasDrawArtificialHorizonWidget(display, canvas, p, pitchAngle, rollAngle)) {
-            switch ((osd_ahi_style_e)osdConfig()->osd_ahi_style) {
+            switch ((osd_ahi_style_e)osdConfig()->ahi_style) {
                 case OSD_AHI_STYLE_DEFAULT:
                 {
                     int x, y, w, h;

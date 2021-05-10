@@ -45,6 +45,7 @@
 #include "fc/config.h"
 #include "fc/rc_controls.h"
 #include "fc/rc_modes.h"
+#include "fc/settings.h"
 
 #include "flight/failsafe.h"
 
@@ -68,6 +69,7 @@
 #include "rx/sumh.h"
 #include "rx/xbus.h"
 #include "rx/ghst.h"
+#include "rx/mavlink.h"
 
 //#define DEBUG_RX_SIGNAL_LOSS
 
@@ -125,26 +127,32 @@ PG_REGISTER_WITH_RESET_TEMPLATE(rxConfig_t, rxConfig, PG_RX_CONFIG, 9);
 PG_RESET_TEMPLATE(rxConfig_t, rxConfig,
     .receiverType = DEFAULT_RX_TYPE,
     .rcmap = {0, 1, 3, 2},      // Default to AETR map
-    .halfDuplex = TRISTATE_AUTO,
+    .halfDuplex = SETTING_SERIALRX_HALFDUPLEX_DEFAULT,
     .serialrx_provider = SERIALRX_PROVIDER,
+#ifdef USE_RX_SPI
     .rx_spi_protocol = RX_SPI_DEFAULT_PROTOCOL,
-    .spektrum_sat_bind = 0,
-    .serialrx_inverted = 0,
-    .mincheck = 1100,
-    .maxcheck = 1900,
-    .rx_min_usec = RX_MIN_USEX,          // any of first 4 channels below this value will trigger rx loss detection
-    .rx_max_usec = 2115,         // any of first 4 channels above this value will trigger rx loss detection
-    .rssi_channel = 0,
-    .rssiMin = RSSI_VISIBLE_VALUE_MIN,
-    .rssiMax = RSSI_VISIBLE_VALUE_MAX,
-    .sbusSyncInterval = SBUS_DEFAULT_INTERFRAME_DELAY_US,
-    .rcFilterFrequency = 50,
-#if defined(USE_RX_MSP) && defined(USE_MSP_RC_OVERRIDE)
-    .mspOverrideChannels = 15,
 #endif
-    .rssi_source = RSSI_SOURCE_AUTO,
-    .srxl2_unit_id = 1,
-    .srxl2_baud_fast = 1,
+#ifdef USE_SPEKTRUM_BIND
+    .spektrum_sat_bind = SETTING_SPEKTRUM_SAT_BIND_DEFAULT,
+#endif
+    .serialrx_inverted = SETTING_SERIALRX_INVERTED_DEFAULT,
+    .mincheck = SETTING_MIN_CHECK_DEFAULT,
+    .maxcheck = SETTING_MAX_CHECK_DEFAULT,
+    .rx_min_usec = SETTING_RX_MIN_USEC_DEFAULT,          // any of first 4 channels below this value will trigger rx loss detection
+    .rx_max_usec = SETTING_RX_MAX_USEC_DEFAULT,          // any of first 4 channels above this value will trigger rx loss detection
+    .rssi_channel = SETTING_RSSI_CHANNEL_DEFAULT,
+    .rssiMin = SETTING_RSSI_MIN_DEFAULT,
+    .rssiMax = SETTING_RSSI_MAX_DEFAULT,
+    .sbusSyncInterval = SETTING_SBUS_SYNC_INTERVAL_DEFAULT,
+    .rcFilterFrequency = SETTING_RC_FILTER_FREQUENCY_DEFAULT,
+#if defined(USE_RX_MSP) && defined(USE_MSP_RC_OVERRIDE)
+    .mspOverrideChannels = SETTING_MSP_OVERRIDE_CHANNELS_DEFAULT,
+#endif
+    .rssi_source = SETTING_RSSI_SOURCE_DEFAULT,
+#ifdef USE_SERIALRX_SRXL2
+    .srxl2_unit_id = SETTING_SRXL2_UNIT_ID_DEFAULT,
+    .srxl2_baud_fast = SETTING_SRXL2_BAUD_FAST_DEFAULT,
+#endif
 );
 
 void resetAllRxChannelRangeConfigurations(void)
@@ -254,6 +262,11 @@ bool serialRxInit(const rxConfig_t *rxConfig, rxRuntimeConfig_t *rxRuntimeConfig
 #ifdef USE_SERIALRX_GHST
     case SERIALRX_GHST:
         enabled = ghstRxInit(rxConfig, rxRuntimeConfig);
+        break;
+#endif
+#ifdef USE_SERIALRX_MAVLINK
+    case SERIALRX_MAVLINK:
+        enabled = mavlinkRxInit(rxConfig, rxRuntimeConfig);
         break;
 #endif
     default:

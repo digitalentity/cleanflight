@@ -40,12 +40,14 @@
 #include "fc/rc_modes.h"
 #include "fc/runtime_config.h"
 #include "fc/controlrate_profile.h"
+#include "fc/settings.h"
 
 #include "flight/failsafe.h"
 #include "flight/mixer.h"
 #include "flight/pid.h"
 
 #include "navigation/navigation.h"
+#include "navigation/navigation_private.h"
 
 #include "rx/rx.h"
 
@@ -67,19 +69,19 @@ static failsafeState_t failsafeState;
 PG_REGISTER_WITH_RESET_TEMPLATE(failsafeConfig_t, failsafeConfig, PG_FAILSAFE_CONFIG, 1);
 
 PG_RESET_TEMPLATE(failsafeConfig_t, failsafeConfig,
-    .failsafe_delay = 5,                                                // 0.5 sec
-    .failsafe_recovery_delay = 5,                                       // 0.5 seconds (plus 200ms explicit delay)
-    .failsafe_off_delay = 200,                                          // 20sec
-    .failsafe_throttle = 1000,                                          // default throttle off.
-    .failsafe_throttle_low_delay = 0,                                   // default throttle low delay for "just disarm" on failsafe condition
-    .failsafe_procedure = FAILSAFE_PROCEDURE_AUTO_LANDING,              // default full failsafe procedure
-    .failsafe_fw_roll_angle = -200,                                     // 20 deg left
-    .failsafe_fw_pitch_angle = 100,                                     // 10 deg dive (yes, positive means dive)
-    .failsafe_fw_yaw_rate = -45,                                        // 45 deg/s left yaw (left is negative, 8s for full turn)
-    .failsafe_stick_motion_threshold = 50,
-    .failsafe_min_distance = 0,                                         // No minimum distance for failsafe by default
-    .failsafe_min_distance_procedure = FAILSAFE_PROCEDURE_DROP_IT,      // default minimum distance failsafe procedure
-    .failsafe_mission = true,                                           // Enable failsafe in WP mode or not
+    .failsafe_delay = SETTING_FAILSAFE_DELAY_DEFAULT,                                   // 0.5 sec
+    .failsafe_recovery_delay = SETTING_FAILSAFE_RECOVERY_DELAY_DEFAULT,                 // 0.5 seconds (plus 200ms explicit delay)
+    .failsafe_off_delay = SETTING_FAILSAFE_OFF_DELAY_DEFAULT,                           // 20sec
+    .failsafe_throttle = SETTING_FAILSAFE_THROTTLE_DEFAULT,                             // default throttle off.
+    .failsafe_throttle_low_delay = SETTING_FAILSAFE_THROTTLE_LOW_DELAY_DEFAULT,                                   // default throttle low delay for "just disarm" on failsafe condition
+    .failsafe_procedure = SETTING_FAILSAFE_PROCEDURE_DEFAULT,                           // default full failsafe procedure
+    .failsafe_fw_roll_angle = SETTING_FAILSAFE_FW_ROLL_ANGLE_DEFAULT,                   // 20 deg left
+    .failsafe_fw_pitch_angle = SETTING_FAILSAFE_FW_PITCH_ANGLE_DEFAULT,                 // 10 deg dive (yes, positive means dive)
+    .failsafe_fw_yaw_rate = SETTING_FAILSAFE_FW_YAW_RATE_DEFAULT,                       // 45 deg/s left yaw (left is negative, 8s for full turn)
+    .failsafe_stick_motion_threshold = SETTING_FAILSAFE_STICK_THRESHOLD_DEFAULT,
+    .failsafe_min_distance = SETTING_FAILSAFE_MIN_DISTANCE_DEFAULT,                     // No minimum distance for failsafe by default
+    .failsafe_min_distance_procedure = SETTING_FAILSAFE_MIN_DISTANCE_PROCEDURE_DEFAULT, // default minimum distance failsafe procedure
+    .failsafe_mission = SETTING_FAILSAFE_MISSION_DEFAULT,                               // Enable failsafe in WP mode or not
 );
 
 typedef enum {
@@ -361,12 +363,15 @@ static failsafeProcedure_e failsafeChooseFailsafeProcedure(void)
 
     // Craft is closer than minimum failsafe procedure distance (if set to non-zero)
     // GPS must also be working, and home position set
-    if ((failsafeConfig()->failsafe_min_distance > 0) &&
-        ((GPS_distanceToHome * 100) < failsafeConfig()->failsafe_min_distance) &&
-        sensors(SENSOR_GPS) && STATE(GPS_FIX) && STATE(GPS_FIX_HOME)) {
+    if (failsafeConfig()->failsafe_min_distance > 0 &&
+            sensors(SENSOR_GPS) && STATE(GPS_FIX) && STATE(GPS_FIX_HOME)) {
 
-        // Use the alternate, minimum distance failsafe procedure instead
-        return failsafeConfig()->failsafe_min_distance_procedure;
+        // get the distance to the original arming point
+        uint32_t distance = calculateDistanceToDestination(&original_rth_home);
+        if (distance < failsafeConfig()->failsafe_min_distance) {
+            // Use the alternate, minimum distance failsafe procedure instead
+            return failsafeConfig()->failsafe_min_distance_procedure;
+        }
     }
 
     return failsafeConfig()->failsafe_procedure;

@@ -117,6 +117,8 @@
 #define USE_MAG_MAG3110
 #define USE_MAG_LIS3MDL
 
+#define BNO055_I2C_BUS          BUS_I2C1
+
 /*** ADC ***/
 #define USE_ADC
 #define ADC_CHANNEL_1_PIN               PC0

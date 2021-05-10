@@ -72,12 +72,12 @@
 PG_REGISTER_WITH_RESET_TEMPLATE(eleresConfig_t, eleresConfig, PG_ELERES_CONFIG, 0);
 
 PG_RESET_TEMPLATE(eleresConfig_t, eleresConfig,
-                  .eleresFreq = 435,
-                  .eleresTelemetryEn = 0,
-                  .eleresTelemetryPower = 7,
-                  .eleresLocEn = 0,
-                  .eleresLocPower = 7,
-                  .eleresLocDelay = 240
+                  .eleresFreq = SETTING_ELERES_FREQ_DEFAULT,
+                  .eleresTelemetryEn = SETTING_ELERES_TELEMETRY_EN_DEFAULT,
+                  .eleresTelemetryPower = SETTING_ELERES_TELEMETRY_POWER_DEFAULT,
+                  .eleresLocEn = SETTING_ELERES_LOC_EN_DEFAULT,
+                  .eleresLocPower = SETTING_ELERES_LOC_POWER_DEFAULT,
+                  .eleresLocDelay = SETTING_ELERES_LOC_DELAY_DEFAULT
                  );
 
 static uint8_t hoppingChannel = 1;
@@ -784,8 +784,6 @@ void eleresInit(const rxConfig_t *rxConfig, rxRuntimeConfig_t *rxRuntimeConfig)
     channelHopping(1);
     rfMode = RECEIVE;
     localizerTime = millis() + (1000L * eleresConfig()->eleresLocDelay);
-
-    return true;
 }
 
 uint8_t eleresBind(void)

@@ -119,8 +119,8 @@
 #define CURRENT_METER_ADC_CHANNEL   ADC_CHN_2
 #define RSSI_ADC_CHANNEL            ADC_CHN_3
 
-#define USE_LED_STRIP
-#define WS2811_PIN                      PA8
+//#define USE_LED_STRIP
+//#define WS2811_PIN                      PA8
 
 //#define ENABLE_BLACKBOX_LOGGING_ON_SDCARD_BY_DEFAULT
 

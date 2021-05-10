@@ -44,6 +44,7 @@
 #include "fc/rc_curves.h"
 #include "fc/rc_modes.h"
 #include "fc/runtime_config.h"
+#include "fc/settings.h"
 
 #include "flight/pid.h"
 #include "flight/failsafe.h"
@@ -64,29 +65,31 @@
 #define AIRMODE_DEADBAND 25
 #define MIN_RC_TICK_INTERVAL_MS             20
 #define DEFAULT_RC_SWITCH_DISARM_DELAY_MS   250     // Wait at least 250ms before disarming via switch
+#define DEFAULT_PREARM_TIMEOUT              10000   // Prearm is invalidated after 10 seconds
 
 stickPositions_e rcStickPositions;
 
 FASTRAM int16_t rcCommand[4];           // interval [1000;2000] for THROTTLE and [-500;+500] for ROLL/PITCH/YAW
 
-PG_REGISTER_WITH_RESET_TEMPLATE(rcControlsConfig_t, rcControlsConfig, PG_RC_CONTROLS_CONFIG, 1);
+PG_REGISTER_WITH_RESET_TEMPLATE(rcControlsConfig_t, rcControlsConfig, PG_RC_CONTROLS_CONFIG, 2);
 
 PG_RESET_TEMPLATE(rcControlsConfig_t, rcControlsConfig,
-    .deadband = 5,
-    .yaw_deadband = 5,
-    .pos_hold_deadband = 10,
-    .alt_hold_deadband = 50,
-    .mid_throttle_deadband = 50,
-    .airmodeHandlingType = STICK_CENTER,
-    .airmodeThrottleThreshold = AIRMODE_THROTTLE_THRESHOLD,
+    .deadband = SETTING_DEADBAND_DEFAULT,
+    .yaw_deadband = SETTING_YAW_DEADBAND_DEFAULT,
+    .pos_hold_deadband = SETTING_POS_HOLD_DEADBAND_DEFAULT,
+    .alt_hold_deadband = SETTING_ALT_HOLD_DEADBAND_DEFAULT,
+    .mid_throttle_deadband = SETTING_3D_DEADBAND_THROTTLE_DEFAULT,
+    .airmodeHandlingType = SETTING_AIRMODE_TYPE_DEFAULT,
+    .airmodeThrottleThreshold = SETTING_AIRMODE_THROTTLE_THRESHOLD_DEFAULT,
 );
 
 PG_REGISTER_WITH_RESET_TEMPLATE(armingConfig_t, armingConfig, PG_ARMING_CONFIG, 2);
 
 PG_RESET_TEMPLATE(armingConfig_t, armingConfig,
-    .fixed_wing_auto_arm = 0,
-    .disarm_kill_switch = 1,
-    .switchDisarmDelayMs = DEFAULT_RC_SWITCH_DISARM_DELAY_MS,
+    .fixed_wing_auto_arm = SETTING_FIXED_WING_AUTO_ARM_DEFAULT,
+    .disarm_kill_switch = SETTING_DISARM_KILL_SWITCH_DEFAULT,
+    .switchDisarmDelayMs = SETTING_SWITCH_DISARM_DELAY_DEFAULT,
+    .prearmTimeoutMs = SETTING_PREARM_TIMEOUT_DEFAULT,
 );
 
 bool areSticksInApModePosition(uint16_t ap_mode)

@@ -97,8 +97,10 @@
 #include "flight/imu.h"
 #include "flight/mixer.h"
 #include "flight/pid.h"
-#include "flight/servos.h"
+#include "flight/power_limits.h"
 #include "flight/rpm_filter.h"
+#include "flight/servos.h"
+#include "flight/secondary_imu.h"
 
 #include "io/asyncfatfs/asyncfatfs.h"
 #include "io/beeper.h"
@@ -219,8 +221,12 @@ void init(void)
     ensureEEPROMContainsValidData();
     readEEPROM();
 
+#ifdef USE_UNDERCLOCK
     // Re-initialize system clock to their final values (if necessary)
     systemClockSetup(systemConfig()->cpuUnderclock);
+#else
+    systemClockSetup(false);
+#endif
 
 #ifdef USE_I2C
     i2cSetSpeed(systemConfig()->i2c_speed);
@@ -680,6 +686,10 @@ void init(void)
     // Latch active features AGAIN since some may be modified by init().
     latchActiveFeatures();
     motorControlEnable = true;
+
+#ifdef USE_SECONDARY_IMU
+    secondaryImuInit();
+#endif
     fcTasksInit();
 
 #ifdef USE_OSD
@@ -698,6 +708,10 @@ void init(void)
 
 #ifdef USE_I2C_IO_EXPANDER
     ioPortExpanderInit();
+#endif
+
+#ifdef USE_POWER_LIMITS
+    powerLimiterInit();
 #endif
 
     // Considering that the persistent reset reason is only used during init

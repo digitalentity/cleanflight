@@ -138,6 +138,8 @@ typedef struct servoConfig_s {
     uint16_t flaperon_throw_offset;
     uint8_t servo_protocol;                 // See servoProtocolType_e
     uint8_t tri_unarmed_servo;              // send tail servo correction pulses even when unarmed
+    uint8_t servo_autotrim_rotation_limit;  // Max rotation for servo midpoints to be updated
+    uint8_t servo_autotrim_iterm_threshold; // How much of the Iterm is carried over to the servo midpoints on each update
 } servoConfig_t;
 
 PG_DECLARE(servoConfig_t, servoConfig);

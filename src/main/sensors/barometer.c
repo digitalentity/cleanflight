@@ -44,6 +44,7 @@
 #include "drivers/time.h"
 
 #include "fc/runtime_config.h"
+#include "fc/settings.h"
 
 #include "sensors/barometer.h"
 #include "sensors/sensors.h"
@@ -56,20 +57,15 @@
 
 baro_t baro;                        // barometer access functions
 
+#ifdef USE_BARO
+
 PG_REGISTER_WITH_RESET_TEMPLATE(barometerConfig_t, barometerConfig, PG_BAROMETER_CONFIG, 3);
 
-#ifdef USE_BARO
-#define BARO_HARDWARE_DEFAULT    BARO_AUTODETECT
-#else
-#define BARO_HARDWARE_DEFAULT    BARO_NONE
-#endif
 PG_RESET_TEMPLATE(barometerConfig_t, barometerConfig,
-    .baro_hardware = BARO_HARDWARE_DEFAULT,
-    .use_median_filtering = 1,
-    .baro_calibration_tolerance = 150
+    .baro_hardware = SETTING_BARO_HARDWARE_DEFAULT,
+    .use_median_filtering = SETTING_BARO_MEDIAN_FILTER_DEFAULT,
+    .baro_calibration_tolerance = SETTING_BARO_CAL_TOLERANCE_DEFAULT
 );
-
-#ifdef USE_BARO
 
 static zeroCalibrationScalar_t zeroCalibration;
 static float baroGroundAltitude = 0;

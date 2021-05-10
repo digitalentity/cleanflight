@@ -246,7 +246,11 @@ static void crsfFrameBatterySensor(sbuf_t *dst)
     // use sbufWrite since CRC does not include frame length
     sbufWriteU8(dst, CRSF_FRAME_BATTERY_SENSOR_PAYLOAD_SIZE + CRSF_FRAME_LENGTH_TYPE_CRC);
     crsfSerialize8(dst, CRSF_FRAMETYPE_BATTERY_SENSOR);
-    crsfSerialize16(dst, getBatteryVoltage() / 10); // vbat is in units of 0.01V
+    if (telemetryConfig()->report_cell_voltage) {
+        crsfSerialize16(dst, getBatteryAverageCellVoltage() / 10);
+    } else {
+        crsfSerialize16(dst, getBatteryVoltage() / 10); // vbat is in units of 0.01V
+    }
     crsfSerialize16(dst, getAmperage() / 10);
     const uint8_t batteryRemainingPercentage = calculateBatteryPercentage();
     crsfSerialize8(dst, (getMAhDrawn() >> 16));
@@ -327,9 +331,9 @@ static void crsfFrameFlightMode(sbuf_t *dst)
             flightMode = "RTH";
         } else if (FLIGHT_MODE(NAV_POSHOLD_MODE)) {
             flightMode = "HOLD";
-        } else if (FLIGHT_MODE(NAV_CRUISE_MODE) && FLIGHT_MODE(NAV_ALTHOLD_MODE)) {
+        } else if (FLIGHT_MODE(NAV_COURSE_HOLD_MODE) && FLIGHT_MODE(NAV_ALTHOLD_MODE)) {
             flightMode = "3CRS";
-        } else if (FLIGHT_MODE(NAV_CRUISE_MODE)) {
+        } else if (FLIGHT_MODE(NAV_COURSE_HOLD_MODE)) {
             flightMode = "CRS";
         } else if (FLIGHT_MODE(NAV_ALTHOLD_MODE)) {
             flightMode = "AH";

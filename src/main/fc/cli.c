@@ -85,6 +85,7 @@ uint8_t cliMode = 0;
 #include "flight/mixer.h"
 #include "flight/pid.h"
 #include "flight/servos.h"
+#include "flight/secondary_imu.h"
 
 #include "io/asyncfatfs/asyncfatfs.h"
 #include "io/beeper.h"
@@ -155,7 +156,7 @@ static const char * const featureNames[] = {
     "", "RSSI_ADC", "LED_STRIP", "DASHBOARD", "",
     "BLACKBOX", "", "TRANSPONDER", "AIRMODE",
     "SUPEREXPO", "VTX", "", "", "", "PWM_OUTPUT_ENABLE",
-    "OSD", "FW_LAUNCH", NULL
+    "OSD", "FW_LAUNCH", "FW_AUTOTRIM", NULL
 };
 
 /* Sensor names (used in lookup tables for *_hardware settings and in status command output) */
@@ -2500,7 +2501,7 @@ static void cliFeature(char *cmdline)
     }
 }
 
-#ifdef BEEPER
+#if defined(BEEPER) || defined(USE_DSHOT)
 static void printBeeper(uint8_t dumpMask, const beeperConfig_t *beeperConfig, const beeperConfig_t *beeperConfigDefault)
 {
     const uint8_t beeperCount = beeperTableEntryCount();
@@ -2918,6 +2919,55 @@ static void cliBatch(char *cmdline)
 }
 #endif
 
+#ifdef USE_SECONDARY_IMU
+
+static void printImu2Status(void)
+{
+    cliPrintLinef("Secondary IMU active: %d", secondaryImuState.active);
+    cliPrintLine("Calibration status:");
+    cliPrintLinef("Sys: %d", secondaryImuState.calibrationStatus.sys);
+    cliPrintLinef("Gyro: %d", secondaryImuState.calibrationStatus.gyr);
+    cliPrintLinef("Acc: %d", secondaryImuState.calibrationStatus.acc);
+    cliPrintLinef("Mag: %d", secondaryImuState.calibrationStatus.mag);
+    cliPrintLine("Calibration gains:");
+    
+    cliPrintLinef(
+        "Gyro: %d %d %d", 
+        secondaryImuConfig()->calibrationOffsetGyro[X], 
+        secondaryImuConfig()->calibrationOffsetGyro[Y], 
+        secondaryImuConfig()->calibrationOffsetGyro[Z]
+    );
+    cliPrintLinef(
+        "Acc: %d %d %d", 
+        secondaryImuConfig()->calibrationOffsetAcc[X], 
+        secondaryImuConfig()->calibrationOffsetAcc[Y], 
+        secondaryImuConfig()->calibrationOffsetAcc[Z]
+    );
+    cliPrintLinef(
+        "Mag: %d %d %d", 
+        secondaryImuConfig()->calibrationOffsetMag[X], 
+        secondaryImuConfig()->calibrationOffsetMag[Y], 
+        secondaryImuConfig()->calibrationOffsetMag[Z]
+    );
+    cliPrintLinef(
+        "Radius: %d %d", 
+        secondaryImuConfig()->calibrationRadiusAcc, 
+        secondaryImuConfig()->calibrationRadiusMag
+    );
+}
+
+static void cliImu2(char *cmdline)
+{
+    if (sl_strcasecmp(cmdline, "fetch") == 0) {
+        secondaryImuFetchCalibration();
+        printImu2Status();
+    } else {
+        printImu2Status();
+    }
+}
+
+#endif
+
 static void cliSave(char *cmdline)
 {
     UNUSED(cmdline);
@@ -3184,7 +3234,7 @@ static void cliStatus(char *cmdline)
 #endif
 
     cliPrintf("System load: %d", averageSystemLoadPercent);
-    const timeDelta_t pidTaskDeltaTime = getTaskDeltaTime(TASK_GYROPID);
+    const timeDelta_t pidTaskDeltaTime = getTaskDeltaTime(TASK_PID);
     const int pidRate = pidTaskDeltaTime == 0 ? 0 : (int)(1000000.0f / ((float)pidTaskDeltaTime));
     const int rxRate = getTaskDeltaTime(TASK_RX) == 0 ? 0 : (int)(1000000.0f / ((float)getTaskDeltaTime(TASK_RX)));
     const int systemRate = getTaskDeltaTime(TASK_SYSTEM) == 0 ? 0 : (int)(1000000.0f / ((float)getTaskDeltaTime(TASK_SYSTEM)));
@@ -3434,7 +3484,7 @@ static void printConfig(const char *cmdline, bool doDiff)
         cliPrintHashLine("feature");
         printFeature(dumpMask, &featureConfig_Copy, featureConfig());
 
-#ifdef BEEPER
+#if defined(BEEPER) || defined(USE_DSHOT)
         cliPrintHashLine("beeper");
         printBeeper(dumpMask, &beeperConfig_Copy, beeperConfig());
 #endif
@@ -3605,7 +3655,7 @@ const clicmd_t cmdTable[] = {
 #ifdef USE_CLI_BATCH
     CLI_COMMAND_DEF("batch", "start or end a batch of commands", "start | end", cliBatch),
 #endif
-#ifdef BEEPER
+#if defined(BEEPER) || defined(USE_DSHOT)
     CLI_COMMAND_DEF("beeper", "turn on/off beeper", "list\r\n"
             "\t<+|->[name]", cliBeeper),
 #endif
@@ -3666,6 +3716,9 @@ const clicmd_t cmdTable[] = {
     CLI_COMMAND_DEF("resource", "view currently used resources", NULL, cliResource),
 #endif
     CLI_COMMAND_DEF("rxrange", "configure rx channel ranges", NULL, cliRxRange),
+#ifdef USE_SECONDARY_IMU
+    CLI_COMMAND_DEF("imu2", "Secondary IMU", NULL, cliImu2),
+#endif
 #if defined(USE_SAFE_HOME)
     CLI_COMMAND_DEF("safehome", "safe home list", NULL, cliSafeHomes),
 #endif

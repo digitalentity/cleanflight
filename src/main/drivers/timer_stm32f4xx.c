@@ -95,16 +95,16 @@ const timerDef_t timerDefinitions[HARDWARE_TIMER_DEFINITION_COUNT] = {
 #endif
 };
 
-uint8_t timerClockDivisor(TIM_TypeDef *tim)
+uint32_t timerClock(TIM_TypeDef *tim)
 {
 #if defined (STM32F411xE)
     UNUSED(tim);
-    return 1;
+    return SystemCoreClock;
 #elif defined (STM32F40_41xxx) || defined (STM32F427_437xx) || defined (STM32F446xx)
     if (tim == TIM1 || tim == TIM8 || tim == TIM9 || tim == TIM10 || tim == TIM11) {
-        return 1;
+        return SystemCoreClock;
     } else {
-        return 2;
+        return SystemCoreClock / 2;
     }
 #else
     #error "No timer clock defined correctly for the MCU"

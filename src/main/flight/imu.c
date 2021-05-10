@@ -45,6 +45,7 @@ FILE_COMPILE_FOR_SPEED
 
 #include "fc/config.h"
 #include "fc/runtime_config.h"
+#include "fc/settings.h"
 
 #include "flight/hil.h"
 #include "flight/imu.h"
@@ -99,13 +100,13 @@ STATIC_FASTRAM bool gpsHeadingInitialized;
 PG_REGISTER_WITH_RESET_TEMPLATE(imuConfig_t, imuConfig, PG_IMU_CONFIG, 2);
 
 PG_RESET_TEMPLATE(imuConfig_t, imuConfig,
-    .dcm_kp_acc = 2500,             // 0.25 * 10000
-    .dcm_ki_acc = 50,               // 0.005 * 10000
-    .dcm_kp_mag = 10000,            // 1.00 * 10000
-    .dcm_ki_mag = 0,                // 0.00 * 10000
-    .small_angle = 25,
-    .acc_ignore_rate = 0,
-    .acc_ignore_slope = 0
+    .dcm_kp_acc = SETTING_IMU_DCM_KP_DEFAULT,                   // 0.25 * 10000
+    .dcm_ki_acc = SETTING_IMU_DCM_KI_DEFAULT,                   // 0.005 * 10000
+    .dcm_kp_mag = SETTING_IMU_DCM_KP_MAG_DEFAULT,               // 1.00 * 10000
+    .dcm_ki_mag = SETTING_IMU_DCM_KI_MAG_DEFAULT,               // 0.00 * 10000
+    .small_angle = SETTING_SMALL_ANGLE_DEFAULT,
+    .acc_ignore_rate = SETTING_IMU_ACC_IGNORE_RATE_DEFAULT,
+    .acc_ignore_slope = SETTING_IMU_ACC_IGNORE_SLOPE_DEFAULT
 );
 
 STATIC_UNIT_TESTED void imuComputeRotationMatrix(void)
@@ -156,8 +157,13 @@ void imuInit(void)
     gpsHeadingInitialized = false;
 
     // Create magnetic declination matrix
+#ifdef USE_MAG
     const int deg = compassConfig()->mag_declination / 100;
     const int min = compassConfig()->mag_declination   % 100;
+#else
+    const int deg = 0;
+    const int min = 0;
+#endif
     imuSetMagneticDeclination(deg + min / 60.0f);
 
     quaternionInitUnit(&orientation);

@@ -44,7 +44,6 @@
 
 #define USE_IMU_MPU9250
 #define IMU_MPU9250_ALIGN       CW180_DEG_FLIP
-#define MAG_MPU9250_ALIGN       CW90_DEG
 
 #define USE_DUAL_GYRO
 

@@ -42,6 +42,7 @@
 #include "msp/msp_serial.h"
 
 #include "sensors/gyro.h"
+#include "fc/config.h"
 
 #define BLACKBOX_SERIAL_PORT_MODE MODE_TX
 
@@ -239,7 +240,7 @@ bool blackboxDeviceOpen(void)
              *                              = floor((looptime_ns * 3) / 500.0)
              *                              = (looptime_ns * 3) / 500
              */
-            blackboxMaxHeaderBytesPerIteration = constrain((gyro.targetLooptime * 3) / 500, 1, BLACKBOX_TARGET_HEADER_BUDGET_PER_ITERATION);
+            blackboxMaxHeaderBytesPerIteration = constrain((getLooptime() * 3) / 500, 1, BLACKBOX_TARGET_HEADER_BUDGET_PER_ITERATION);
 
             return blackboxPort != NULL;
         }

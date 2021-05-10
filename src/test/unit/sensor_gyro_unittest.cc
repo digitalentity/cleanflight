@@ -143,6 +143,7 @@ uint32_t micros(void) {return 0;}
 void beeper(beeperMode_e) {}
 uint8_t detectedSensors[] = { GYRO_NONE, ACC_NONE };
 timeDelta_t getLooptime(void) {return gyro.targetLooptime;}
+timeDelta_t getGyroLooptime(void) {return gyro.targetLooptime;}
 void sensorsSet(uint32_t) {}
 void schedulerResetTaskStatistics(cfTaskId_e) {}
 }

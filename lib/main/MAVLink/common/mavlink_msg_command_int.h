@@ -16,8 +16,8 @@ typedef struct __mavlink_command_int_t {
  uint8_t target_system; /*<  System ID*/
  uint8_t target_component; /*<  Component ID*/
  uint8_t frame; /*<  The coordinate system of the COMMAND.*/
- uint8_t current; /*<  false:0, true:1*/
- uint8_t autocontinue; /*<  autocontinue to next wp*/
+ uint8_t current; /*<  Not used.*/
+ uint8_t autocontinue; /*<  Not used (set 0).*/
 } mavlink_command_int_t;
 
 #define MAVLINK_MSG_ID_COMMAND_INT_LEN 35
@@ -81,8 +81,8 @@ typedef struct __mavlink_command_int_t {
  * @param target_component  Component ID
  * @param frame  The coordinate system of the COMMAND.
  * @param command  The scheduled action for the mission item.
- * @param current  false:0, true:1
- * @param autocontinue  autocontinue to next wp
+ * @param current  Not used.
+ * @param autocontinue  Not used (set 0).
  * @param param1  PARAM1, see MAV_CMD enum
  * @param param2  PARAM2, see MAV_CMD enum
  * @param param3  PARAM3, see MAV_CMD enum
@@ -145,8 +145,8 @@ static inline uint16_t mavlink_msg_command_int_pack(uint8_t system_id, uint8_t c
  * @param target_component  Component ID
  * @param frame  The coordinate system of the COMMAND.
  * @param command  The scheduled action for the mission item.
- * @param current  false:0, true:1
- * @param autocontinue  autocontinue to next wp
+ * @param current  Not used.
+ * @param autocontinue  Not used (set 0).
  * @param param1  PARAM1, see MAV_CMD enum
  * @param param2  PARAM2, see MAV_CMD enum
  * @param param3  PARAM3, see MAV_CMD enum
@@ -235,8 +235,8 @@ static inline uint16_t mavlink_msg_command_int_encode_chan(uint8_t system_id, ui
  * @param target_component  Component ID
  * @param frame  The coordinate system of the COMMAND.
  * @param command  The scheduled action for the mission item.
- * @param current  false:0, true:1
- * @param autocontinue  autocontinue to next wp
+ * @param current  Not used.
+ * @param autocontinue  Not used (set 0).
  * @param param1  PARAM1, see MAV_CMD enum
  * @param param2  PARAM2, see MAV_CMD enum
  * @param param3  PARAM3, see MAV_CMD enum
@@ -396,7 +396,7 @@ static inline uint16_t mavlink_msg_command_int_get_command(const mavlink_message
 /**
  * @brief Get field current from command_int message
  *
- * @return  false:0, true:1
+ * @return  Not used.
  */
 static inline uint8_t mavlink_msg_command_int_get_current(const mavlink_message_t* msg)
 {
@@ -406,7 +406,7 @@ static inline uint8_t mavlink_msg_command_int_get_current(const mavlink_message_
 /**
  * @brief Get field autocontinue from command_int message
  *
- * @return  autocontinue to next wp
+ * @return  Not used (set 0).
  */
 static inline uint8_t mavlink_msg_command_int_get_autocontinue(const mavlink_message_t* msg)
 {

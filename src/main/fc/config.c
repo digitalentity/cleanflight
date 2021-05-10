@@ -112,14 +112,25 @@ PG_REGISTER_WITH_RESET_TEMPLATE(systemConfig_t, systemConfig, PG_SYSTEM_CONFIG, 
 PG_RESET_TEMPLATE(systemConfig_t, systemConfig,
     .current_profile_index = 0,
     .current_battery_profile_index = 0,
-    .debug_mode = DEBUG_NONE,
-    .i2c_speed = I2C_SPEED_400KHZ,
-    .cpuUnderclock = 0,
-    .throttle_tilt_compensation_strength = 0,      // 0-100, 0 - disabled
-    .name = { 0 }
+    .debug_mode = SETTING_DEBUG_MODE_DEFAULT,
+#ifdef USE_I2C
+    .i2c_speed = SETTING_I2C_SPEED_DEFAULT,
+#endif
+#ifdef USE_UNDERCLOCK
+    .cpuUnderclock = SETTING_CPU_UNDERCLOCK_DEFAULT,
+#endif
+    .throttle_tilt_compensation_strength = SETTING_THROTTLE_TILT_COMP_STR_DEFAULT,      // 0-100, 0 - disabled
+    .name = SETTING_NAME_DEFAULT
 );
 
-PG_REGISTER(beeperConfig_t, beeperConfig, PG_BEEPER_CONFIG, 0);
+PG_REGISTER_WITH_RESET_TEMPLATE(beeperConfig_t, beeperConfig, PG_BEEPER_CONFIG, 1);
+
+PG_RESET_TEMPLATE(beeperConfig_t, beeperConfig,
+                  .beeper_off_flags = 0,
+                  .preferred_beeper_off_flags = 0,
+                  .dshot_beeper_enabled = SETTING_DSHOT_BEEPER_ENABLED_DEFAULT,
+                  .dshot_beeper_tone = SETTING_DSHOT_BEEPER_TONE_DEFAULT,
+);
 
 PG_REGISTER_WITH_RESET_TEMPLATE(adcChannelConfig_t, adcChannelConfig, PG_ADC_CHANNEL_CONFIG, 0);
 
@@ -162,6 +173,10 @@ __attribute__((weak)) void targetConfiguration(void)
 #endif
 
 uint32_t getLooptime(void) {
+    return gyroConfig()->looptime;
+}
+
+uint32_t getGyroLooptime(void) {
     return gyro.targetLooptime;
 }
 
@@ -283,12 +298,14 @@ void validateAndFixConfig(void)
     }
 #endif
 
-#if !defined(USE_MPU_DATA_READY_SIGNAL)
-    gyroConfigMutable()->gyroSync = false;
-#endif
-
     // Call target-specific validation function
     validateAndFixTargetConfig();
+
+#ifdef USE_MAG
+    if (compassConfig()->mag_align == ALIGN_DEFAULT) {
+        compassConfigMutable()->mag_align = CW270_DEG_FLIP;
+    }
+#endif
 
     if (settingsValidate(NULL)) {
         DISABLE_ARMING_FLAG(ARMING_DISABLED_INVALID_SETTING);

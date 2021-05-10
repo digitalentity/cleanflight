@@ -13,7 +13,7 @@ typedef struct __mavlink_set_attitude_target_t {
  float thrust; /*<  Collective thrust, normalized to 0 .. 1 (-1 .. 1 for vehicles capable of reverse trust)*/
  uint8_t target_system; /*<  System ID*/
  uint8_t target_component; /*<  Component ID*/
- uint8_t type_mask; /*<  Mappings: If any of these bits are set, the corresponding input should be ignored: bit 1: body roll rate, bit 2: body pitch rate, bit 3: body yaw rate. bit 4-bit 6: reserved, bit 7: throttle, bit 8: attitude*/
+ uint8_t type_mask; /*<  Bitmap to indicate which dimensions should be ignored by the vehicle.*/
 } mavlink_set_attitude_target_t;
 
 #define MAVLINK_MSG_ID_SET_ATTITUDE_TARGET_LEN 39
@@ -68,7 +68,7 @@ typedef struct __mavlink_set_attitude_target_t {
  * @param time_boot_ms [ms] Timestamp (time since system boot).
  * @param target_system  System ID
  * @param target_component  Component ID
- * @param type_mask  Mappings: If any of these bits are set, the corresponding input should be ignored: bit 1: body roll rate, bit 2: body pitch rate, bit 3: body yaw rate. bit 4-bit 6: reserved, bit 7: throttle, bit 8: attitude
+ * @param type_mask  Bitmap to indicate which dimensions should be ignored by the vehicle.
  * @param q  Attitude quaternion (w, x, y, z order, zero-rotation is 1, 0, 0, 0)
  * @param body_roll_rate [rad/s] Body roll rate
  * @param body_pitch_rate [rad/s] Body pitch rate
@@ -118,7 +118,7 @@ static inline uint16_t mavlink_msg_set_attitude_target_pack(uint8_t system_id, u
  * @param time_boot_ms [ms] Timestamp (time since system boot).
  * @param target_system  System ID
  * @param target_component  Component ID
- * @param type_mask  Mappings: If any of these bits are set, the corresponding input should be ignored: bit 1: body roll rate, bit 2: body pitch rate, bit 3: body yaw rate. bit 4-bit 6: reserved, bit 7: throttle, bit 8: attitude
+ * @param type_mask  Bitmap to indicate which dimensions should be ignored by the vehicle.
  * @param q  Attitude quaternion (w, x, y, z order, zero-rotation is 1, 0, 0, 0)
  * @param body_roll_rate [rad/s] Body roll rate
  * @param body_pitch_rate [rad/s] Body pitch rate
@@ -194,7 +194,7 @@ static inline uint16_t mavlink_msg_set_attitude_target_encode_chan(uint8_t syste
  * @param time_boot_ms [ms] Timestamp (time since system boot).
  * @param target_system  System ID
  * @param target_component  Component ID
- * @param type_mask  Mappings: If any of these bits are set, the corresponding input should be ignored: bit 1: body roll rate, bit 2: body pitch rate, bit 3: body yaw rate. bit 4-bit 6: reserved, bit 7: throttle, bit 8: attitude
+ * @param type_mask  Bitmap to indicate which dimensions should be ignored by the vehicle.
  * @param q  Attitude quaternion (w, x, y, z order, zero-rotation is 1, 0, 0, 0)
  * @param body_roll_rate [rad/s] Body roll rate
  * @param body_pitch_rate [rad/s] Body pitch rate
@@ -322,7 +322,7 @@ static inline uint8_t mavlink_msg_set_attitude_target_get_target_component(const
 /**
  * @brief Get field type_mask from set_attitude_target message
  *
- * @return  Mappings: If any of these bits are set, the corresponding input should be ignored: bit 1: body roll rate, bit 2: body pitch rate, bit 3: body yaw rate. bit 4-bit 6: reserved, bit 7: throttle, bit 8: attitude
+ * @return  Bitmap to indicate which dimensions should be ignored by the vehicle.
  */
 static inline uint8_t mavlink_msg_set_attitude_target_get_type_mask(const mavlink_message_t* msg)
 {

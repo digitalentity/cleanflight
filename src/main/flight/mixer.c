@@ -43,6 +43,7 @@ FILE_COMPILE_FOR_SPEED
 #include "fc/rc_modes.h"
 #include "fc/runtime_config.h"
 #include "fc/controlrate_profile.h"
+#include "fc/settings.h"
 
 #include "flight/failsafe.h"
 #include "flight/imu.h"
@@ -72,22 +73,24 @@ static EXTENDED_FASTRAM int throttleRangeMin = 0;
 static EXTENDED_FASTRAM int throttleRangeMax = 0;
 static EXTENDED_FASTRAM int8_t motorYawMultiplier = 1;
 
+int motorZeroCommand = 0;
+
 PG_REGISTER_WITH_RESET_TEMPLATE(reversibleMotorsConfig_t, reversibleMotorsConfig, PG_REVERSIBLE_MOTORS_CONFIG, 0);
 
 PG_RESET_TEMPLATE(reversibleMotorsConfig_t, reversibleMotorsConfig,
-    .deadband_low = 1406,
-    .deadband_high = 1514,
-    .neutral = 1460
+    .deadband_low = SETTING_3D_DEADBAND_LOW_DEFAULT,
+    .deadband_high = SETTING_3D_DEADBAND_HIGH_DEFAULT,
+    .neutral = SETTING_3D_NEUTRAL_DEFAULT
 );
 
 PG_REGISTER_WITH_RESET_TEMPLATE(mixerConfig_t, mixerConfig, PG_MIXER_CONFIG, 3);
 
 PG_RESET_TEMPLATE(mixerConfig_t, mixerConfig,
-    .motorDirectionInverted = 0,
-    .platformType = PLATFORM_MULTIROTOR,
-    .hasFlaps = false,
-    .appliedMixerPreset = -1, //This flag is not available in CLI and used by Configurator only
-    .fwMinThrottleDownPitchAngle = 0
+    .motorDirectionInverted = SETTING_MOTOR_DIRECTION_INVERTED_DEFAULT,
+    .platformType = SETTING_PLATFORM_TYPE_DEFAULT,
+    .hasFlaps = SETTING_HAS_FLAPS_DEFAULT,
+    .appliedMixerPreset = SETTING_MODEL_PREVIEW_TYPE_DEFAULT, //This flag is not available in CLI and used by Configurator only
+    .fwMinThrottleDownPitchAngle = SETTING_FW_MIN_THROTTLE_DOWN_PITCH_DEFAULT
 );
 
 #ifdef BRUSHED_MOTORS
@@ -103,21 +106,22 @@ PG_RESET_TEMPLATE(mixerConfig_t, mixerConfig,
 PG_REGISTER_WITH_RESET_TEMPLATE(motorConfig_t, motorConfig, PG_MOTOR_CONFIG, 7);
 
 PG_RESET_TEMPLATE(motorConfig_t, motorConfig,
-    .motorPwmProtocol = DEFAULT_PWM_PROTOCOL,
-    .motorPwmRate = DEFAULT_PWM_RATE,
-    .maxthrottle = DEFAULT_MAX_THROTTLE,
-    .mincommand = 1000,
-    .motorAccelTimeMs = 0,
-    .motorDecelTimeMs = 0,
-    .throttleIdle = 15.0f,
-    .throttleScale = 1.0f,
-    .motorPoleCount = 14,           // Most brushless motors that we use are 14 poles
-    .flipOverAfterPowerFactor = 65
+    .motorPwmProtocol = SETTING_MOTOR_PWM_PROTOCOL_DEFAULT,
+    .motorPwmRate = SETTING_MOTOR_PWM_RATE_DEFAULT,
+    .maxthrottle = SETTING_MAX_THROTTLE_DEFAULT,
+    .mincommand = SETTING_MIN_COMMAND_DEFAULT,
+    .motorAccelTimeMs = SETTING_MOTOR_ACCEL_TIME_DEFAULT,
+    .motorDecelTimeMs = SETTING_MOTOR_DECEL_TIME_DEFAULT,
+    .throttleIdle = SETTING_THROTTLE_IDLE_DEFAULT,
+    .throttleScale = SETTING_THROTTLE_SCALE_DEFAULT,
+    .motorPoleCount = SETTING_MOTOR_POLES_DEFAULT,            // Most brushless motors that we use are 14 poles
+#ifdef USE_DSHOT
+    .turtleModePowerFactor = SETTING_TURTLE_MODE_POWER_FACTOR_DEFAULT,
+#endif
 );
 
 PG_REGISTER_ARRAY(motorMixer_t, MAX_SUPPORTED_MOTORS, primaryMotorMixer, PG_MOTOR_MIXER, 0);
 
-#define CRASH_OVER_AFTER_CRASH_FLIP_DEADBAND 20.0f
 #define CRASH_OVER_AFTER_CRASH_FLIP_STICK_MIN 0.15f
 
 typedef void (*motorRateLimitingApplyFnPtr)(const float dT);
@@ -270,7 +274,6 @@ void mixerInit(void)
 
 void mixerResetDisarmedMotors(void)
 {
-    int motorZeroCommand;
 
     if (feature(FEATURE_REVERSIBLE_MOTORS)) {
         motorZeroCommand = reversibleMotorsConfig()->neutral;
@@ -324,10 +327,10 @@ static uint16_t handleOutputScaling(
     }
     return value;
 }
-static void applyFlipOverAfterCrashModeToMotors(void) {
+static void applyTurtleModeToMotors(void) {
 
     if (ARMING_FLAG(ARMED)) {
-        const float flipPowerFactor = ((float)motorConfig()->flipOverAfterPowerFactor)/100.0f;
+        const float flipPowerFactor = ((float)motorConfig()->turtleModePowerFactor)/100.0f;
         const float stickDeflectionPitchAbs = ABS(((float) rcCommand[PITCH]) / 500.0f);
         const float stickDeflectionRollAbs = ABS(((float) rcCommand[ROLL]) / 500.0f);
         const float stickDeflectionYawAbs = ABS(((float) rcCommand[YAW]) / 500.0f);
@@ -390,13 +393,7 @@ static void applyFlipOverAfterCrashModeToMotors(void) {
 
             motorOutputNormalised = MIN(1.0f, flipPower * motorOutputNormalised);
 
-            float motorOutput = (float)motorConfig()->mincommand + motorOutputNormalised * (float)motorConfig()->maxthrottle;
-
-            // Add a little bit to the motorOutputMin so props aren't spinning when sticks are centered
-            motorOutput = (motorOutput < (float)motorConfig()->mincommand + CRASH_OVER_AFTER_CRASH_FLIP_DEADBAND) ? DSHOT_DISARM_COMMAND : (
-                    motorOutput - CRASH_OVER_AFTER_CRASH_FLIP_DEADBAND);
-
-            motor[i] = motorOutput;
+            motor[i] = (int16_t)scaleRangef(motorOutputNormalised, 0, 1, motorConfig()->mincommand, motorConfig()->maxthrottle);
         }
     } else {
         // Disarmed mode
@@ -528,8 +525,8 @@ static int getReversibleMotorsThrottleDeadband(void)
 void FAST_CODE mixTable(const float dT)
 {
 #ifdef USE_DSHOT
-    if (FLIGHT_MODE(FLIP_OVER_AFTER_CRASH)) {
-        applyFlipOverAfterCrashModeToMotors();
+    if (FLIGHT_MODE(TURTLE_MODE)) {
+        applyTurtleModeToMotors();
         return;
     }
 #endif
@@ -716,4 +713,19 @@ void loadPrimaryMotorMixer(void) {
     for (int i = 0; i < MAX_SUPPORTED_MOTORS; i++) {
         currentMixer[i] = *primaryMotorMixer(i);
     }
+}
+
+bool areMotorsRunning(void)
+{
+    if (ARMING_FLAG(ARMED)) {
+        return true;
+    } else {
+        for (int i = 0; i < motorCount; i++) {
+            if (motor_disarmed[i] != motorZeroCommand) {
+                return true;
+            }
+        }
+    }
+
+    return false;
 }

@@ -75,6 +75,7 @@
 #define PITOT_I2C_BUS           BUS_I2C2
 #define TEMPERATURE_I2C_BUS     BUS_I2C2
 #define PCA9685_I2C_BUS         BUS_I2C2
+#define BNO055_I2C_BUS          BUS_I2C2
 
 
 // *************** SPI2 RM3100 **************************
@@ -84,7 +85,6 @@
 #define SPI2_MOSI_PIN   	    PB15
 
 #define USE_MAG_RM3100
-#define MAG_RM3100_ALIGN        CW0_DEG_FLIP
 #define RM3100_CS_PIN           PB12
 #define RM3100_SPI_BUS          BUS_SPI2
 

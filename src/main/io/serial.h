@@ -44,7 +44,7 @@ typedef enum {
     FUNCTION_RCDEVICE                   = (1 << 10), // 1024
     FUNCTION_VTX_SMARTAUDIO             = (1 << 11), // 2048
     FUNCTION_VTX_TRAMP                  = (1 << 12), // 4096
-    FUNCTION_UNUSED_1                   = (1 << 13), // 8192: former UAV_INTERCONNECT
+    FUNCTION_UNUSED_1                   = (1 << 13), // 8192: former\ UAV_INTERCONNECT
     FUNCTION_OPTICAL_FLOW               = (1 << 14), // 16384
     FUNCTION_LOG                        = (1 << 15), // 32768
     FUNCTION_RANGEFINDER                = (1 << 16), // 65536
@@ -55,6 +55,7 @@ typedef enum {
     FUNCTION_DJI_HD_OSD                 = (1 << 21), // 2097152
     FUNCTION_SERVO_SERIAL               = (1 << 22), // 4194304
     FUNCTION_TELEMETRY_SMARTPORT_MASTER = (1 << 23), // 8388608
+    FUNCTION_IMU2                     = (1 << 24), // 16777216
 } serialPortFunction_e;
 
 typedef enum {

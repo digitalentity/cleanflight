@@ -84,6 +84,7 @@ typedef enum {
     SERIALRX_FPORT2 = 12,
     SERIALRX_SRXL2 = 13,
     SERIALRX_GHST = 14,
+    SERIALRX_MAVLINK = 15,
 } rxSerialReceiverType_e;
 
 #define MAX_SUPPORTED_RC_PPM_CHANNEL_COUNT          16
@@ -114,11 +115,15 @@ typedef struct rxConfig_s {
     uint8_t serialrx_provider;              // Type of UART-based receiver (rxSerialReceiverType_e enum). Only used if receiverType is RX_TYPE_SERIAL
     uint8_t serialrx_inverted;              // Flip the default inversion of the protocol - e.g. sbus (Futaba, FrSKY) is inverted if this is false, uninverted if it's true. Support for uninverted OpenLRS (and modified FrSKY) receivers.
     uint8_t halfDuplex;                     // allow rx to operate in half duplex mode. From tristate_e.
+#ifdef USE_RX_SPI
     uint8_t rx_spi_protocol;                // type of SPI receiver protocol (rx_spi_protocol_e enum). Only used if receiverType is RX_TYPE_SPI
     uint32_t rx_spi_id;
     uint8_t rx_spi_rf_channel_count;
+#endif
+#ifdef USE_SPEKTRUM_BIND
     uint8_t spektrum_sat_bind;              // number of bind pulses for Spektrum satellite receivers
     uint8_t spektrum_sat_bind_autoreset;    // whenever we will reset (exit) binding mode after hard reboot
+#endif
     uint8_t rssi_channel;
     uint8_t rssiMin;                        // minimum RSSI sent by the RX - [RSSI_VISIBLE_VALUE_MIN, RSSI_VISIBLE_VALUE_MAX]
     uint8_t rssiMax;                        // maximum RSSI sent by the RX - [RSSI_VISIBLE_VALUE_MIN, RSSI_VISIBLE_VALUE_MAX]
@@ -130,8 +135,10 @@ typedef struct rxConfig_s {
     uint8_t rcFilterFrequency;              // RC filter cutoff frequency (smoothness vs response sharpness)
     uint16_t mspOverrideChannels;           // Channels to override with MSP RC when BOXMSPRCOVERRIDE is active
     uint8_t rssi_source;
+#ifdef USE_SERIALRX_SRXL2
     uint8_t srxl2_unit_id;
     uint8_t srxl2_baud_fast;
+#endif
 } rxConfig_t;
 
 PG_DECLARE(rxConfig_t, rxConfig);

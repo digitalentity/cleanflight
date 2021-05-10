@@ -35,6 +35,7 @@
 extern gpsLocation_t        GPS_home;
 extern uint32_t             GPS_distanceToHome;        // distance to home point in meters
 extern int16_t              GPS_directionToHome;       // direction to home point in degrees
+extern fpVector3_t          original_rth_home;         // the original rth home - save it, since it could be replaced by safehome or HOME_RESET
 
 extern bool autoThrottleManuallyIncreased;
 
@@ -50,14 +51,20 @@ typedef struct {
     int32_t lon;
 } navSafeHome_t;
 
+typedef enum {
+    SAFEHOME_USAGE_OFF = 0,    // Don't use safehomes
+    SAFEHOME_USAGE_RTH = 1,    // Default - use safehome for RTH
+    SAFEHOME_USAGE_RTH_FS = 2, // Use safehomes for RX failsafe only
+} safehomeUsageMode_e;
+
 PG_DECLARE_ARRAY(navSafeHome_t, MAX_SAFE_HOMES, safeHomeConfig);
 
-extern int8_t safehome_used;                     // -1 if no safehome, 0 to MAX_SAFEHOMES -1 otherwise
-extern uint32_t safehome_distance;               // distance to the selected safehome
+extern int8_t safehome_index;                    // -1 if no safehome, 0 to MAX_SAFEHOMES -1 otherwise
+extern uint32_t safehome_distance;               // distance to the nearest safehome
+extern bool safehome_applied;                    // whether the safehome has been applied to home.
 
 void resetSafeHomes(void);                       // remove all safehomes
-bool isSafeHomeInUse(void);                      // Are we using a safehome instead of the arming point?
-bool foundNearbySafeHome(void);                  // Did we find a safehome nearby?
+bool findNearestSafeHome(void);                  // Find nearest safehome
 
 #endif // defined(USE_SAFE_HOME)
 
@@ -132,6 +139,12 @@ typedef enum {
     NOMS_ALL_NAV
 } navOverridesMotorStop_e;
 
+typedef enum {
+    OFF,
+    ON,
+    ON_FW_SPIRAL,
+} navRTHClimbFirst_e;
+
 typedef struct positionEstimationConfig_s {
     uint8_t automatic_mag_declination;
     uint8_t reset_altitude_type; // from nav_reset_type_e
@@ -183,7 +196,9 @@ typedef struct navConfig_s {
             uint8_t disarm_on_landing;          //
             uint8_t rth_allow_landing;          // Enable landing as last stage of RTH. Use constants in navRTHAllowLanding_e.
             uint8_t rth_climb_ignore_emerg;     // Option to ignore GPS loss on initial climb stage of RTH
+            uint8_t rth_alt_control_override;   // Override RTH Altitude and Climb First settings using Pitch and Roll stick
             uint8_t nav_overrides_motor_stop;   // Autonomous modes override motor_stop setting and user command to stop motor
+            uint8_t safehome_usage_mode;        // Controls when safehomes are used
         } flags;
 
         uint8_t  pos_failure_timeout;           // Time to wait before switching to emergency landing (0 - disable)
@@ -193,7 +208,8 @@ typedef struct navConfig_s {
         uint16_t max_auto_climb_rate;           // max vertical speed limitation cm/sec
         uint16_t max_manual_speed;              // manual velocity control max horizontal speed
         uint16_t max_manual_climb_rate;         // manual velocity control max vertical speed
-        uint16_t land_descent_rate;             // normal RTH landing descent rate
+        uint16_t land_minalt_vspd;              // Final RTH landing descent rate under minalt
+        uint16_t land_maxalt_vspd;              // RTH landing descent rate target at maxalt
         uint16_t land_slowdown_minalt;          // Altitude to stop lowering descent rate during RTH descend
         uint16_t land_slowdown_maxalt;          // Altitude to start lowering descent rate during RTH descend
         uint16_t emerg_descent_rate;            // emergency landing descent rate
@@ -203,12 +219,15 @@ typedef struct navConfig_s {
         uint16_t rth_abort_threshold;           // Initiate emergency landing if during RTH we get this much [cm] away from home
         uint16_t max_terrain_follow_altitude;   // Max altitude to be used in SURFACE TRACKING mode
         uint16_t safehome_max_distance;         // Max distance that a safehome is from the arming point
+        uint16_t max_altitude;                  // Max altitude when in AltHold mode (not Surface Following)
     } general;
 
     struct {
         uint8_t  max_bank_angle;                // multicopter max banking angle (deg)
         uint16_t hover_throttle;                // multicopter hover throttle
         uint16_t auto_disarm_delay;             // multicopter safety delay for landing detector
+
+#ifdef USE_MR_BRAKING_MODE
         uint16_t braking_speed_threshold;       // above this speed braking routine might kick in
         uint16_t braking_disengage_speed;       // below this speed braking will be disengaged
         uint16_t braking_timeout;               // Timeout for braking mode
@@ -217,6 +236,8 @@ typedef struct navConfig_s {
         uint16_t braking_boost_speed_threshold; // Above this speed braking boost mode can engage
         uint16_t braking_boost_disengage_speed; // Below this speed braking boost will disengage
         uint8_t  braking_bank_angle;            // Max angle [deg] that MR is allowed duing braking boost phase
+#endif
+
         uint8_t posDecelerationTime;            // Brake time parameter
         uint8_t posResponseExpo;                // Position controller expo (taret vel expo for MC)
         bool slowDownForTurning;             // Slow down during WP missions when changing heading on next waypoint
@@ -461,6 +482,11 @@ typedef enum {
     GEO_ORIGIN_RESET_ALTITUDE
 } geoOriginResetMode_e;
 
+typedef enum {
+    NAV_WP_TAKEOFF_DATUM,
+    NAV_WP_MSL_DATUM
+} geoAltitudeDatumFlag_e;
+
 // geoSetOrigin stores the location provided in llh as a GPS origin in the
 // provided origin parameter. resetMode indicates wether all origin coordinates
 // should be overwritten by llh (GEO_ORIGIN_SET) or just the altitude, leaving
@@ -481,6 +507,8 @@ bool geoConvertGeodeticToLocalOrigin(fpVector3_t * pos, const gpsLocation_t *llh
 // the provided origin is valid and the conversion could be performed.
 bool geoConvertLocalToGeodetic(gpsLocation_t *llh, const gpsOrigin_t *origin, const fpVector3_t *pos);
 float geoCalculateMagDeclination(const gpsLocation_t * llh); // degrees units
+// Select absolute or relative altitude based on WP mission flag setting
+geoAltitudeConversionMode_e waypointMissionAltConvMode(geoAltitudeDatumFlag_e datumFlag);
 
 /* Distance/bearing calculation */
 bool navCalculatePathToDestination(navDestinationPath_t *result, const fpVector3_t * destinationPos);
@@ -500,6 +528,7 @@ bool navigationIsExecutingAnEmergencyLanding(void);
  * or if it's NAV_RTH_ALLOW_LANDING_FAILSAFE and failsafe mode is active.
  */
 bool navigationRTHAllowsLanding(void);
+bool isWaypointMissionRTHActive(void);
 
 bool isNavLaunchEnabled(void);
 bool isFixedWingLaunchDetected(void);

@@ -45,6 +45,13 @@
 
 #include "config/feature.h"
 
+#ifdef USE_DSHOT
+#include "drivers/pwm_output.h"
+#include "fc/fc_core.h"
+#include "flight/mixer.h"
+static timeUs_t lastDshotBeeperCommandTimeUs;
+#endif
+
 #include "io/beeper.h"
 
 #define MAX_MULTI_BEEPS 20   //size limit for 'beep_multiBeeps[]'
@@ -331,6 +338,17 @@ void beeperUpdate(timeUs_t currentTimeUs)
     }
 
     if (!beeperIsOn) {
+#ifdef USE_DSHOT
+        if (!areMotorsRunning()
+            && beeperConfig()->dshot_beeper_enabled
+            && (currentBeeperEntry->mode == BEEPER_RX_SET || currentBeeperEntry->mode == BEEPER_RX_LOST)
+            && currentTimeUs - getLastDisarmTimeUs() > getDShotBeaconGuardDelayUs())
+        {
+            lastDshotBeeperCommandTimeUs = currentTimeUs;
+            sendDShotCommand(beeperConfig()->dshot_beeper_tone);
+        }
+#endif
+
         beeperIsOn = 1;
         if (currentBeeperEntry->sequence[beeperPos] != 0) {
             if (!(getBeeperOffMask() & (1 << (currentBeeperEntry->mode - 1))))
@@ -407,3 +425,25 @@ int beeperTableEntryCount(void)
 {
     return (int)BEEPER_TABLE_ENTRY_COUNT;
 }
+
+#ifdef USE_DSHOT
+timeUs_t getDShotBeaconGuardDelayUs(void) {
+    // Based on Digital_Cmd_Spec.txt - all delays have 100ms added to ensure that the minimum time has passed.
+    switch (beeperConfig()->dshot_beeper_tone) {
+        case 1:
+        case 2:
+            return 260000 + 100000;
+        case 3:
+        case 4:
+            return 280000 + 100000;
+        case 5:
+        default:
+            return 1020000 + 100000;
+    }
+}
+
+timeUs_t getLastDshotBeeperCommandTimeUs(void)
+{
+    return lastDshotBeeperCommandTimeUs;
+}
+#endif

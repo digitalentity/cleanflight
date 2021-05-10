@@ -22,23 +22,6 @@
 #include "config/parameter_group.h"
 
 #define MAX_CONTROL_RATE_PROFILE_COUNT 3
-/*
-Max and min available values for rates are now stored as absolute
-tenths of degrees-per-second [dsp/10]
-That means, max. rotation rate 180 equals 1800dps
-
-New defaults of 200dps for pitch,roll and yaw are more less
-equivalent of rates 0 from previous versions of iNav, Cleanflight, Baseflight
-and so on.
-*/
-#define CONTROL_RATE_CONFIG_ROLL_PITCH_RATE_MAX  180
-#define CONTROL_RATE_CONFIG_ROLL_PITCH_RATE_MIN  6
-#define CONTROL_RATE_CONFIG_ROLL_PITCH_RATE_DEFAULT  20
-#define CONTROL_RATE_CONFIG_YAW_RATE_MAX         180
-#define CONTROL_RATE_CONFIG_YAW_RATE_MIN         2
-#define CONTROL_RATE_CONFIG_YAW_RATE_DEFAULT     20
-
-#define CONTROL_RATE_CONFIG_TPA_MAX              100
 
 typedef struct controlRateConfig_s {
 

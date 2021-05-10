@@ -112,6 +112,7 @@
 
 #define PITOT_I2C_BUS           BUS_I2C1
 #define TEMPERATURE_I2C_BUS     BUS_I2C1
+#define BNO055_I2C_BUS          BUS_I2C1
 
 #define USE_RANGEFINDER
 #define USE_RANGEFINDER_MSP

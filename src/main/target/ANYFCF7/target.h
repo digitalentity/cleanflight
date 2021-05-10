@@ -40,7 +40,6 @@
 
 #define USE_MAG
 #define MAG_I2C_BUS             BUS_I2C2
-#define MAG_HMC5883_ALIGN       CW270_DEG_FLIP
 #define USE_MAG_HMC5883
 #define USE_MAG_QMC5883
 #define USE_MAG_IST8310
@@ -49,6 +48,7 @@
 #define USE_MAG_LIS3MDL
 
 #define TEMPERATURE_I2C_BUS     BUS_I2C2
+#define BNO055_I2C_BUS          BUS_I2C2
 
 #define USE_BARO
 
@@ -140,8 +140,6 @@
 #define USE_I2C
 #define USE_I2C_DEVICE_4
 #define USE_I2C_DEVICE_2
-
-#define MAG_GPS_ALIGN           CW180_DEG_FLIP
 
 #define SENSORS_SET (SENSOR_ACC|SENSOR_MAG|SENSOR_BARO)
 

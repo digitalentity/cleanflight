@@ -121,6 +121,7 @@
 #define USE_BARO_DPS310
 
 #define TEMPERATURE_I2C_BUS     BUS_I2C1
+#define BNO055_I2C_BUS          BUS_I2C1
 
 #define USE_MAG
 #define MAG_I2C_BUS             BUS_I2C1

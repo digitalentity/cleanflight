@@ -52,7 +52,6 @@
 
 #define USE_MAG
 #define USE_MAG_MPU9250
-#define MAG_MPU9250_ALIGN       CW90_DEG
 
 // MPU6 interrupts
 #define USE_EXTI
@@ -116,6 +115,7 @@
 #define I2C2_SDA                PB11
 
 #define TEMPERATURE_I2C_BUS     BUS_I2C2
+#define BNO055_I2C_BUS          BUS_I2C2
 #endif
 
 #define USE_ADC

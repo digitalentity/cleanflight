@@ -119,7 +119,7 @@ void ghstRxWriteTelemetryData(const void *data, int len)
 }
 
 void ghstRxSendTelemetryData(void)
-{   
+{
     // if there is telemetry data to write
     if (telemetryBufLen > 0) {
         serialWriteBuf(serialPort, telemetryBuf, telemetryBufLen);
@@ -178,7 +178,7 @@ STATIC_UNIT_TESTED void ghstDataReceive(uint16_t c, void *data)
 static bool shouldSendTelemetryFrame(void)
 {
     const timeUs_t now = micros();
-    const timeUs_t timeSinceRxFrameEndUs = cmpTimeUs(now, ghstRxFrameEndAtUs);
+    const timeDelta_t timeSinceRxFrameEndUs = cmpTimeUs(now, ghstRxFrameEndAtUs);
     return telemetryBufLen > 0 && timeSinceRxFrameEndUs > GHST_RX_TO_TELEMETRY_MIN_US && timeSinceRxFrameEndUs < GHST_RX_TO_TELEMETRY_MAX_US;
 }
 
@@ -191,7 +191,7 @@ static void ghstIdle(void)
 
 static void ghstUpdateFailsafe(unsigned pktIdx)
 {
-    // pktIdx is an offset of RC channel packet, 
+    // pktIdx is an offset of RC channel packet,
     // We'll track arrival time of each of the frame types we ever saw arriving from this receiver
     if (pktIdx < GHST_UL_RC_CHANS_FRAME_COUNT) {
         if (ghstFsTracker[pktIdx].onTimePacketCounter < GHST_RC_FRAME_COUNT_THRESHOLD) {
@@ -282,7 +282,7 @@ static bool ghstProcessFrame(const rxRuntimeConfig_t *rxRuntimeConfig)
         int startIdx = 0;
 
         if (
-            ghstValidatedFrame.frame.type >= GHST_UL_RC_CHANS_HS4_FIRST && 
+            ghstValidatedFrame.frame.type >= GHST_UL_RC_CHANS_HS4_FIRST &&
             ghstValidatedFrame.frame.type <= GHST_UL_RC_CHANS_HS4_LAST
         ) {
             const ghstPayloadPulses_t* const rcChannels = (ghstPayloadPulses_t*)&ghstValidatedFrame.frame.payload;
@@ -300,7 +300,7 @@ static bool ghstProcessFrame(const rxRuntimeConfig_t *rxRuntimeConfig)
                 case GHST_UL_RC_CHANS_HS4_RSSI: {
                     const ghstPayloadPulsesRSSI_t* const rssiFrame = (ghstPayloadPulsesRSSI_t*)&ghstValidatedFrame.frame.payload;
                     lqTrackerSet(rxRuntimeConfig->lqTracker, scaleRange(constrain(rssiFrame->lq, 0, 100), 0, 100, 0, RSSI_MAX_VALUE));
-                    
+
                     break;
                 }
 

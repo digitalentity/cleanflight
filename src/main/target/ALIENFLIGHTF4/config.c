@@ -45,6 +45,7 @@
 
 #include "sensors/battery.h"
 #include "sensors/sensors.h"
+#include "sensors/compass.h"
 
 #include "telemetry/telemetry.h"
 
@@ -56,6 +57,8 @@
 // alternative defaults settings for AlienFlight targets
 void targetConfiguration(void)
 {
+    compassConfigMutable()->mag_align = CW90_DEG;
+
     serialConfigMutable()->portConfigs[2].functionMask = FUNCTION_RX_SERIAL;
     batteryMetersConfigMutable()->current.offset = CURRENTOFFSET;
     batteryMetersConfigMutable()->current.scale = CURRENTSCALE;

@@ -71,11 +71,11 @@ void applyRoverBoatPositionController(timeUs_t currentTimeUs)
     static timeUs_t previousTimePositionUpdate;         // Occurs @ GPS update rate
     static timeUs_t previousTimeUpdate;                 // Occurs @ looptime rate
 
-    const timeDelta_t deltaMicros = currentTimeUs - previousTimeUpdate;
+    const timeDeltaLarge_t deltaMicros = currentTimeUs - previousTimeUpdate;
     previousTimeUpdate = currentTimeUs;
 
     // If last position update was too long in the past - ignore it (likely restarting altitude controller)
-    if (deltaMicros > HZ2US(MIN_POSITION_UPDATE_RATE_HZ)) {
+    if (deltaMicros > MAX_POSITION_UPDATE_INTERVAL_US) {
         previousTimeUpdate = currentTimeUs;
         previousTimePositionUpdate = currentTimeUs;
         resetFixedWingPositionController();
@@ -86,10 +86,10 @@ void applyRoverBoatPositionController(timeUs_t currentTimeUs)
     if ((posControl.flags.estPosStatus >= EST_USABLE)) {
         // If we have new position - update velocity and acceleration controllers
         if (posControl.flags.horizontalPositionDataNew) {
-            const timeDelta_t deltaMicrosPositionUpdate = currentTimeUs - previousTimePositionUpdate;
+            const timeDeltaLarge_t deltaMicrosPositionUpdate = currentTimeUs - previousTimePositionUpdate;
             previousTimePositionUpdate = currentTimeUs;
 
-            if (deltaMicrosPositionUpdate < HZ2US(MIN_POSITION_UPDATE_RATE_HZ)) {
+            if (deltaMicrosPositionUpdate < MAX_POSITION_UPDATE_INTERVAL_US) {
                 update2DPositionHeadingController(currentTimeUs, deltaMicrosPositionUpdate);
             } else {
                 resetFixedWingPositionController();

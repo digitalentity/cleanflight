@@ -1,1 +1,0 @@
-target_stm32f303xc(KFC32F3_INAV SKIP_RELEASES)

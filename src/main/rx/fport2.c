@@ -531,7 +531,7 @@ static uint8_t frameStatus(rxRuntimeConfig_t *rxRuntimeConfig)
     }
 #endif
 
-    if (frameReceivedTimestamp && (cmpTimeUs(currentTimeUs, frameReceivedTimestamp) > FPORT2_MAX_TELEMETRY_AGE_MS * 1000)) {
+    if (frameReceivedTimestamp && (cmpTimeUs(currentTimeUs, frameReceivedTimestamp) > MS2US(FPORT2_MAX_TELEMETRY_AGE_MS))) {
         lqTrackerSet(rxRuntimeConfig->lqTracker, 0);
         frameReceivedTimestamp = 0;
     }
@@ -593,7 +593,7 @@ static bool processFrame(const rxRuntimeConfig_t *rxRuntimeConfig)
 
             }
 
-            timeUs_t otaResponseTime = cmpTimeUs(micros(), otaFrameEndTimestamp);
+            timeDelta_t otaResponseTime = cmpTimeUs(micros(), otaFrameEndTimestamp);
             if (!firmwareUpdateError && (otaResponseTime <= otaMaxResponseTime)) { // We can answer in time (firmwareUpdateStore can take time because it might need to erase flash)
                 writeUplinkFramePhyID(downlinkPhyID, otaResponsePayload);
                 DEBUG_SET(DEBUG_FPORT, DEBUG_FPORT2_OTA_FRAME_RESPONSE_TIME, otaResponseTime);

@@ -60,10 +60,11 @@
 #define USE_MAG_IST8308
 #define USE_MAG_QMC5883
 #define USE_MAG_LIS3MDL
-#define MAG_IST8310_ALIGN CW270_DEG
 
 // *************** Temperature sensor *****************
 #define TEMPERATURE_I2C_BUS     BUS_I2C1
+
+#define BNO055_I2C_BUS          BUS_I2C1
 
 // *************** BARO *****************************
 #define USE_BARO

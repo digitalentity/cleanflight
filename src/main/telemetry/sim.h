@@ -23,6 +23,15 @@
 #define SIM_DEFAULT_TX_FLAGS "f"
 #define SIM_PIN "0000"
 
+typedef enum  {
+    SIM_TX_FLAG                 = (1 << 0),
+    SIM_TX_FLAG_FAILSAFE        = (1 << 1),
+    SIM_TX_FLAG_GPS             = (1 << 2),
+    SIM_TX_FLAG_ACC             = (1 << 3),
+    SIM_TX_FLAG_LOW_ALT         = (1 << 4),
+    SIM_TX_FLAG_RESPONSE        = (1 << 5)
+} simTxFlags_e;
+
 
 void handleSimTelemetry(void);
 void initSimTelemetry(void);

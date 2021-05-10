@@ -33,6 +33,7 @@
 
 #include "fc/fc_msp.h"
 #include "fc/fc_msp_box.h"
+#include "fc/settings.h"
 
 #include "io/piniobox.h"
 
@@ -40,7 +41,7 @@
 PG_REGISTER_WITH_RESET_TEMPLATE(pinioBoxConfig_t, pinioBoxConfig, PG_PINIOBOX_CONFIG, 1);
 
 PG_RESET_TEMPLATE(pinioBoxConfig_t, pinioBoxConfig,
-    { BOX_PERMANENT_ID_NONE, BOX_PERMANENT_ID_NONE, BOX_PERMANENT_ID_NONE, BOX_PERMANENT_ID_NONE }
+    { SETTING_PINIO_BOX1_DEFAULT, SETTING_PINIO_BOX2_DEFAULT, SETTING_PINIO_BOX3_DEFAULT, SETTING_PINIO_BOX4_DEFAULT }
 );
 
 typedef struct pinioBoxRuntimeConfig_s {

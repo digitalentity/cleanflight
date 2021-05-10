@@ -72,8 +72,8 @@
 #define VBAT_ADC_CHANNEL                ADC_CHN_2
 #define RSSI_ADC_CHANNEL                ADC_CHN_3
 
-#define USE_LED_STRIP
-#define WS2811_PIN                      PB8 // TIM16_CH1
+//#define USE_LED_STRIP
+//#define WS2811_PIN                      PB8 // TIM16_CH1
 
 // #define USE_TRANSPONDER
 // #define TRANSPONDER_PIN                 PA8

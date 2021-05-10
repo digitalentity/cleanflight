@@ -209,11 +209,11 @@ static void applyMulticopterAltitudeController(timeUs_t currentTimeUs)
 
     // If we have an update on vertical position data - update velocity and accel targets
     if (posControl.flags.verticalPositionDataNew) {
-        const timeDelta_t deltaMicrosPositionUpdate = currentTimeUs - previousTimePositionUpdate;
+        const timeDeltaLarge_t deltaMicrosPositionUpdate = currentTimeUs - previousTimePositionUpdate;
         previousTimePositionUpdate = currentTimeUs;
 
-        // Check if last correction was too log ago - ignore this update
-        if (deltaMicrosPositionUpdate < HZ2US(MIN_POSITION_UPDATE_RATE_HZ)) {
+        // Check if last correction was not too long ago
+        if (deltaMicrosPositionUpdate < MAX_POSITION_UPDATE_INTERVAL_US) {
             // If we are preparing for takeoff - start with lowset possible climb rate, adjust alt target and make sure throttle doesn't jump
             if (prepareForTakeoffOnReset) {
                 const navEstimatedPosVel_t * posToUse = navGetCurrentActualPositionAndVelocity();
@@ -477,8 +477,8 @@ static float computeNormalizedVelocity(const float value, const float maxValue)
 }
 
 static float computeVelocityScale(
-    const float value, 
-    const float maxValue, 
+    const float value,
+    const float maxValue,
     const float attenuationFactor,
     const float attenuationStart,
     const float attenuationEnd
@@ -491,7 +491,7 @@ static float computeVelocityScale(
 }
 
 static void updatePositionAccelController_MC(timeDelta_t deltaMicros, float maxAccelLimit, const float maxSpeed)
-{    
+{
     const float measurementX = navGetCurrentActualPositionAndVelocity()->vel.x;
     const float measurementY = navGetCurrentActualPositionAndVelocity()->vel.y;
 
@@ -539,15 +539,15 @@ static void updatePositionAccelController_MC(timeDelta_t deltaMicros, float maxA
      * Scale down dTerm with 2D speed
      */
     const float setpointScale = computeVelocityScale(
-        setpointXY, 
-        maxSpeed, 
+        setpointXY,
+        maxSpeed,
         multicopterPosXyCoefficients.dTermAttenuation,
         multicopterPosXyCoefficients.dTermAttenuationStart,
         multicopterPosXyCoefficients.dTermAttenuationEnd
     );
     const float measurementScale = computeVelocityScale(
-        posControl.actualState.velXY, 
-        maxSpeed, 
+        posControl.actualState.velXY,
+        maxSpeed,
         multicopterPosXyCoefficients.dTermAttenuation,
         multicopterPosXyCoefficients.dTermAttenuationStart,
         multicopterPosXyCoefficients.dTermAttenuationEnd
@@ -560,23 +560,23 @@ static void updatePositionAccelController_MC(timeDelta_t deltaMicros, float maxA
     // Pre-calculated accelLimit and the logic of navPidApply2 function guarantee that our newAccel won't exceed maxAccelLimit
     // Thus we don't need to do anything else with calculated acceleration
     float newAccelX = navPidApply3(
-        &posControl.pids.vel[X], 
-        setpointX, 
-        measurementX, 
-        US2S(deltaMicros), 
-        accelLimitXMin, 
-        accelLimitXMax, 
+        &posControl.pids.vel[X],
+        setpointX,
+        measurementX,
+        US2S(deltaMicros),
+        accelLimitXMin,
+        accelLimitXMax,
         0,      // Flags
         1.0f,   // Total gain scale
         dtermScale    // Additional dTerm scale
     );
     float newAccelY = navPidApply3(
-        &posControl.pids.vel[Y], 
-        setpointY, 
-        measurementY, 
-        US2S(deltaMicros), 
-        accelLimitYMin, 
-        accelLimitYMax, 
+        &posControl.pids.vel[Y],
+        setpointY,
+        measurementY,
+        US2S(deltaMicros),
+        accelLimitYMin,
+        accelLimitYMax,
         0,      // Flags
         1.0f,   // Total gain scale
         dtermScale    // Additional dTerm scale
@@ -638,14 +638,14 @@ static void applyMulticopterPositionController(timeUs_t currentTimeUs)
     if ((posControl.flags.estPosStatus >= EST_USABLE)) {
         // If we have new position - update velocity and acceleration controllers
         if (posControl.flags.horizontalPositionDataNew) {
-            const timeDelta_t deltaMicrosPositionUpdate = currentTimeUs - previousTimePositionUpdate;
+            const timeDeltaLarge_t deltaMicrosPositionUpdate = currentTimeUs - previousTimePositionUpdate;
             previousTimePositionUpdate = currentTimeUs;
 
             if (!bypassPositionController) {
                 // Update position controller
-                if (deltaMicrosPositionUpdate < HZ2US(MIN_POSITION_UPDATE_RATE_HZ)) {
+                if (deltaMicrosPositionUpdate < MAX_POSITION_UPDATE_INTERVAL_US) {
                     // Get max speed from generic NAV (waypoint specific), don't allow to move slower than 0.5 m/s
-                    const float maxSpeed = getActiveWaypointSpeed(); 
+                    const float maxSpeed = getActiveWaypointSpeed();
                     updatePositionVelocityController_MC(maxSpeed);
                     updatePositionAccelController_MC(deltaMicrosPositionUpdate, NAV_ACCELERATION_XY_MAX, maxSpeed);
                 }
@@ -761,11 +761,11 @@ static void applyMulticopterEmergencyLandingController(timeUs_t currentTimeUs)
 
     // Normal sensor data
     if (posControl.flags.verticalPositionDataNew) {
-        const timeDelta_t deltaMicrosPositionUpdate = currentTimeUs - previousTimePositionUpdate;
+        const timeDeltaLarge_t deltaMicrosPositionUpdate = currentTimeUs - previousTimePositionUpdate;
         previousTimePositionUpdate = currentTimeUs;
 
-        // Check if last correction was too log ago - ignore this update
-        if (deltaMicrosPositionUpdate < HZ2US(MIN_POSITION_UPDATE_RATE_HZ)) {
+        // Check if last correction was not too long ago
+        if (deltaMicrosPositionUpdate < MAX_POSITION_UPDATE_INTERVAL_US) {
             updateClimbRateToAltitudeController(-1.0f * navConfig()->general.emerg_descent_rate, ROC_TO_ALT_NORMAL);
             updateAltitudeVelocityController_MC(deltaMicrosPositionUpdate);
             updateAltitudeThrottleController_MC(deltaMicrosPositionUpdate);

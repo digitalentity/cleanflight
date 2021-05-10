@@ -63,9 +63,6 @@ void targetConfiguration(void)
     pidProfileMutable()->bank_mc.pid[PITCH].P = 36;
     failsafeConfigMutable()->failsafe_delay = 2;
     failsafeConfigMutable()->failsafe_off_delay = 0;
-    controlRateProfilesMutable(0)->stabilized.rates[FD_PITCH] = CONTROL_RATE_CONFIG_ROLL_PITCH_RATE_DEFAULT;
-    controlRateProfilesMutable(0)->stabilized.rates[FD_ROLL] = CONTROL_RATE_CONFIG_ROLL_PITCH_RATE_DEFAULT;
-    controlRateProfilesMutable(0)->stabilized.rates[FD_YAW] = CONTROL_RATE_CONFIG_YAW_RATE_DEFAULT;
     parseRcChannels("TAER1234");
 
     *primaryMotorMixerMutable(0) = (motorMixer_t){ 1.0f, -0.414178f,  1.0f, -1.0f };    // REAR_R

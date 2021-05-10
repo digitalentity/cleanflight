@@ -20,18 +20,18 @@
 #include "platform.h"
 
 #include "config/feature.h"
-
 #include "fc/config.h"
-
 #include "flight/mixer.h"
-
 #include "io/serial.h"
-
 #include "rx/rx.h"
+#include "sensors/compass.h"
 
 void targetConfiguration(void)
 {
     rxConfigMutable()->serialrx_provider = SERIALRX_SBUS;
     rxConfigMutable()->receiverType = RX_TYPE_SERIAL;
     serialConfigMutable()->portConfigs[2].functionMask = FUNCTION_RX_SERIAL;
+#ifdef QUANTON
+    compassConfigMutable()->mag_align = CW90_DEG;
+#endif
 }

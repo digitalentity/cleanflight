@@ -40,12 +40,15 @@ FILE_COMPILE_FOR_SPEED
 #include "fc/rc_controls.h"
 #include "fc/rc_modes.h"
 #include "fc/runtime_config.h"
+#include "fc/settings.h"
 
 #include "flight/pid.h"
 #include "flight/imu.h"
 #include "flight/mixer.h"
 #include "flight/rpm_filter.h"
+#include "flight/secondary_imu.h"
 #include "flight/kalman.h"
+#include "flight/smith_predictor.h"
 
 #include "io/gps.h"
 
@@ -107,6 +110,8 @@ typedef struct {
     bool itermFreezeActive;
 
     biquadFilter_t rateTargetFilter;
+
+    smithPredictor_t smithPredictor;
 } pidState_t;
 
 STATIC_FASTRAM bool pidFiltersConfigured = false;
@@ -157,43 +162,43 @@ static EXTENDED_FASTRAM filterApplyFnPtr dTermLpf2FilterApplyFn;
 static EXTENDED_FASTRAM bool levelingEnabled = false;
 static EXTENDED_FASTRAM float fixedWingLevelTrim;
 
-PG_REGISTER_PROFILE_WITH_RESET_TEMPLATE(pidProfile_t, pidProfile, PG_PID_PROFILE, 1);
+PG_REGISTER_PROFILE_WITH_RESET_TEMPLATE(pidProfile_t, pidProfile, PG_PID_PROFILE, 2);
 
 PG_RESET_TEMPLATE(pidProfile_t, pidProfile,
         .bank_mc = {
             .pid = {
-                [PID_ROLL] =    { 40, 30, 23, 60 },
-                [PID_PITCH] =   { 40, 30, 23, 60 },
-                [PID_YAW] =     { 85, 45, 0, 60 },
+                [PID_ROLL] =  { SETTING_MC_P_ROLL_DEFAULT, SETTING_MC_I_ROLL_DEFAULT, SETTING_MC_D_ROLL_DEFAULT, SETTING_MC_CD_ROLL_DEFAULT },
+                [PID_PITCH] = { SETTING_MC_P_PITCH_DEFAULT, SETTING_MC_I_PITCH_DEFAULT, SETTING_MC_D_PITCH_DEFAULT, SETTING_MC_CD_PITCH_DEFAULT },
+                [PID_YAW] =   { SETTING_MC_P_YAW_DEFAULT, SETTING_MC_I_YAW_DEFAULT, SETTING_MC_D_YAW_DEFAULT, SETTING_MC_CD_YAW_DEFAULT },
                 [PID_LEVEL] = {
-                    .P = 20,    // Self-level strength
-                    .I = 15,    // Self-leveing low-pass frequency (0 - disabled)
-                    .D = 75,    // 75% horizon strength
+                    .P = SETTING_MC_P_LEVEL_DEFAULT,          // Self-level strength
+                    .I = SETTING_MC_I_LEVEL_DEFAULT,          // Self-leveing low-pass frequency (0 - disabled)
+                    .D = SETTING_MC_D_LEVEL_DEFAULT,          // 75% horizon strength
                     .FF = 0,
                 },
-                [PID_HEADING] = { 60, 0, 0, 0 },
+                [PID_HEADING] = { SETTING_NAV_MC_HEADING_P_DEFAULT, 0, 0, 0 },
                 [PID_POS_XY] = {
-                    .P = 65,   // NAV_POS_XY_P * 100
+                    .P = SETTING_NAV_MC_POS_XY_P_DEFAULT,     // NAV_POS_XY_P * 100
                     .I = 0,
                     .D = 0,
                     .FF = 0,
                 },
                 [PID_VEL_XY] = {
-                    .P = 40,   // NAV_VEL_XY_P * 20
-                    .I = 15,   // NAV_VEL_XY_I * 100
-                    .D = 100,  // NAV_VEL_XY_D * 100
-                    .FF = 40,  // NAV_VEL_XY_D * 100
+                    .P = SETTING_NAV_MC_VEL_XY_P_DEFAULT,     // NAV_VEL_XY_P * 20
+                    .I = SETTING_NAV_MC_VEL_XY_I_DEFAULT,     // NAV_VEL_XY_I * 100
+                    .D = SETTING_NAV_MC_VEL_XY_D_DEFAULT,     // NAV_VEL_XY_D * 100
+                    .FF = SETTING_NAV_MC_VEL_XY_FF_DEFAULT,   // NAV_VEL_XY_D * 100
                 },
                 [PID_POS_Z] = {
-                    .P = 50,    // NAV_POS_Z_P * 100
-                    .I = 0,     // not used
-                    .D = 0,     // not used
+                    .P = SETTING_NAV_MC_POS_Z_P_DEFAULT,      // NAV_POS_Z_P * 100
+                    .I = 0,                                   // not used
+                    .D = 0,                                   // not used
                     .FF = 0,
                 },
                 [PID_VEL_Z] = {
-                    .P = 100,   // NAV_VEL_Z_P * 66.7
-                    .I = 50,    // NAV_VEL_Z_I * 20
-                    .D = 10,    // NAV_VEL_Z_D * 100
+                    .P = SETTING_NAV_MC_VEL_Z_P_DEFAULT,      // NAV_VEL_Z_P * 66.7
+                    .I = SETTING_NAV_MC_VEL_Z_I_DEFAULT,      // NAV_VEL_Z_I * 20
+                    .D = SETTING_NAV_MC_VEL_Z_D_DEFAULT,      // NAV_VEL_Z_D * 100
                     .FF = 0,
                 },
                 [PID_POS_HEADING] = {
@@ -207,83 +212,100 @@ PG_RESET_TEMPLATE(pidProfile_t, pidProfile,
 
         .bank_fw = {
             .pid = {
-                [PID_ROLL] =    { 5, 7, 0, 50 },
-                [PID_PITCH] =   { 5, 7, 0, 50 },
-                [PID_YAW] =     { 6, 10, 0, 60 },
+                [PID_ROLL] =  { SETTING_FW_P_ROLL_DEFAULT, SETTING_FW_I_ROLL_DEFAULT, 0, SETTING_FW_FF_ROLL_DEFAULT },
+                [PID_PITCH] =  { SETTING_FW_P_PITCH_DEFAULT, SETTING_FW_I_PITCH_DEFAULT, 0, SETTING_FW_FF_PITCH_DEFAULT },
+                [PID_YAW] =  { SETTING_FW_P_YAW_DEFAULT, SETTING_FW_I_YAW_DEFAULT, 0, SETTING_FW_FF_YAW_DEFAULT },
                 [PID_LEVEL] = {
-                    .P = 20,    // Self-level strength
-                    .I = 5,     // Self-leveing low-pass frequency (0 - disabled)
-                    .D = 75,    // 75% horizon strength
+                    .P = SETTING_FW_P_LEVEL_DEFAULT,          // Self-level strength
+                    .I = SETTING_FW_I_LEVEL_DEFAULT,          // Self-leveing low-pass frequency (0 - disabled)
+                    .D = SETTING_FW_D_LEVEL_DEFAULT,          // 75% horizon strength
                     .FF = 0,
                 },
-                [PID_HEADING] = { 60, 0, 0, 0 },
+                [PID_HEADING] = { SETTING_NAV_FW_HEADING_P_DEFAULT, 0, 0, 0 },
                 [PID_POS_Z] = {
-                    .P = 40,    // FW_POS_Z_P * 10
-                    .I = 5,     // FW_POS_Z_I * 10
-                    .D = 10,    // FW_POS_Z_D * 10
+                    .P = SETTING_NAV_FW_POS_Z_P_DEFAULT,      // FW_POS_Z_P * 10
+                    .I = SETTING_NAV_FW_POS_Z_I_DEFAULT,      // FW_POS_Z_I * 10
+                    .D = SETTING_NAV_FW_POS_Z_D_DEFAULT,      // FW_POS_Z_D * 10
                     .FF = 0,
                 },
                 [PID_POS_XY] = {
-                    .P = 75,    // FW_POS_XY_P * 100
-                    .I = 5,     // FW_POS_XY_I * 100
-                    .D = 8,     // FW_POS_XY_D * 100
+                    .P = SETTING_NAV_FW_POS_XY_P_DEFAULT,     // FW_POS_XY_P * 100
+                    .I = SETTING_NAV_FW_POS_XY_I_DEFAULT,     // FW_POS_XY_I * 100
+                    .D = SETTING_NAV_FW_POS_XY_D_DEFAULT,     // FW_POS_XY_D * 100
                     .FF = 0,
                 },
                 [PID_POS_HEADING] = {
-                    .P = 30,
-                    .I = 2,
-                    .D = 0,
+                    .P = SETTING_NAV_FW_POS_HDG_P_DEFAULT,
+                    .I = SETTING_NAV_FW_POS_HDG_I_DEFAULT,
+                    .D = SETTING_NAV_FW_POS_HDG_D_DEFAULT,
                     .FF = 0
                 }
             }
         },
 
-        .dterm_lpf_type = 1, //Default to BIQUAD
-        .dterm_lpf_hz = 40,
-        .dterm_lpf2_type = 1, //Default to BIQUAD
-        .dterm_lpf2_hz = 0,   // Off by default
-        .yaw_lpf_hz = 0,
+        .dterm_lpf_type = SETTING_DTERM_LPF_TYPE_DEFAULT,
+        .dterm_lpf_hz = SETTING_DTERM_LPF_HZ_DEFAULT,
+        .dterm_lpf2_type = SETTING_DTERM_LPF2_TYPE_DEFAULT,
+        .dterm_lpf2_hz = SETTING_DTERM_LPF2_HZ_DEFAULT,
+        .yaw_lpf_hz = SETTING_YAW_LPF_HZ_DEFAULT,
 
-        .itermWindupPointPercent = 50,       // Percent
+        .itermWindupPointPercent = SETTING_ITERM_WINDUP_DEFAULT,
 
-        .axisAccelerationLimitYaw = 10000,       // dps/s
-        .axisAccelerationLimitRollPitch = 0,     // dps/s
+        .axisAccelerationLimitYaw = SETTING_RATE_ACCEL_LIMIT_YAW_DEFAULT,
+        .axisAccelerationLimitRollPitch = SETTING_RATE_ACCEL_LIMIT_ROLL_PITCH_DEFAULT,
 
-        .heading_hold_rate_limit = HEADING_HOLD_RATE_LIMIT_DEFAULT,
+        .heading_hold_rate_limit = SETTING_HEADING_HOLD_RATE_LIMIT_DEFAULT,
 
-        .max_angle_inclination[FD_ROLL] = 300,    // 30 degrees
-        .max_angle_inclination[FD_PITCH] = 300,    // 30 degrees
-        .pidSumLimit = PID_SUM_LIMIT_DEFAULT,
-        .pidSumLimitYaw = PID_SUM_LIMIT_YAW_DEFAULT,
+        .max_angle_inclination[FD_ROLL] = SETTING_MAX_ANGLE_INCLINATION_RLL_DEFAULT,
+        .max_angle_inclination[FD_PITCH] = SETTING_MAX_ANGLE_INCLINATION_PIT_DEFAULT,
+        .pidSumLimit = SETTING_PIDSUM_LIMIT_DEFAULT,
+        .pidSumLimitYaw = SETTING_PIDSUM_LIMIT_YAW_DEFAULT,
 
-        .fixedWingItermThrowLimit = FW_ITERM_THROW_LIMIT_DEFAULT,
-        .fixedWingReferenceAirspeed = 1000,
-        .fixedWingCoordinatedYawGain = 1.0f,
-        .fixedWingCoordinatedPitchGain = 1.0f,
-        .fixedWingItermLimitOnStickPosition = 0.5f,
-        .fixedWingYawItermBankFreeze = 0,
+        .fixedWingItermThrowLimit = SETTING_FW_ITERM_THROW_LIMIT_DEFAULT,
+        .fixedWingReferenceAirspeed = SETTING_FW_REFERENCE_AIRSPEED_DEFAULT,
+        .fixedWingCoordinatedYawGain = SETTING_FW_TURN_ASSIST_YAW_GAIN_DEFAULT,
+        .fixedWingCoordinatedPitchGain = SETTING_FW_TURN_ASSIST_PITCH_GAIN_DEFAULT,
+        .fixedWingItermLimitOnStickPosition = SETTING_FW_ITERM_LIMIT_STICK_POSITION_DEFAULT,
+        .fixedWingYawItermBankFreeze = SETTING_FW_YAW_ITERM_FREEZE_BANK_ANGLE_DEFAULT,
 
-        .loiter_direction = NAV_LOITER_RIGHT,
-        .navVelXyDTermLpfHz = NAV_ACCEL_CUTOFF_FREQUENCY_HZ,
-        .navVelXyDtermAttenuation = 90,
-        .navVelXyDtermAttenuationStart = 10,
-        .navVelXyDtermAttenuationEnd = 60,
-        .iterm_relax_cutoff = MC_ITERM_RELAX_CUTOFF_DEFAULT,
-        .iterm_relax = ITERM_RELAX_RP,
-        .dBoostFactor = 1.25f,
-        .dBoostMaxAtAlleceleration = 7500.0f,
-        .dBoostGyroDeltaLpfHz = D_BOOST_GYRO_LPF_HZ,
-        .antigravityGain = 1.0f,
-        .antigravityAccelerator = 1.0f,
-        .antigravityCutoff = ANTI_GRAVITY_THROTTLE_FILTER_CUTOFF,
-        .pidControllerType = PID_TYPE_AUTO,
-        .navFwPosHdgPidsumLimit = PID_SUM_LIMIT_YAW_DEFAULT,
-        .controlDerivativeLpfHz = 30,
-        .kalman_q = 100,
-        .kalman_w = 4,
-        .kalman_sharpness = 100,
-        .kalmanEnabled = 0,
-        .fixedWingLevelTrim = 0,
+        .loiter_direction = SETTING_FW_LOITER_DIRECTION_DEFAULT,
+        .navVelXyDTermLpfHz = SETTING_NAV_MC_VEL_XY_DTERM_LPF_HZ_DEFAULT,
+        .navVelXyDtermAttenuation = SETTING_NAV_MC_VEL_XY_DTERM_ATTENUATION_DEFAULT,
+        .navVelXyDtermAttenuationStart = SETTING_NAV_MC_VEL_XY_DTERM_ATTENUATION_START_DEFAULT,
+        .navVelXyDtermAttenuationEnd = SETTING_NAV_MC_VEL_XY_DTERM_ATTENUATION_END_DEFAULT,
+        .iterm_relax_cutoff = SETTING_MC_ITERM_RELAX_CUTOFF_DEFAULT,
+        .iterm_relax = SETTING_MC_ITERM_RELAX_DEFAULT,
+
+#ifdef USE_D_BOOST
+        .dBoostFactor = SETTING_D_BOOST_FACTOR_DEFAULT,
+        .dBoostMaxAtAlleceleration = SETTING_D_BOOST_MAX_AT_ACCELERATION_DEFAULT,
+        .dBoostGyroDeltaLpfHz = SETTING_D_BOOST_GYRO_DELTA_LPF_HZ_DEFAULT,
+#endif
+
+#ifdef USE_ANTIGRAVITY
+        .antigravityGain = SETTING_ANTIGRAVITY_GAIN_DEFAULT,
+        .antigravityAccelerator = SETTING_ANTIGRAVITY_ACCELERATOR_DEFAULT,
+        .antigravityCutoff = SETTING_ANTIGRAVITY_CUTOFF_LPF_HZ_DEFAULT,
+#endif
+
+        .pidControllerType = SETTING_PID_TYPE_DEFAULT,
+        .navFwPosHdgPidsumLimit = SETTING_NAV_FW_POS_HDG_PIDSUM_LIMIT_DEFAULT,
+        .controlDerivativeLpfHz = SETTING_MC_CD_LPF_HZ_DEFAULT,
+
+#ifdef USE_GYRO_KALMAN
+        .kalman_q = SETTING_SETPOINT_KALMAN_Q_DEFAULT,
+        .kalman_w = SETTING_SETPOINT_KALMAN_W_DEFAULT,
+        .kalman_sharpness = SETTING_SETPOINT_KALMAN_SHARPNESS_DEFAULT,
+        .kalmanEnabled = SETTING_SETPOINT_KALMAN_ENABLED_DEFAULT,
+#endif
+
+        .fixedWingLevelTrim = SETTING_FW_LEVEL_PITCH_TRIM_DEFAULT,
+
+#ifdef USE_SMITH_PREDICTOR
+        .smithPredictorStrength = SETTING_SMITH_PREDICTOR_STRENGTH_DEFAULT,
+        .smithPredictorDelay = SETTING_SMITH_PREDICTOR_DELAY_DEFAULT,
+        .smithPredictorFilterHz = SETTING_SMITH_PREDICTOR_LPF_HZ_DEFAULT,
+#endif
 );
 
 bool pidInitFilters(void)
@@ -336,6 +358,30 @@ bool pidInitFilters(void)
         }
     }
 
+#ifdef USE_SMITH_PREDICTOR
+    smithPredictorInit(
+        &pidState[FD_ROLL].smithPredictor, 
+        pidProfile()->smithPredictorDelay, 
+        pidProfile()->smithPredictorStrength, 
+        pidProfile()->smithPredictorFilterHz, 
+        getLooptime()
+    );
+    smithPredictorInit(
+        &pidState[FD_PITCH].smithPredictor, 
+        pidProfile()->smithPredictorDelay, 
+        pidProfile()->smithPredictorStrength, 
+        pidProfile()->smithPredictorFilterHz, 
+        getLooptime()
+    );
+    smithPredictorInit(
+        &pidState[FD_YAW].smithPredictor, 
+        pidProfile()->smithPredictorDelay, 
+        pidProfile()->smithPredictorStrength, 
+        pidProfile()->smithPredictorFilterHz, 
+        getLooptime()
+    );
+#endif
+
     pidFiltersConfigured = true;
 
     return true;
@@ -356,6 +402,22 @@ void pidResetErrorAccumulators(void)
         pidState[axis].errorGyroIf = 0.0f;
         pidState[axis].errorGyroIfLimit = 0.0f;
     }
+}
+
+void pidReduceErrorAccumulators(int8_t delta, uint8_t axis) 
+{
+    pidState[axis].errorGyroIf -= delta;
+    pidState[axis].errorGyroIfLimit -= delta;
+}
+
+float getTotalRateTarget(void)
+{
+    return sqrtf(sq(pidState[FD_ROLL].rateTarget) + sq(pidState[FD_PITCH].rateTarget) + sq(pidState[FD_YAW].rateTarget));
+}
+
+float getAxisIterm(uint8_t axis) 
+{
+    return pidState[axis].errorGyroIf;
 }
 
 static float pidRcCommandToAngle(int16_t stick, int16_t maxInclination)
@@ -393,7 +455,7 @@ static float calculateFixedWingTPAFactor(uint16_t throttle)
 
     // tpa_rate is amount of curve TPA applied to PIDs
     // tpa_breakpoint for fixed wing is cruise throttle value (value at which PIDs were tuned)
-    if (currentControlRateProfile->throttle.dynPID != 0 && currentControlRateProfile->throttle.pa_breakpoint > getThrottleIdleValue()) {
+    if (currentControlRateProfile->throttle.dynPID != 0 && currentControlRateProfile->throttle.pa_breakpoint > getThrottleIdleValue() && !FLIGHT_MODE(AUTO_TUNE) && ARMING_FLAG(ARMED)) {
         if (throttle > getThrottleIdleValue()) {
             // Calculate TPA according to throttle
             tpaFactor = 0.5f + ((float)(currentControlRateProfile->throttle.pa_breakpoint - getThrottleIdleValue()) / (throttle - getThrottleIdleValue()) / 2.0f);
@@ -538,8 +600,7 @@ static void pidLevel(pidState_t *pidState, flight_dynamics_index_t axis, float h
     if ((axis == FD_PITCH) && STATE(AIRPLANE) && FLIGHT_MODE(ANGLE_MODE) && !navigationIsControllingThrottle())
         angleTarget += scaleRange(MAX(0, navConfig()->fw.cruise_throttle - rcCommand[THROTTLE]), 0, navConfig()->fw.cruise_throttle - PWM_RANGE_MIN, 0, mixerConfig()->fwMinThrottleDownPitchAngle);
 
-
-    //PITCH trim applied by a AutoLevel flight mode and manual pitch trimming
+        //PITCH trim applied by a AutoLevel flight mode and manual pitch trimming
     if (axis == FD_PITCH && STATE(AIRPLANE)) {
         /* 
          * fixedWingLevelTrim has opposite sign to rcCommand.
@@ -553,7 +614,22 @@ static void pidLevel(pidState_t *pidState, flight_dynamics_index_t axis, float h
         angleTarget -= DEGREES_TO_DECIDEGREES(fixedWingLevelTrim);   
     }
 
+#ifdef USE_SECONDARY_IMU
+    float actual;
+    if (secondaryImuState.active && secondaryImuConfig()->useForStabilized) {
+        if (axis == FD_ROLL) {
+            actual = secondaryImuState.eulerAngles.values.roll;
+        } else {
+            actual = secondaryImuState.eulerAngles.values.pitch;
+        }
+    } else {
+        actual = attitude.raw[axis];
+    }
+
+    const float angleErrorDeg = DECIDEGREES_TO_DEGREES(angleTarget - actual);
+#else
     const float angleErrorDeg = DECIDEGREES_TO_DEGREES(angleTarget - attitude.raw[axis]);
+#endif
 
     float angleRateTarget = constrainf(angleErrorDeg * (pidBank()->pid[PID_LEVEL].P / FP_PID_LEVEL_P_MULTIPLIER), -currentControlRateProfile->stabilized.rates[axis] * 10.0f, currentControlRateProfile->stabilized.rates[axis] * 10.0f);
 
@@ -690,13 +766,13 @@ static void NOINLINE pidApplyFixedWingRateController(pidState_t *pidState, fligh
         pidState->errorGyroIf = constrainf(pidState->errorGyroIf, -pidProfile()->fixedWingItermThrowLimit, pidProfile()->fixedWingItermThrowLimit);
     }
 
+    axisPID[axis] = constrainf(newPTerm + newFFTerm + pidState->errorGyroIf, -pidState->pidSumLimit, +pidState->pidSumLimit);
+
 #ifdef USE_AUTOTUNE_FIXED_WING
     if (FLIGHT_MODE(AUTO_TUNE) && !FLIGHT_MODE(MANUAL_MODE)) {
-        autotuneFixedWingUpdate(axis, pidState->rateTarget, pidState->gyroRate, newPTerm + newFFTerm);
+        autotuneFixedWingUpdate(axis, pidState->rateTarget, pidState->gyroRate, constrainf(newPTerm + newFFTerm, -pidState->pidSumLimit, +pidState->pidSumLimit));
     }
 #endif
-
-    axisPID[axis] = constrainf(newPTerm + newFFTerm + pidState->errorGyroIf + newDTerm, -pidState->pidSumLimit, +pidState->pidSumLimit);
 
 #ifdef USE_BLACKBOX
     axisPID_P[axis] = newPTerm;
@@ -1025,6 +1101,13 @@ void FAST_CODE pidController(float dT)
             pidState[axis].gyroRate = gyroKalmanUpdate(axis, pidState[axis].gyroRate, pidState[axis].rateTarget);
         }
 #endif
+
+#ifdef USE_SMITH_PREDICTOR
+        DEBUG_SET(DEBUG_SMITH_PREDICTOR, axis, pidState[axis].gyroRate);
+        pidState[axis].gyroRate = applySmithPredictor(axis, &pidState[axis].smithPredictor, pidState[axis].gyroRate);
+        DEBUG_SET(DEBUG_SMITH_PREDICTOR, axis + 3, pidState[axis].gyroRate);
+#endif
+
         DEBUG_SET(DEBUG_PID_MEASUREMENT, axis, pidState[axis].gyroRate);
     }
 

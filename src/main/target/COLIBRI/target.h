@@ -56,13 +56,12 @@
 #define USE_MAG_LIS3MDL
 
 #define TEMPERATURE_I2C_BUS     BUS_I2C3
+#define BNO055_I2C_BUS          BUS_I2C3
 
 #ifdef QUANTON
 #define IMU_MPU6000_ALIGN       CW90_DEG
-#define MAG_HMC5883_ALIGN       CW90_DEG
 #else
 #define IMU_MPU6000_ALIGN       CW270_DEG_FLIP
-#define MAG_HMC5883_ALIGN       CW270_DEG_FLIP
 #endif
 
 #define USE_BARO

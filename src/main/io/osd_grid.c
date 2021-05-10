@@ -295,7 +295,7 @@ void osdGridDrawSidebars(displayPort_t *display)
     uint8_t rightDecoration = osdUpdateSidebar(osdConfig()->right_sidebar_scroll, &right, currentTimeMs);
 
     const int hudwidth = OSD_AH_SIDEBAR_WIDTH_POS;
-    const int hudheight = OSD_AH_SIDEBAR_HEIGHT_POS;
+    const int hudheight = osdConfig()->sidebar_height;
 
     // Arrows
     if (osdConfig()->sidebar_scroll_arrows) {
@@ -315,11 +315,12 @@ void osdGridDrawSidebars(displayPort_t *display)
     // Draw AH sides
     int leftX = MAX(elemPosX - hudwidth - osdConfig()->sidebar_horizontal_offset, 0);
     int rightX = MIN(elemPosX + hudwidth + osdConfig()->sidebar_horizontal_offset, display->cols - 1);
-    for (int y = -hudheight; y <= hudheight; y++) {
-        displayWriteChar(display, leftX, elemPosY + y, leftDecoration);
-        displayWriteChar(display, rightX, elemPosY + y, rightDecoration);
+    if (osdConfig()->sidebar_height) {
+        for (int y = -hudheight; y <= hudheight; y++) {
+            displayWriteChar(display, leftX, elemPosY + y, leftDecoration);
+            displayWriteChar(display, rightX, elemPosY + y, rightDecoration);
+        }
     }
-
     // AH level indicators
     displayWriteChar(display, leftX + 1, elemPosY, SYM_AH_RIGHT);
     displayWriteChar(display, rightX - 1, elemPosY, SYM_AH_LEFT);

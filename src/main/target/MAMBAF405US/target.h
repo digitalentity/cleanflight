@@ -20,7 +20,12 @@
 #define USE_TARGET_CONFIG
 
 #define TARGET_BOARD_IDENTIFIER         "MBUS"
+
+#ifdef MAMBAF405US_I2C
+#define USBD_PRODUCT_STRING             "MAMBAF405US_I2C"
+#else
 #define USBD_PRODUCT_STRING             "MAMBAF405US"
+#endif
 
 // ******** Board LEDs  **********************
 #define LED0                            PC15
@@ -44,24 +49,40 @@
 
 // *************** Baro **************************
 #define USE_I2C
-#define USE_I2C_DEVICE_2
 
+#ifdef MAMBAF405US_I2C
+
+#define USE_I2C_DEVICE_1
+#define I2C2_SCL                        PB8
+#define I2C2_SDA                        PB9
+#define DEFAULT_I2C_BUS                 BUS_I2C1
+
+#else 
+
+#define USE_I2C_DEVICE_2
 #define I2C2_SCL                        PB10        // SCL pad TX3
 #define I2C2_SDA                        PB11        // SDA pad RX3
 #define DEFAULT_I2C_BUS                 BUS_I2C2
+
+#endif
 
 #define USE_BARO
 #define BARO_I2C_BUS                    DEFAULT_I2C_BUS
 
 #define USE_BARO_BMP280
 #define USE_BARO_MS5611
+#define USE_BARO_DPS310
 
 //*********** Magnetometer / Compass *************
 #define USE_MAG
 #define MAG_I2C_BUS                     DEFAULT_I2C_BUS
 
+#define USE_MAG_AK8975
 #define USE_MAG_HMC5883
 #define USE_MAG_QMC5883
+#define USE_MAG_IST8310
+#define USE_MAG_IST8308
+#define USE_MAG_MAG3110
 #define USE_MAG_LIS3MDL
 
 // ******* SERIAL ********
@@ -90,12 +111,6 @@
 #define USE_UART6
 #define UART6_TX_PIN                    PC6
 #define UART6_RX_PIN                    PC7
-
-/*
-#define USE_SOFTSERIAL1
-#define SOFTSERIAL_1_TX_PIN             PA2
-#define SOFTSERIAL_1_RX_PIN             PA2
-*/
 
 #define SERIAL_PORT_COUNT               7
 
@@ -178,5 +193,10 @@
 // ESC-related features
 #define USE_DSHOT
 #define USE_SERIALSHOT
-//#define USE_ESC_SENSOR
+#define USE_ESC_SENSOR
 #define USE_SERIAL_4WAY_BLHELI_INTERFACE
+
+#define TEMPERATURE_I2C_BUS             DEFAULT_I2C_BUS
+#define PITOT_I2C_BUS                   DEFAULT_I2C_BUS
+#define RANGEFINDER_I2C_BUS             DEFAULT_I2C_BUS
+#define BNO055_I2C_BUS                  DEFAULT_I2C_BUS

@@ -31,6 +31,7 @@
 
 #include "fc/config.h"
 #include "fc/runtime_config.h"
+#include "fc/settings.h"
 
 #include "io/beeper.h"
 #include "io/osd.h"
@@ -42,8 +43,8 @@
 PG_REGISTER_WITH_RESET_TEMPLATE(vtxConfig_t, vtxConfig, PG_VTX_CONFIG, 3);
 
 PG_RESET_TEMPLATE(vtxConfig_t, vtxConfig,
-      .halfDuplex = true,
-      .smartAudioEarlyAkkWorkaroundEnable = true,
+      .halfDuplex = SETTING_VTX_HALFDUPLEX_DEFAULT,
+      .smartAudioEarlyAkkWorkaroundEnable = SETTING_VTX_SMARTAUDIO_EARLY_AKK_WORKAROUND_DEFAULT,
 );
 
 static uint8_t locked = 0;
@@ -182,4 +183,3 @@ void vtxCyclePower(const uint8_t powerStep)
 }
 
 #endif
-

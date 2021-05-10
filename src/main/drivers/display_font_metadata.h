@@ -10,12 +10,11 @@ typedef struct displayFontMetadata_s {
     uint16_t charCount;
 } displayFontMetadata_t;
 
-// 'I', 'N', 'A', 'V', 1
+// 'I', 'N', 'A', 'V'
 #define FONT_CHR_IS_METADATA(chr) ((chr)->data[0] == 'I' && \
     (chr)->data[1] == 'N' && \
     (chr)->data[2] == 'A' && \
-    (chr)->data[3] == 'V' && \
-    (chr)->data[4] == 1)
+    (chr)->data[3] == 'V')
 
 #define FONT_METADATA_CHR_INDEX 255
 // Used for runtime detection of display drivers that might

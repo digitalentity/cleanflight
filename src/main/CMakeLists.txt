@@ -103,6 +103,10 @@ main_sources(COMMON_SRC
     drivers/accgyro/accgyro_mpu6500.h
     drivers/accgyro/accgyro_mpu9250.c
     drivers/accgyro/accgyro_mpu9250.h
+    drivers/accgyro/accgyro_bno055.c
+    drivers/accgyro/accgyro_bno055.h
+    drivers/accgyro/accgyro_bno055_serial.c
+    drivers/accgyro/accgyro_bno055_serial.h
 
     drivers/adc.c
     drivers/adc.h
@@ -232,9 +236,13 @@ main_sources(COMMON_SRC
     drivers/rangefinder/rangefinder_srf10.h
     drivers/rangefinder/rangefinder_vl53l0x.c
     drivers/rangefinder/rangefinder_vl53l0x.h
+    drivers/rangefinder/rangefinder_vl53l1x.c
+    drivers/rangefinder/rangefinder_vl53l1x.h
     drivers/rangefinder/rangefinder_virtual.c
     drivers/rangefinder/rangefinder_virtual.h
-
+    drivers/rangefinder/rangefinder_us42.c
+    drivers/rangefinder/rangefinder_us42.h
+    
     drivers/resource.c
     drivers/resource.h
     drivers/rcc.c
@@ -312,11 +320,15 @@ main_sources(COMMON_SRC
     flight/imu.h
     flight/kalman.c
     flight/kalman.h
+    flight/smith_predictor.c
+    flight/smith_predictor.h
     flight/mixer.c
     flight/mixer.h
     flight/pid.c
     flight/pid.h
     flight/pid_autotune.c
+    flight/power_limits.c
+    flight/power_limits.h
     flight/rth_estimator.c
     flight/rth_estimator.h
     flight/servos.c
@@ -331,6 +343,8 @@ main_sources(COMMON_SRC
     flight/dynamic_gyro_notch.h
     flight/dynamic_lpf.c
     flight/dynamic_lpf.h
+    flight/secondary_imu.c
+    flight/secondary_imu.h
 
     io/beeper.c
     io/beeper.h
@@ -390,6 +404,8 @@ main_sources(COMMON_SRC
     rx/ibus.h
     rx/jetiexbus.c
     rx/jetiexbus.h
+    rx/mavlink.c
+    rx/mavlink.h
     rx/msp.c
     rx/msp.h
     rx/msp_override.c

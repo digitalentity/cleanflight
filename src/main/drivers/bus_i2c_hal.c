@@ -174,7 +174,7 @@ bool i2cWriteBuffer(I2CDevice device, uint8_t addr_, uint8_t reg_, uint8_t len_,
 
     HAL_StatusTypeDef status;
 
-    if (reg_ == 0xFF && allowRawAccess) {
+    if ((reg_ == 0xFF || len_ == 0) && allowRawAccess) {
         status = HAL_I2C_Master_Transmit(&state->handle, addr_ << 1, (uint8_t *)data, len_, I2C_DEFAULT_TIMEOUT);
     }
     else {

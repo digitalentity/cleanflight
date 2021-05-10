@@ -35,7 +35,9 @@ const timerHardware_t timerHardware[] = {
     DEF_TIM(TIM5,  CH3, PA2,  TIM_USE_ANY,   0, 0), //TX2 pad -softserial_tx2
 
     DEF_TIM(TIM9, CH2, PA3,   TIM_USE_PPM,   0, 0), //RX2 Pad -PPM
+#ifndef MATEKF411SE_PINIO
     DEF_TIM(TIM2, CH3, PB10,  TIM_USE_ANY,   0, 0), // softserial_rx1 - LED 2812   D(1,1,3)
+#endif
 
 };
 

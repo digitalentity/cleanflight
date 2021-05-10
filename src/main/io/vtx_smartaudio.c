@@ -43,6 +43,8 @@
 #include "drivers/time.h"
 #include "drivers/vtx_common.h"
 
+#include "fc/settings.h"
+
 #include "io/serial.h"
 #include "io/vtx.h"
 #include "io/vtx_control.h"
@@ -129,8 +131,8 @@ saPowerTable_t saPowerTable[VTX_SMARTAUDIO_MAX_POWER_COUNT] = {
 
 smartAudioDevice_t saDevice = {
     .version = SA_UNKNOWN,
-    .channel = -1,
-    .power = -1,
+    .channel = SETTING_VTX_CHANNEL_DEFAULT,
+    .power = SETTING_VTX_POWER_DEFAULT,
     .mode = 0,
     .freq = 0,
     .orfreq = 0,

@@ -169,7 +169,7 @@ static bool isTimerPeriodTooLarge(uint32_t timerPeriod)
 
 static void serialTimerConfigureTimebase(TCH_t * tch, uint32_t baud)
 {
-    uint32_t baseClock = SystemCoreClock / timerClockDivisor(tch->timHw->tim);
+    uint32_t baseClock = timerClock(tch->timHw->tim);
     uint32_t clock = baseClock;
     uint32_t timerPeriod;
 

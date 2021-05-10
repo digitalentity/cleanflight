@@ -49,6 +49,7 @@
 #include "io/serial.h"
 
 #include "fc/cli.h"
+#include "fc/settings.h"
 
 #include "msp/msp_serial.h"
 
@@ -147,7 +148,7 @@ void pgResetFn_serialConfig(serialConfig_t *serialConfig)
     }
 #endif
 
-    serialConfig->reboot_character = 'R';
+    serialConfig->reboot_character = SETTING_REBOOT_CHARACTER_DEFAULT;
 }
 
 baudRate_e lookupBaudRateIndex(uint32_t baudRate)

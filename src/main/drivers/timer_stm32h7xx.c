@@ -48,16 +48,48 @@ const timerDef_t timerDefinitions[HARDWARE_TIMER_DEFINITION_COUNT] = {
     [13] = { .tim = TIM17, .rcc = RCC_APB2(TIM17),  .irq = TIM17_IRQn},
 };
 
-uint8_t timerClockDivisor(TIM_TypeDef *tim)
-{
-    UNUSED(tim);
-    return 1;
-}
-
 uint32_t timerClock(TIM_TypeDef *tim)
 {
-    UNUSED(tim);
-    return SystemCoreClock;
+    int timpre;
+    uint32_t pclk;
+    uint32_t ppre;
+
+    // Implement the table:
+    // RM0433 (Rev 6) Table 52.
+    // RM0455 (Rev 3) Table 55.
+    // "Ratio between clock timer and pclk"
+    // (Tables are the same, just D2 or CD difference)
+
+#if defined(STM32H743xx) || defined(STM32H750xx) || defined(STM32H723xx) || defined(STM32H725xx)
+#define PERIPH_PRESCALER(bus) ((RCC->D2CFGR & RCC_D2CFGR_D2PPRE ## bus) >> RCC_D2CFGR_D2PPRE ## bus ## _Pos)
+#elif defined(STM32H7A3xx) || defined(STM32H7A3xxQ)
+#define PERIPH_PRESCALER(bus) ((RCC->CDCFGR2 & RCC_CDCFGR2_CDPPRE ## bus) >> RCC_CDCFGR2_CDPPRE ## bus ## _Pos)
+#else
+#error Unknown MCU type
+#endif
+
+    if (tim == TIM1 || tim == TIM8 || tim == TIM15 || tim == TIM16 || tim == TIM17) {
+        // Timers on APB2
+        pclk = HAL_RCC_GetPCLK2Freq();
+        ppre = PERIPH_PRESCALER(2);
+    } else {
+        // Timers on APB1
+        pclk = HAL_RCC_GetPCLK1Freq();
+        ppre = PERIPH_PRESCALER(1);
+    }
+
+    timpre = (RCC->CFGR & RCC_CFGR_TIMPRE) ? 1 : 0;
+
+    int index = (timpre << 3) | ppre;
+
+    static uint8_t periphToKernel[16] = { // The mutiplier table
+        1, 1, 1, 1, 2, 2, 2, 2, // TIMPRE = 0
+        1, 1, 1, 1, 2, 4, 4, 4  // TIMPRE = 1
+    };
+
+    return pclk * periphToKernel[index];
+
+#undef PERIPH_PRESCALER
 }
 
 _TIM_IRQ_HANDLER(TIM1_CC_IRQHandler, 1);
@@ -66,8 +98,6 @@ _TIM_IRQ_HANDLER(TIM3_IRQHandler, 3);
 _TIM_IRQ_HANDLER(TIM4_IRQHandler, 4);
 _TIM_IRQ_HANDLER(TIM5_IRQHandler, 5);
 _TIM_IRQ_HANDLER(TIM8_CC_IRQHandler, 8);
-//_TIM_IRQ_HANDLER(TIM1_BRK_TIM9_IRQHandler, 9);
-//_TIM_IRQ_HANDLER(TIM1_TRG_COM_TIM11_IRQHandler, 11);
 _TIM_IRQ_HANDLER(TIM8_BRK_TIM12_IRQHandler, 12);
 _TIM_IRQ_HANDLER(TIM15_IRQHandler, 15);
 _TIM_IRQ_HANDLER(TIM16_IRQHandler, 16);
