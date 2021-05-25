@@ -2290,8 +2290,8 @@ static void cliFlashRead(char *cmdline)
 #ifdef USE_OSD
 static void printOsdLayout(uint8_t dumpMask, const osdLayoutsConfig_t *config, const osdLayoutsConfig_t *configDefault, int layout, int item)
 {
-    // "<layout> <item> <col> <row> <visible>"
-    const char *format = "osd_layout %d %d %d %d %c";
+    // "<layout> <item> <col> <row> <visible> <infocycle>"
+    const char *format = "osd_layout %d %d %d %d %c %c";
     for (int ii = 0; ii < OSD_LAYOUT_COUNT; ii++) {
         if (layout >= 0 && layout != ii) {
             continue;
@@ -2307,13 +2307,15 @@ static void printOsdLayout(uint8_t dumpMask, const osdLayoutsConfig_t *config, c
                 ii, jj,
                 OSD_X(defaultLayoutItems[jj]),
                 OSD_Y(defaultLayoutItems[jj]),
-                OSD_VISIBLE(defaultLayoutItems[jj]) ? 'V' : 'H');
+                OSD_VISIBLE(defaultLayoutItems[jj]) ? 'V' : 'H',
+                OSD_INFOCYCLE(defaultLayoutItems[jj]) ? 'O' : 'A');
 
             cliDumpPrintLinef(dumpMask, equalsDefault, format,
                 ii, jj,
                 OSD_X(layoutItems[jj]),
                 OSD_Y(layoutItems[jj]),
-                OSD_VISIBLE(layoutItems[jj]) ? 'V' : 'H');
+                OSD_VISIBLE(layoutItems[jj]) ? 'V' : 'H',
+                OSD_INFOCYCLE(layoutItems[jj]) ? 'A' : 'O');
         }
     }
 }
@@ -2327,6 +2329,7 @@ static void cliOsdLayout(char *cmdline)
     int col = 0;
     int row = 0;
     bool visible = false;
+    bool infocycle = false;
     char *tok = strtok_r(cmdline, " ", &saveptr);
 
     int ii;
@@ -2374,6 +2377,19 @@ static void cliOsdLayout(char *cmdline)
                         return;
                 }
                 break;
+            case 5:
+                switch (*tok) {
+                    case 'O':
+                        infocycle = false;
+                        break;
+                    case 'A':
+                        infocycle = true;
+                        break;
+                    default:
+                        cliShowParseError();
+                        return;
+                }
+                break;
             default:
                 cliShowParseError();
                 return;
@@ -2396,8 +2412,15 @@ static void cliOsdLayout(char *cmdline)
             visible = OSD_VISIBLE(osdLayoutsConfig()->item_pos[layout][item]);
             FALLTHROUGH;
         case 5:
-            // Layout, item, pos and visibility. Set the item.
-            osdLayoutsConfigMutable()->item_pos[layout][item] = OSD_POS(col, row) | (visible ? OSD_VISIBLE_FLAG : 0);
+            // No infocycle provided. Keep the previous one.
+            infocycle = OSD_INFOCYCLE(osdLayoutsConfig()->item_pos[layout][item]);
+            FALLTHROUGH;
+        case 6:
+            // Layout, item, pos, visibility and infocycle. Set the item.
+            if (item == OSD_INFO_CYCLE) {
+                infocycle = false;      // always exclude Infocycle field, for obvious reasons
+            }
+            osdLayoutsConfigMutable()->item_pos[layout][item] = OSD_POS(col, row) | (visible ? OSD_VISIBLE_FLAG : 0) | (infocycle ? OSD_INFOCYCLE_FLAG : 0);
             break;
         default:
             // Unhandled
@@ -2930,28 +2953,28 @@ static void printImu2Status(void)
     cliPrintLinef("Acc: %d", secondaryImuState.calibrationStatus.acc);
     cliPrintLinef("Mag: %d", secondaryImuState.calibrationStatus.mag);
     cliPrintLine("Calibration gains:");
-    
+
     cliPrintLinef(
-        "Gyro: %d %d %d", 
-        secondaryImuConfig()->calibrationOffsetGyro[X], 
-        secondaryImuConfig()->calibrationOffsetGyro[Y], 
+        "Gyro: %d %d %d",
+        secondaryImuConfig()->calibrationOffsetGyro[X],
+        secondaryImuConfig()->calibrationOffsetGyro[Y],
         secondaryImuConfig()->calibrationOffsetGyro[Z]
     );
     cliPrintLinef(
-        "Acc: %d %d %d", 
-        secondaryImuConfig()->calibrationOffsetAcc[X], 
-        secondaryImuConfig()->calibrationOffsetAcc[Y], 
+        "Acc: %d %d %d",
+        secondaryImuConfig()->calibrationOffsetAcc[X],
+        secondaryImuConfig()->calibrationOffsetAcc[Y],
         secondaryImuConfig()->calibrationOffsetAcc[Z]
     );
     cliPrintLinef(
-        "Mag: %d %d %d", 
-        secondaryImuConfig()->calibrationOffsetMag[X], 
-        secondaryImuConfig()->calibrationOffsetMag[Y], 
+        "Mag: %d %d %d",
+        secondaryImuConfig()->calibrationOffsetMag[X],
+        secondaryImuConfig()->calibrationOffsetMag[Y],
         secondaryImuConfig()->calibrationOffsetMag[Z]
     );
     cliPrintLinef(
-        "Radius: %d %d", 
-        secondaryImuConfig()->calibrationRadiusAcc, 
+        "Radius: %d %d",
+        secondaryImuConfig()->calibrationRadiusAcc,
         secondaryImuConfig()->calibrationRadiusMag
     );
 }
@@ -3760,7 +3783,7 @@ const clicmd_t cmdTable[] = {
     CLI_COMMAND_DEF("wp", "waypoint list", NULL, cliWaypoints),
 #endif
 #ifdef USE_OSD
-    CLI_COMMAND_DEF("osd_layout", "get or set the layout of OSD items", "[<layout> [<item> [<col> <row> [<visible>]]]]", cliOsdLayout),
+    CLI_COMMAND_DEF("osd_layout", "get or set the layout of OSD items", "[<layout> [<item> [<col> <row> [<visible>] [<infocycle>]]]]", cliOsdLayout),
 #endif
 };
 

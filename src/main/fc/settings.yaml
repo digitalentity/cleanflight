@@ -3367,6 +3367,13 @@ groups:
         min: -36
         max: 36
 
+      - name: osd_infocycle_interval_time
+        description: Display time for each item in the OSD Info Cycle field (milliseconds).
+        field: infocycle_interval_time
+        default_value: 1000
+        min: 500
+        max: 5000
+
   - name: PG_OSD_COMMON_CONFIG
     type: osdCommonConfig_t
     headers: ["io/osd_common.h"]

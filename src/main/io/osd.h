@@ -30,7 +30,9 @@
 #define OSD_LAYOUT_COUNT (OSD_ALTERNATE_LAYOUT_COUNT + 1)
 
 #define OSD_VISIBLE_FLAG    0x0800
+#define OSD_INFOCYCLE_FLAG  0x0400
 #define OSD_VISIBLE(x)      ((x) & OSD_VISIBLE_FLAG)
+#define OSD_INFOCYCLE(x)    ((x) & OSD_INFOCYCLE_FLAG)
 #define OSD_POS(x,y)        ((x) | ((y) << 5))
 #define OSD_X(x)            ((x) & 0x001F)
 #define OSD_Y(x)            (((x) >> 5) & 0x001F)
@@ -228,6 +230,7 @@ typedef enum {
     OSD_NAV_FW_CONTROL_SMOOTHNESS,
     OSD_VERSION,
     OSD_RANGEFINDER,
+    OSD_INFO_CYCLE,
     OSD_PLIMIT_REMAINING_BURST_TIME,
     OSD_PLIMIT_ACTIVE_CURRENT_LIMIT,
     OSD_PLIMIT_ACTIVE_POWER_LIMIT,
@@ -373,9 +376,9 @@ typedef struct osdConfig_s {
     uint8_t pan_servo_index;            // Index of the pan servo used for home direction offset
     int8_t pan_servo_pwm2centideg;      // Centidegrees of servo rotation per us pwm
     uint8_t crsf_lq_format;
+    uint16_t infocycle_interval_time;   // Info Cycle item display time interval (ms)
     uint8_t sidebar_height;             // sidebar height in rows, 0 turns off sidebars leaving only level indicator arrows
     uint8_t telemetry; 				    // use telemetry on displayed pixel line 0
-
 } osdConfig_t;
 
 PG_DECLARE(osdConfig_t, osdConfig);
