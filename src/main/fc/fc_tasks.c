@@ -304,9 +304,9 @@ void taskUpdateOsd(timeUs_t currentTimeUs)
 
 void taskUpdateAux(timeUs_t currentTimeUs)
 {
-    UNUSED(currentTimeUs);
     updatePIDCoefficients();
     dynamicLpfGyroTask();
+    updateFixedWingLevelTrim(currentTimeUs);
 }
 
 void fcTasksInit(void)

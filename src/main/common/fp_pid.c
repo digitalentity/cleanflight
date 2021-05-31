@@ -96,7 +96,10 @@ float navPidApply3(
     pid->output_constrained = outValConstrained;
 
     /* Update I-term */
-    if (!(pidFlags & PID_ZERO_INTEGRATOR)) {
+    if (
+        !(pidFlags & PID_ZERO_INTEGRATOR) &&
+        !(pidFlags & PID_FREEZE_INTEGRATOR) 
+    ) {
         const float newIntegrator = pid->integrator + (error * pid->param.kI * gainScaler * dt) + ((outValConstrained - outVal) * pid->param.kT * dt);
 
         if (pidFlags & PID_SHRINK_INTEGRATOR) {
@@ -146,6 +149,10 @@ void navPidInit(pidController_t *pid, float _kP, float _kI, float _kD, float _kF
         float Ti = _kP / _kI;
         float Td = _kD / _kP;
         pid->param.kT = 2.0f / (Ti + Td);
+    }
+    else if (_kI > 1e-6f) {
+        pid->param.kI = _kI;
+        pid->param.kT = 0.0f;
     }
     else {
         pid->param.kI = 0.0;

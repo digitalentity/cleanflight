@@ -27,9 +27,6 @@
 #define BEEPER                  PA15
 #define BEEPER_INVERTED
 
-
-
-
 // *************** UART *****************************
 #define USE_VCP
 
@@ -66,19 +63,6 @@
 #define DEFAULT_RX_TYPE         RX_TYPE_SERIAL
 #define SERIALRX_PROVIDER       SERIALRX_SBUS
 #define SERIALRX_UART           SERIAL_PORT_USART6
-
-
-
-#define MAX_PWM_OUTPUT_PORTS        15
-
-
-
-
-#define TARGET_IO_PORTA 0xffff
-#define TARGET_IO_PORTB 0xffff
-#define TARGET_IO_PORTC 0xffff
-#define TARGET_IO_PORTD 0xffff
-#define TARGET_IO_PORTE 0xffff
 
 // *************** IMU generic ***********************
 #define USE_DUAL_GYRO
@@ -146,6 +130,7 @@
 #define BARO_I2C_BUS            BUS_I2C2
 #define USE_BARO_BMP280
 #define USE_BARO_MS5611
+#define USE_BARO_DPS310
 
 #define USE_MAG
 #define MAG_I2C_BUS             BUS_I2C1
@@ -163,7 +148,18 @@
 #define USE_RANGEFINDER
 #define RANGEFINDER_I2C_BUS     BUS_I2C2
 
+#define USE_SERIAL_4WAY_BLHELI_INTERFACE
 
+#define TARGET_IO_PORTA 0xffff
+#define TARGET_IO_PORTB 0xffff
+#define TARGET_IO_PORTC 0xffff
+#define TARGET_IO_PORTD 0xffff
+#define TARGET_IO_PORTE 0xffff
+
+#define MAX_PWM_OUTPUT_PORTS        15
+#define USE_DSHOT
+#define USE_ESC_SENSOR
+#define USE_SERIALSHOT
 
 #if 0
 #define USE_EXTI
@@ -196,9 +192,4 @@
 #define DEFAULT_FEATURES            (FEATURE_OSD | FEATURE_TELEMETRY | FEATURE_CURRENT_METER | FEATURE_VBAT | FEATURE_TX_PROF_SEL | FEATURE_BLACKBOX)
 #define CURRENT_METER_SCALE         250
 
-#define USE_SERIAL_4WAY_BLHELI_INTERFACE
-
-#define USE_DSHOT
-#define USE_ESC_SENSOR
-#define USE_SERIALSHOT
 #endif

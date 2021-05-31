@@ -194,7 +194,7 @@ static bool osdDisplayHasCanvas;
 
 #define AH_MAX_PITCH_DEFAULT 20 // Specify default maximum AHI pitch value displayed (degrees)
 
-PG_REGISTER_WITH_RESET_TEMPLATE(osdConfig_t, osdConfig, PG_OSD_CONFIG, 1);
+PG_REGISTER_WITH_RESET_TEMPLATE(osdConfig_t, osdConfig, PG_OSD_CONFIG, 2);
 PG_REGISTER_WITH_RESET_FN(osdLayoutsConfig_t, osdLayoutsConfig, PG_OSD_LAYOUTS_CONFIG, 0);
 
 static int digitCount(int32_t value)
@@ -539,11 +539,17 @@ static uint16_t osdGetCrsfLQ(void)
 {
     int16_t statsLQ = rxLinkStatistics.uplinkLQ;
     int16_t scaledLQ = scaleRange(constrain(statsLQ, 0, 100), 0, 100, 170, 300);
-    if (rxLinkStatistics.rfMode == 2) {
-        return scaledLQ;
-    } else {
-        return statsLQ;
+    int16_t displayedLQ;
+    switch (osdConfig()->crsf_lq_format) {
+        case OSD_CRSF_LQ_TYPE1:
+        case OSD_CRSF_LQ_TYPE2:
+            displayedLQ = statsLQ;
+            break;
+        case OSD_CRSF_LQ_TYPE3:
+            displayedLQ = rxLinkStatistics.rfMode >= 2 ? scaledLQ : statsLQ;
+            break;
     }
+    return displayedLQ;
 }
 
 static int16_t osdGetCrsfdBm(void)
@@ -1249,7 +1255,7 @@ static void osdDisplayTelemetry(void)
     displayWrite(osdDisplayPort, 0, 0, trk_buffer);
     if (osdConfig()->telemetry>1){
       displayWrite(osdDisplayPort, 0, 3, trk_buffer);               // Test display because normal telemetry line is not visible
-    }    
+    }
 }
 #endif
 
@@ -1843,38 +1849,33 @@ static bool osdDrawSingleElement(uint8_t item)
 #if defined(USE_SERIALRX_CRSF)
     case OSD_CRSF_RSSI_DBM:
         {
-            if (rxLinkStatistics.activeAnt == 0) {
-              buff[0] = SYM_RSSI;
-              tfp_sprintf(buff + 1, "%4d%c", rxLinkStatistics.uplinkRSSI, SYM_DBM);
-              if (!failsafeIsReceivingRxData()){
-                  TEXT_ATTRIBUTES_ADD_BLINK(elemAttr);
-              }
+            int16_t rssi = rxLinkStatistics.uplinkRSSI;
+            buff[0] = (rxLinkStatistics.activeAnt == 0) ? SYM_RSSI : SYM_2RSS; // Separate symbols for each antenna
+            if (rssi <= -100) {
+                tfp_sprintf(buff + 1, "%4d%c", rssi, SYM_DBM);
             } else {
-              buff[0] = SYM_2RSS;
-              tfp_sprintf(buff + 1, "%4d%c", rxLinkStatistics.uplinkRSSI, SYM_DBM);
-              if (!failsafeIsReceivingRxData()){
-                  TEXT_ATTRIBUTES_ADD_BLINK(elemAttr);
-              }
+                tfp_sprintf(buff + 1, "%3d%c%c", rssi, SYM_DBM, ' ');
+            }
+            if (!failsafeIsReceivingRxData()){
+                TEXT_ATTRIBUTES_ADD_BLINK(elemAttr);
             }
             break;
         }
     case OSD_CRSF_LQ:
         {
-            buff[0] = SYM_BLANK;
+            buff[0] = SYM_LQ;
             int16_t statsLQ = rxLinkStatistics.uplinkLQ;
             int16_t scaledLQ = scaleRange(constrain(statsLQ, 0, 100), 0, 100, 170, 300);
-            if (rxLinkStatistics.rfMode == 2) {
-                if (osdConfig()->crsf_lq_format == OSD_CRSF_LQ_TYPE1) {
-                    tfp_sprintf(buff, "%5d%s", scaledLQ, "%");
-                } else {
-                    tfp_sprintf(buff, "%d:%3d%s", rxLinkStatistics.rfMode, rxLinkStatistics.uplinkLQ, "%");
-                }
-            } else {
-                if (osdConfig()->crsf_lq_format == OSD_CRSF_LQ_TYPE1) {
-                    tfp_sprintf(buff, "%5d%s", rxLinkStatistics.uplinkLQ, "%");
-                } else {
-                    tfp_sprintf(buff, "%d:%3d%s", rxLinkStatistics.rfMode, rxLinkStatistics.uplinkLQ, "%");
-                }
+            switch (osdConfig()->crsf_lq_format) {
+                case OSD_CRSF_LQ_TYPE1:
+                    tfp_sprintf(buff+1, "%3d", rxLinkStatistics.uplinkLQ);
+                    break;
+                case OSD_CRSF_LQ_TYPE2:
+                    tfp_sprintf(buff+1, "%d:%3d", rxLinkStatistics.rfMode, rxLinkStatistics.uplinkLQ);
+                    break;
+                case OSD_CRSF_LQ_TYPE3:
+                    tfp_sprintf(buff+1, "%3d", rxLinkStatistics.rfMode >= 2 ? scaledLQ : rxLinkStatistics.uplinkLQ);
+                    break;
             }
             if (!failsafeIsReceivingRxData()){
                 TEXT_ATTRIBUTES_ADD_BLINK(elemAttr);
@@ -1886,10 +1887,14 @@ static bool osdDrawSingleElement(uint8_t item)
 
     case OSD_CRSF_SNR_DB:
         {
+            static pt1Filter_t snrFilterState;
+            static timeMs_t snrUpdated = 0;
+            int8_t snrFiltered = pt1FilterApply4(&snrFilterState, rxLinkStatistics.uplinkSNR, 0.5f, MS2S(millis() - snrUpdated));
+            snrUpdated = millis();
+
             const char* showsnr = "-20";
             const char* hidesnr = "     ";
-            int16_t osdSNR_Alarm = rxLinkStatistics.uplinkSNR;
-            if (osdSNR_Alarm > osdConfig()->snr_alarm) {
+            if (snrFiltered > osdConfig()->snr_alarm) {
                 if (cmsInMenu) {
                     buff[0] = SYM_SNR;
                     tfp_sprintf(buff + 1, "%s%c", showsnr, SYM_DB);
@@ -1897,9 +1902,13 @@ static bool osdDrawSingleElement(uint8_t item)
                     buff[0] = SYM_BLANK;
                     tfp_sprintf(buff + 1, "%s%c", hidesnr, SYM_BLANK);
                 }
-            } else if (osdSNR_Alarm <= osdConfig()->snr_alarm) {
+            } else if (snrFiltered <= osdConfig()->snr_alarm) {
                 buff[0] = SYM_SNR;
-                tfp_sprintf(buff + 1, "%3d%c", rxLinkStatistics.uplinkSNR, SYM_DB);
+                if (snrFiltered <= -10) {
+                    tfp_sprintf(buff + 1, "%3d%c", snrFiltered, SYM_DB);
+                } else {
+                    tfp_sprintf(buff + 1, "%2d%c%c", snrFiltered, SYM_DB, ' ');
+                }
             }
             break;
         }
@@ -1965,7 +1974,10 @@ static bool osdDrawSingleElement(uint8_t item)
 
                 for (int i = osdConfig()->hud_wp_disp - 1; i >= 0 ; i--) { // Display in reverse order so the next WP is always written on top
                     j = posControl.activeWaypointIndex + i;
-                    if (posControl.waypointList[j].lat != 0 && posControl.waypointList[j].lon != 0 && j <= posControl.waypointCount) {
+                    if (j > posControl.waypointCount - 1) { // limit to max WP index for mission
+                        break;
+                    }
+                    if (posControl.waypointList[j].lat != 0 && posControl.waypointList[j].lon != 0) {
                         wp2.lat = posControl.waypointList[j].lat;
                         wp2.lon = posControl.waypointList[j].lon;
                         wp2.alt = posControl.waypointList[j].alt;
@@ -2271,7 +2283,7 @@ static bool osdDrawSingleElement(uint8_t item)
             dateTime_t dateTime;
             rtcGetDateTimeLocal(&dateTime);
             buff[0] = SYM_CLOCK;
-            tfp_sprintf(buff + 1, "%02u:%02u", dateTime.hours, dateTime.minutes);
+            tfp_sprintf(buff + 1, "%02u:%02u:%02u", dateTime.hours, dateTime.minutes, dateTime.seconds);
             break;
         }
 
@@ -2349,7 +2361,7 @@ static bool osdDrawSingleElement(uint8_t item)
                         tfp_sprintf(buff, "%s%c%c", buff, SYM_MAH_MI_0, SYM_MAH_MI_1);
                     } else {
                         tfp_sprintf(buff, "%s%c", buff, SYM_AH_MI);
-                    } 
+                    }
                     if (!efficiencyValid) {
                         buff[0] = buff[1] = buff[2] = '-';
                         buff[3] = SYM_MAH_MI_0;
@@ -2363,7 +2375,7 @@ static bool osdDrawSingleElement(uint8_t item)
                         tfp_sprintf(buff, "%s%c%c", buff, SYM_MAH_KM_0, SYM_MAH_KM_1);
                     } else {
                         tfp_sprintf(buff, "%s%c", buff, SYM_AH_KM);
-                    } 
+                    }
                     if (!efficiencyValid) {
                         buff[0] = buff[1] = buff[2] = '-';
                         buff[3] = SYM_MAH_KM_0;
@@ -2844,7 +2856,7 @@ void osdDrawNextElement(void)
     osdDrawSingleElement(OSD_ARTIFICIAL_HORIZON);
     if (osdConfig()->telemetry>0){
       osdDisplayTelemetry();
-    }    
+    }
 }
 
 PG_RESET_TEMPLATE(osdConfig_t, osdConfig,

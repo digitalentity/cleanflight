@@ -29,6 +29,26 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "config/parameter_group.h"
+
+#if defined(USE_OSD) || defined(USE_DJI_HD_OSD)
+
+typedef enum {
+    OSD_SPEED_SOURCE_GROUND    = 0,
+    OSD_SPEED_SOURCE_3D        = 1,
+    OSD_SPEED_SOURCE_AIR       = 2
+} osdSpeedSource_e;
+
+typedef struct {
+    osdSpeedSource_e speedSource;
+} osdCommonConfig_t;
+
+PG_DECLARE(osdCommonConfig_t, osdCommonConfig);
+
+int osdGetSpeedFromSelectedSource(void);
+
+#endif // defined(USE_OSD) || defined(USE_DJI_HD_OSD)
+
 #define OSD_VARIO_CM_S_PER_ARROW 50 // 1 arrow = 50cm/s
 #define OSD_VARIO_HEIGHT_ROWS 5
 
@@ -86,4 +106,3 @@ void osdDrawSidebars(displayPort_t *display, displayCanvas_t *canvas);
 #ifdef USE_GPS
 int16_t osdGet3DSpeed(void);
 #endif
-

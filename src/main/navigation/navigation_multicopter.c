@@ -132,7 +132,7 @@ bool adjustMulticopterAltitudeFromRCInput(void)
         return true;
     }
     else {
-        const int16_t rcThrottleAdjustment = applyDeadband(rcCommand[THROTTLE] - altHoldThrottleRCZero, rcControlsConfig()->alt_hold_deadband);
+        const int16_t rcThrottleAdjustment = applyDeadbandRescaled(rcCommand[THROTTLE] - altHoldThrottleRCZero, rcControlsConfig()->alt_hold_deadband, -500, 500);
         if (rcThrottleAdjustment) {
             // set velocity proportional to stick movement
             float rcClimbRate;

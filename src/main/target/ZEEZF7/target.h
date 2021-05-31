@@ -77,13 +77,13 @@
 #define I2C1_SCL                PB8
 #define I2C1_SDA                PB9
 
-// External I2C Pads -- I2C2
-#define USE_I2C_DEVICE_2
-#define I2C2_SCL                PA8
-#define I2C2_SDA                PC9
+// External I2C Pads -- I2C3
+#define USE_I2C_DEVICE_3
+#define I2C3_SCL                PA8
+#define I2C3_SDA                PC9
 
 #define USE_MAG
-#define MAG_I2C_BUS             BUS_I2C2
+#define MAG_I2C_BUS             BUS_I2C3
 #define USE_MAG_HMC5883
 #define USE_MAG_QMC5883
 #define USE_MAG_IST8310

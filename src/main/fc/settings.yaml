@@ -77,7 +77,7 @@ tables:
     enum: videoSystem_e
   - name: osd_telemetry
     values: ["OFF", "ON","TEST"]
-    enum: osd_telemetry_e    
+    enum: osd_telemetry_e
   - name: osd_alignment
     values: ["LEFT", "RIGHT"]
     enum: osd_alignment_e
@@ -93,7 +93,7 @@ tables:
       "FLOW", "SBUS", "FPORT", "ALWAYS", "SAG_COMP_VOLTAGE",
       "VIBE", "CRUISE", "REM_FLIGHT_TIME", "SMARTAUDIO", "ACC",
       "ERPM", "RPM_FILTER", "RPM_FREQ", "NAV_YAW", "DYNAMIC_FILTER", "DYNAMIC_FILTER_FREQUENCY",
-      "IRLOCK", "CD", "KALMAN_GAIN", "PID_MEASUREMENT", "SPM_CELLS", "SPM_VS600", "SPM_VARIO", "PCF8574", "DYN_GYRO_LPF", "FW_D", "IMU2", "ALTITUDE",
+      "IRLOCK", "CD", "KALMAN_GAIN", "PID_MEASUREMENT", "SPM_CELLS", "SPM_VS600", "SPM_VARIO", "PCF8574", "DYN_GYRO_LPF", "AUTOLEVEL", "FW_D", "IMU2", "ALTITUDE",
       "GYRO_ALPHA_BETA_GAMMA", "SMITH_PREDICTOR", "AUTOTRIM", "AUTOTUNE"]
   - name: async_mode
     values: ["NONE", "GYRO", "ALL"]
@@ -104,7 +104,7 @@ tables:
     values: ["DEFAULT", "AIRCRAFT", "TYPE3", "TYPE4", "TYPE5", "TYPE6", "TYPE7"]
     enum: osd_crosshairs_style_e
   - name: osd_sidebar_scroll
-    values: ["NONE", "ALTITUDE", "GROUND_SPEED", "HOME_DISTANCE"]
+    values: ["NONE", "ALTITUDE", "SPEED", "HOME_DISTANCE"]
     enum: osd_sidebar_scroll_e
   - name: nav_rth_allow_landing
     values: ["NEVER", "ALWAYS", "FS_ONLY"]
@@ -156,15 +156,15 @@ tables:
     values: ["AUTO", "ON", "OFF"]
   - name: osd_crsf_lq_format
     enum: osd_crsf_lq_format_e
-    values: ["TYPE1", "TYPE2"]
+    values: ["TYPE1", "TYPE2", "TYPE3"]
   - name: off_on
     values: ["OFF", "ON"]
   - name: djiOsdTempSource
     values: ["ESC", "IMU", "BARO"]
     enum: djiOsdTempSource_e
-  - name: djiOsdSpeedSource
+  - name: osdSpeedSource
     values: ["GROUND", "3D", "AIR"]
-    enum: djiOsdSpeedSource_e
+    enum: osdSpeedSource_e
   - name: nav_overrides_motor_stop
     enum: navOverridesMotorStop_e
     values: ["OFF_ALWAYS", "OFF", "AUTO_ONLY", "ALL_NAV"]
@@ -2112,6 +2112,18 @@ groups:
         condition: USE_SMITH_PREDICTOR
         min: 1
         max: 500
+      - name: fw_level_pitch_gain
+        description: "I-gain for the pitch trim for self-leveling flight modes. Higher values means that AUTOTRIM will be faster but might introduce oscillations"
+        default_value: 5
+        field: fixedWingLevelTrimGain
+        min: 0
+        max: 20
+      - name: fw_level_pitch_deadband
+        description: "Deadband for automatic leveling when AUTOLEVEL mode is used."
+        default_value: 5
+        field: fixedWingLevelTrimDeadband
+        min: 0
+        max: 20
 
   - name: PG_PID_AUTOTUNE_CONFIG
     type: pidAutotuneConfig_t
@@ -2316,6 +2328,11 @@ groups:
         field: general.pos_failure_timeout
         min: 0
         max: 10
+      - name: nav_wp_load_on_boot
+        description: "If set to ON, waypoints will be automatically loaded from EEPROM to the FC during startup."
+        default_value: OFF
+        field: general.waypoint_load_on_boot
+        type: bool
       - name: nav_wp_radius
         description: "Waypoint radius [cm]. Waypoint would be considered reached if machine is within this radius"
         default_value: 100
@@ -3350,6 +3367,17 @@ groups:
         min: -36
         max: 36
 
+  - name: PG_OSD_COMMON_CONFIG
+    type: osdCommonConfig_t
+    headers: ["io/osd_common.h"]
+    condition: USE_OSD || USE_DJI_HD_OSD
+    members:
+      - name: osd_speed_source
+        description: "Sets the speed type displayed by the DJI OSD and OSD canvas (FrSky Pixel): GROUND, 3D, AIR"
+        default_value: "GROUND"
+        field: speedSource
+        table: osdSpeedSource
+        type: uint8_t
 
   - name: PG_SYSTEM_CONFIG
     type: systemConfig_t
@@ -3598,12 +3626,6 @@ groups:
           default_value: "ESC"
           field: esc_temperature_source
           table: djiOsdTempSource
-          type: uint8_t
-        - name: dji_speed_source
-          description: "Sets the speed type displayed by the DJI OSD: GROUND, 3D, AIR"
-          default_value: "GROUND"
-          field: speedSource
-          table: djiOsdSpeedSource
           type: uint8_t
 
   - name: PG_BEEPER_CONFIG

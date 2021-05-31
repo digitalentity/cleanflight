@@ -106,7 +106,7 @@ void resetFixedWingAltitudeController(void)
 
 bool adjustFixedWingAltitudeFromRCInput(void)
 {
-    int16_t rcAdjustment = applyDeadband(rcCommand[PITCH], rcControlsConfig()->alt_hold_deadband);
+    int16_t rcAdjustment = applyDeadbandRescaled(rcCommand[PITCH], rcControlsConfig()->alt_hold_deadband, -500, 500);
 
     if (rcAdjustment) {
         // set velocity proportional to stick movement
@@ -281,7 +281,7 @@ static void calculateVirtualPositionTarget_FW(float trackingPeriod)
 
     // Shift position according to pilot's ROLL input (up to max_manual_speed velocity)
     if (posControl.flags.isAdjustingPosition) {
-        int16_t rcRollAdjustment = applyDeadband(rcCommand[ROLL], rcControlsConfig()->pos_hold_deadband);
+        int16_t rcRollAdjustment = applyDeadbandRescaled(rcCommand[ROLL], rcControlsConfig()->pos_hold_deadband, -500, 500);
 
         if (rcRollAdjustment) {
             float rcShiftY = rcRollAdjustment * navConfig()->general.max_manual_speed / 500.0f * trackingPeriod;
@@ -295,7 +295,7 @@ static void calculateVirtualPositionTarget_FW(float trackingPeriod)
 
 bool adjustFixedWingPositionFromRCInput(void)
 {
-    int16_t rcRollAdjustment = applyDeadband(rcCommand[ROLL], rcControlsConfig()->pos_hold_deadband);
+    int16_t rcRollAdjustment = applyDeadbandRescaled(rcCommand[ROLL], rcControlsConfig()->pos_hold_deadband, -500, 500);
     return (rcRollAdjustment);
 }
 
@@ -650,7 +650,7 @@ void applyFixedWingNavigationController(navigationFSMStateFlags_t navStateFlags,
         }
 
         if (FLIGHT_MODE(NAV_COURSE_HOLD_MODE) && posControl.flags.isAdjustingPosition)
-            rcCommand[ROLL] = applyDeadband(rcCommand[ROLL], rcControlsConfig()->pos_hold_deadband);
+            rcCommand[ROLL] = applyDeadbandRescaled(rcCommand[ROLL], rcControlsConfig()->pos_hold_deadband, -500, 500);
 
         //if (navStateFlags & NAV_CTL_YAW)
         if ((navStateFlags & NAV_CTL_ALT) || (navStateFlags & NAV_CTL_POS))

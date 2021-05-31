@@ -329,6 +329,16 @@ bool compassIsReady(void)
     return magUpdatedAtLeastOnce;
 }
 
+bool compassIsCalibrationComplete(void)
+{
+    if (STATE(COMPASS_CALIBRATED)) {
+        return true;
+    }
+    else {
+        return false;
+    }
+}
+
 void compassUpdate(timeUs_t currentTimeUs)
 {
     static sensorCalibrationState_t calState;

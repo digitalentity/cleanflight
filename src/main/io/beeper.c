@@ -341,8 +341,7 @@ void beeperUpdate(timeUs_t currentTimeUs)
 #ifdef USE_DSHOT
         if (!areMotorsRunning()
             && beeperConfig()->dshot_beeper_enabled
-            && (currentBeeperEntry->mode == BEEPER_RX_SET || currentBeeperEntry->mode == BEEPER_RX_LOST)
-            && currentTimeUs - getLastDisarmTimeUs() > getDShotBeaconGuardDelayUs())
+            && currentTimeUs - lastDshotBeeperCommandTimeUs > getDShotBeaconGuardDelayUs())
         {
             lastDshotBeeperCommandTimeUs = currentTimeUs;
             sendDShotCommand(beeperConfig()->dshot_beeper_tone);

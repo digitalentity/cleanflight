@@ -204,6 +204,7 @@ typedef struct navConfig_s {
         uint8_t  pos_failure_timeout;           // Time to wait before switching to emergency landing (0 - disable)
         uint16_t waypoint_radius;               // if we are within this distance to a waypoint then we consider it reached (distance is in cm)
         uint16_t waypoint_safe_distance;        // Waypoint mission sanity check distance
+        bool     waypoint_load_on_boot;         // load waypoints automatically during boot
         uint16_t max_auto_speed;                // autonomous navigation speed cm/sec
         uint16_t max_auto_climb_rate;           // max vertical speed limitation cm/sec
         uint16_t max_manual_speed;              // manual velocity control max horizontal speed
@@ -524,6 +525,7 @@ bool navigationIsControllingThrottle(void);
 bool isFixedWingAutoThrottleManuallyIncreased(void);
 bool navigationIsFlyingAutonomousMode(void);
 bool navigationIsExecutingAnEmergencyLanding(void);
+bool navigationIsControllingAltitude(void);
 /* Returns true iff navConfig()->general.flags.rth_allow_landing is NAV_RTH_ALLOW_LANDING_ALWAYS
  * or if it's NAV_RTH_ALLOW_LANDING_FAILSAFE and failsafe mode is active.
  */

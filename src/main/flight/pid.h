@@ -19,6 +19,7 @@
 
 #include "config/parameter_group.h"
 #include "fc/runtime_config.h"
+#include "common/time.h"
 
 #define GYRO_SATURATION_LIMIT       1800        // 1800dps
 #define PID_SUM_LIMIT_MIN           100
@@ -53,6 +54,8 @@ FP-PID has been rescaled to match LuxFloat (and MWRewrite) from Cleanflight 1.13
 #define MC_ITERM_RELAX_CUTOFF_DEFAULT 15
 
 #define ANTI_GRAVITY_THROTTLE_FILTER_CUTOFF 15  // The anti gravity throttle highpass filter cutoff
+
+#define FIXED_WING_LEVEL_TRIM_DEADBAND_DEFAULT 5
 
 #define TASK_AUX_RATE_HZ   100 //In Hz
 
@@ -161,6 +164,8 @@ typedef struct pidProfile_s {
 #endif
 
     float fixedWingLevelTrim;
+    float fixedWingLevelTrimGain;
+    float fixedWingLevelTrimDeadband;
 #ifdef USE_SMITH_PREDICTOR
     float smithPredictorStrength;
     float smithPredictorDelay;
@@ -226,3 +231,5 @@ void autotuneUpdateState(void);
 void autotuneFixedWingUpdate(const flight_dynamics_index_t axis, float desiredRateDps, float reachedRateDps, float pidOutput);
 
 pidType_e pidIndexGetType(pidIndex_e pidIndex);
+
+void updateFixedWingLevelTrim(timeUs_t currentTimeUs);

@@ -160,7 +160,14 @@ static EXTENDED_FASTRAM pidControllerFnPtr pidControllerApplyFn;
 static EXTENDED_FASTRAM filterApplyFnPtr dTermLpfFilterApplyFn;
 static EXTENDED_FASTRAM filterApplyFnPtr dTermLpf2FilterApplyFn;
 static EXTENDED_FASTRAM bool levelingEnabled = false;
+
+#define FIXED_WING_LEVEL_TRIM_MAX_ANGLE 10.0f // Max angle auto trimming can demand
+#define FIXED_WING_LEVEL_TRIM_DIVIDER 500.0f
+#define FIXED_WING_LEVEL_TRIM_MULTIPLIER 1.0f / FIXED_WING_LEVEL_TRIM_DIVIDER
+#define FIXED_WING_LEVEL_TRIM_CONTROLLER_LIMIT FIXED_WING_LEVEL_TRIM_DIVIDER * FIXED_WING_LEVEL_TRIM_MAX_ANGLE
+
 static EXTENDED_FASTRAM float fixedWingLevelTrim;
+static EXTENDED_FASTRAM pidController_t fixedWingLevelTrimController;
 
 PG_REGISTER_PROFILE_WITH_RESET_TEMPLATE(pidProfile_t, pidProfile, PG_PID_PROFILE, 2);
 
@@ -300,6 +307,8 @@ PG_RESET_TEMPLATE(pidProfile_t, pidProfile,
 #endif
 
         .fixedWingLevelTrim = SETTING_FW_LEVEL_PITCH_TRIM_DEFAULT,
+        .fixedWingLevelTrimGain = SETTING_FW_LEVEL_PITCH_GAIN_DEFAULT,
+        .fixedWingLevelTrimDeadband = SETTING_FW_LEVEL_PITCH_DEADBAND_DEFAULT,
 
 #ifdef USE_SMITH_PREDICTOR
         .smithPredictorStrength = SETTING_SMITH_PREDICTOR_STRENGTH_DEFAULT,
@@ -597,8 +606,28 @@ static void pidLevel(pidState_t *pidState, flight_dynamics_index_t axis, float h
     float angleTarget = pidRcCommandToAngle(rcCommand[axis], pidProfile()->max_angle_inclination[axis]);
 
     // Automatically pitch down if the throttle is manually controlled and reduced bellow cruise throttle
-    if ((axis == FD_PITCH) && STATE(AIRPLANE) && FLIGHT_MODE(ANGLE_MODE) && !navigationIsControllingThrottle())
-        angleTarget += scaleRange(MAX(0, navConfig()->fw.cruise_throttle - rcCommand[THROTTLE]), 0, navConfig()->fw.cruise_throttle - PWM_RANGE_MIN, 0, mixerConfig()->fwMinThrottleDownPitchAngle);
+    if ((axis == FD_PITCH) && STATE(AIRPLANE) && FLIGHT_MODE(ANGLE_MODE) && !navigationIsControllingThrottle()) {
+        angleTarget += scaleRange(MAX(0, navConfig()->fw.cruise_throttle - rcCommand[THROTTLE]), 0, navConfig()->fw.cruise_throttle - PWM_RANGE_MIN, 0, mixerConfig()->fwMinThrottleDownPitchAngle);        
+    }
+
+    //PITCH trim applied by a AutoLevel flight mode and manual pitch trimming
+    if (axis == FD_PITCH && STATE(AIRPLANE)) {
+        DEBUG_SET(DEBUG_AUTOLEVEL, 0, angleTarget * 10);
+        DEBUG_SET(DEBUG_AUTOLEVEL, 1, fixedWingLevelTrim * 10);
+        DEBUG_SET(DEBUG_AUTOLEVEL, 2, getEstimatedActualVelocity(Z));
+
+        /* 
+         * fixedWingLevelTrim has opposite sign to rcCommand.
+         * Positive rcCommand means nose should point downwards
+         * Negative rcCommand mean nose should point upwards
+         * This is counter intuitive and a natural way suggests that + should mean UP
+         * This is why fixedWingLevelTrim has opposite sign to rcCommand
+         * Positive fixedWingLevelTrim means nose should point upwards
+         * Negative fixedWingLevelTrim means nose should point downwards
+         */
+        angleTarget -= fixedWingLevelTrim;   
+        DEBUG_SET(DEBUG_AUTOLEVEL, 3, angleTarget * 10);
+    }
 
         //PITCH trim applied by a AutoLevel flight mode and manual pitch trimming
     if (axis == FD_PITCH && STATE(AIRPLANE)) {
@@ -1250,6 +1279,16 @@ void pidInit(void)
 #endif
 
     fixedWingLevelTrim = pidProfile()->fixedWingLevelTrim;
+
+    navPidInit(
+        &fixedWingLevelTrimController,
+        0.0f,
+        (float)pidProfile()->fixedWingLevelTrimGain / 100000.0f,
+        0.0f,
+        0.0f,
+        2.0f
+    );
+
 }
 
 const pidBank_t * pidBank(void) { 
@@ -1257,4 +1296,62 @@ const pidBank_t * pidBank(void) {
 }
 pidBank_t * pidBankMutable(void) { 
     return usedPidControllerType == PID_TYPE_PIFF ? &pidProfileMutable()->bank_fw : &pidProfileMutable()->bank_mc;
+}
+
+void updateFixedWingLevelTrim(timeUs_t currentTimeUs)
+{
+    if (!STATE(AIRPLANE)) {
+        return;
+    }
+
+    static timeUs_t previousUpdateTimeUs;
+    static bool previousArmingState;
+    const float dT = US2S(currentTimeUs - previousUpdateTimeUs);
+
+    /*
+     * On every ARM reset the controller
+     */
+    if (ARMING_FLAG(ARMED) && !previousArmingState) {
+        navPidReset(&fixedWingLevelTrimController);
+    } 
+
+    /*
+     * On disarm update the default value
+     */
+    if (!ARMING_FLAG(ARMED) && previousArmingState) {
+        pidProfileMutable()->fixedWingLevelTrim = constrainf(fixedWingLevelTrim, -FIXED_WING_LEVEL_TRIM_MAX_ANGLE, FIXED_WING_LEVEL_TRIM_MAX_ANGLE);
+    } 
+
+    /*
+     * Prepare flags for the PID controller
+     */
+    pidControllerFlags_e flags = PID_LIMIT_INTEGRATOR;
+
+    //Iterm should freeze when pitch stick is deflected
+    if (
+        !IS_RC_MODE_ACTIVE(BOXAUTOLEVEL) ||
+        rxGetChannelValue(PITCH) > (PWM_RANGE_MIDDLE + pidProfile()->fixedWingLevelTrimDeadband) ||
+        rxGetChannelValue(PITCH) < (PWM_RANGE_MIDDLE - pidProfile()->fixedWingLevelTrimDeadband) ||
+        (!FLIGHT_MODE(ANGLE_MODE) && !FLIGHT_MODE(HORIZON_MODE)) ||
+        navigationIsControllingAltitude()
+    ) {
+        flags |= PID_FREEZE_INTEGRATOR;
+    }
+
+    const float output = navPidApply3(
+        &fixedWingLevelTrimController,
+        0,  //Setpoint is always 0 as we try to keep level flight
+        getEstimatedActualVelocity(Z),
+        dT,
+        -FIXED_WING_LEVEL_TRIM_CONTROLLER_LIMIT,
+        FIXED_WING_LEVEL_TRIM_CONTROLLER_LIMIT,
+        flags,
+        1.0f,
+        1.0f
+    );
+
+    DEBUG_SET(DEBUG_AUTOLEVEL, 4, output);
+    fixedWingLevelTrim = pidProfile()->fixedWingLevelTrim + (output * FIXED_WING_LEVEL_TRIM_MULTIPLIER);
+
+    previousArmingState = !!ARMING_FLAG(ARMED);
 }

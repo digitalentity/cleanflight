@@ -34,7 +34,7 @@ The stick positions are combined to activate different functions:
 | Trim Acc Forwards             | HIGH     | CENTER  | HIGH   | CENTER |
 | Trim Acc Backwards            | HIGH     | CENTER  | LOW    | CENTER |
 | Save current waypoint mission | LOW      | CENTER  | HIGH   | LOW    |
-| Load current waypoint mission | LOW      | CENTER  | HIGH   | HIGH   |
+| Load/unload current waypoint mission | LOW      | CENTER  | HIGH   | HIGH   |
 | Save setting                  | LOW      | LOW     | LOW    | HIGH   |
 | Enter OSD Menu (CMS)          | CENTER   | LOW     | HIGH   | CENTER |
 

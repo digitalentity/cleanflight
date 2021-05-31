@@ -42,6 +42,7 @@ typedef enum {
     PID_ZERO_INTEGRATOR             = 1 << 1,
     PID_SHRINK_INTEGRATOR           = 1 << 2,
     PID_LIMIT_INTEGRATOR            = 1 << 3,
+    PID_FREEZE_INTEGRATOR           = 1 << 4,
 } pidControllerFlags_e;
 
 typedef struct {

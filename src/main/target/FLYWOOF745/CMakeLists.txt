@@ -1,0 +1,2 @@
+target_stm32f745xg(FLYWOOF745)
+target_stm32f745xg(FLYWOOF745NANO)

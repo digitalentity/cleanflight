@@ -237,7 +237,7 @@ static uint8_t osdUpdateSidebar(osd_sidebar_scroll_e scroll, osd_sidebar_t *side
             offset = osdGetAltitude();
             steps = offset / 20;
             break;
-        case OSD_SIDEBAR_SCROLL_GROUND_SPEED:
+        case OSD_SIDEBAR_SCROLL_SPEED:
 #if defined(USE_GPS)
             offset = gpsSol.groundSpeed;
 #endif

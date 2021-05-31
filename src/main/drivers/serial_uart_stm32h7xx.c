@@ -331,6 +331,10 @@ uartPort_t *serialUART(UARTDevice_e device, uint32_t baudRate, portMode_t mode, 
 
     s->Handle.Instance = uart->dev;
 
+    if (uart->rcc) {
+        RCC_ClockCmd(uart->rcc, ENABLE);
+    }
+
     IO_t tx = IOGetByTag(uart->tx);
     IO_t rx = IOGetByTag(uart->rx);
 

@@ -77,8 +77,13 @@
 #endif
 
 #define USE_SOFTSERIAL2
+#ifdef MATEKF411SE_SS2_CH6
+#define SOFTSERIAL_2_TX_PIN     PB8 // CH6 pad
+#define SOFTSERIAL_2_RX_PIN     PB8
+#else
 #define SOFTSERIAL_2_TX_PIN     PA2 // TX2 pad
 #define SOFTSERIAL_2_RX_PIN     PA2
+#endif
 
 #define SERIAL_PORT_COUNT       5
 

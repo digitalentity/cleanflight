@@ -45,6 +45,7 @@ FILE_COMPILE_FOR_SPEED
 #include "sensors/boardalignment.h"
 #include "sensors/acceleration.h"
 #include "sensors/barometer.h"
+#include "sensors/compass.h"
 #include "sensors/pitotmeter.h"
 #include "sensors/gyro.h"
 #include "sensors/battery.h"
@@ -135,10 +136,16 @@ static emergencyArmingState_t emergencyArming;
 static bool prearmWasReset = false; // Prearm must be reset (RC Mode not active) before arming is possible
 static timeMs_t prearmActivationTime = 0;
 
-bool isCalibrating(void)
+bool areSensorsCalibrating(void)
 {
 #ifdef USE_BARO
     if (sensors(SENSOR_BARO) && !baroIsCalibrationComplete()) {
+        return true;
+    }
+#endif
+
+#ifdef USE_MAG
+    if (sensors(SENSOR_MAG) && !compassIsCalibrationComplete()) {
         return true;
     }
 #endif
@@ -171,7 +178,7 @@ int16_t getAxisRcCommand(int16_t rawData, int16_t rate, int16_t deadband)
     int16_t stickDeflection;
 
     stickDeflection = constrain(rawData - PWM_RANGE_MIDDLE, -500, 500);
-    stickDeflection = applyDeadband(stickDeflection, deadband);
+    stickDeflection = applyDeadbandRescaled(stickDeflection, deadband, -500, 500);
 
     return rcLookup(stickDeflection, rate);
 }
@@ -183,7 +190,7 @@ static void updateArmingStatus(void)
     } else {
         /* CHECK: Run-time calibration */
         static bool calibratingFinishedBeep = false;
-        if (isCalibrating()) {
+        if (areSensorsCalibrating()) {
             ENABLE_ARMING_FLAG(ARMING_DISABLED_SENSORS_CALIBRATING);
             calibratingFinishedBeep = false;
         }
@@ -711,7 +718,7 @@ void processRx(timeUs_t currentTimeUs)
     // Handle passthrough mode
     if (STATE(FIXED_WING_LEGACY)) {
         if ((IS_RC_MODE_ACTIVE(BOXMANUAL) && !navigationRequiresAngleMode() && !failsafeRequiresAngleMode()) ||    // Normal activation of passthrough
-            (!ARMING_FLAG(ARMED) && isCalibrating())){                                                              // Backup - if we are not armed - enforce passthrough while calibrating
+            (!ARMING_FLAG(ARMED) && areSensorsCalibrating())){                                                              // Backup - if we are not armed - enforce passthrough while calibrating
             ENABLE_FLIGHT_MODE(MANUAL_MODE);
         } else {
             DISABLE_FLIGHT_MODE(MANUAL_MODE);

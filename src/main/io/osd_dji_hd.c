@@ -125,7 +125,6 @@ PG_RESET_TEMPLATE(djiOsdConfig_t, djiOsdConfig,
     .use_name_for_messages  = SETTING_DJI_USE_NAME_FOR_MESSAGES_DEFAULT,
     .esc_temperature_source = SETTING_DJI_ESC_TEMP_SOURCE_DEFAULT,
     .proto_workarounds = SETTING_DJI_WORKAROUNDS_DEFAULT,
-    .speedSource = SETTING_DJI_SPEED_SOURCE_DEFAULT,
 );
 
 // External dependency on looptime
@@ -1004,21 +1003,7 @@ static mspResult_e djiProcessMspCommand(mspPacket_t *cmd, mspPacket_t *reply, ms
             sbufWriteU32(dst, gpsSol.llh.lat);
             sbufWriteU32(dst, gpsSol.llh.lon);
             sbufWriteU16(dst, gpsSol.llh.alt / 100);
-
-            int reportedSpeed = 0;
-            if (djiOsdConfig()->speedSource == DJI_OSD_SPEED_GROUND) {
-                reportedSpeed = gpsSol.groundSpeed;
-            } else if (djiOsdConfig()->speedSource == DJI_OSD_SPEED_3D) {
-                reportedSpeed = osdGet3DSpeed();
-            } else if (djiOsdConfig()->speedSource == DJI_OSD_SPEED_AIR) {
-            #ifdef USE_PITOT
-                reportedSpeed = pitot.airSpeed;
-            #else
-                reportedSpeed = 0;
-            #endif
-            }
-
-            sbufWriteU16(dst, reportedSpeed);
+            sbufWriteU16(dst, osdGetSpeedFromSelectedSource());
             sbufWriteU16(dst, gpsSol.groundCourse);
             break;
 
