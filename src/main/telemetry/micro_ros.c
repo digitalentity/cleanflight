@@ -89,6 +89,11 @@ static rcl_node_t node;
 static timeMs_t last_timesync_ms = 0;
 static timeMs_t last_creation_ms = 0;
 
+// publisher
+static rcl_publisher_t publisher_talker;
+static rcl_timer_t timer_talker;
+static std_msgs__msg__String msg_talker;
+
 #define CONNECTION_ATTEMPT_MS 1000 // too small intervals may cause connection issues
 #define MICRO_ROS_TIMESYNC_TIMEOUT_MS 5000
 #define MICRO_ROS_TIMESYNC_COUNT 5
@@ -206,6 +211,10 @@ static void configureMicroRosTelemetryPort(void)
         transportWrite,
         transportRead);
 
+    memset(&msg_talker, 0, sizeof(std_msgs__msg__String));
+    rosidl_runtime_c__String__assign(&msg_talker.data, "miau");
+    handler_count++;
+
     microRosTelemetryEnabled = true;
 }
 
@@ -230,6 +239,64 @@ static void callbackTimesync(rcl_timer_t* timer, int64_t last_call_time)
     if (timer != NULL) {
         rmw_uros_sync_session(0);
     }
+}
+
+static void publishTalkerCallback(rcl_timer_t* timer, int64_t last_call_time)
+{
+    (void)last_call_time;
+
+    if (timer != NULL) {
+        strcpy(msg_talker.data.data, "biau");
+
+        RCSOFTCHECK(rcl_publish(&publisher_talker, &msg_talker, NULL));
+    }
+}
+
+static rcl_ret_t createPublisher(
+    rclc_support_t* support,
+    rclc_executor_t* executor,
+    rcl_node_t* node,
+    rcl_timer_t* timer,
+    rcl_publisher_t* publisher,
+    const rosidl_message_type_support_t* type_support,
+    const uint16_t frequency,
+    const char* topic_name,
+    const rcl_timer_callback_t callback)
+{
+    rcl_ret_t ret = RCL_RET_OK;
+
+    // do nothing for 0 frequency
+    if (frequency == 0) {
+        return ret;
+    }
+
+    ret = rclc_timer_init_default(
+        timer,
+        support,
+        RCL_MS_TO_NS(MILLISECS_PER_SEC / frequency),
+        callback);
+
+    if (RCL_RET_OK != ret) {
+        return ret;
+    }
+
+    ret = rclc_publisher_init_best_effort(
+        publisher,
+        node,
+        type_support,
+        topic_name);
+
+    if (RCL_RET_OK != ret) {
+        return ret;
+    }
+
+    ret = rclc_executor_add_timer(executor, timer);
+
+    if (RCL_RET_OK != ret) {
+        return ret;
+    }
+
+    return RCL_RET_OK;
 }
 
 static bool createEntities(void)
@@ -259,6 +326,16 @@ static bool createEntities(void)
                 callbackTimesync));
     RCCHECK(rclc_executor_add_timer(&executor, &timer_timesync));
 
+    RCCHECK(createPublisher(
+                &support,
+                &executor,
+                &node,
+                &timer_talker,
+                &publisher_talker,
+                ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, String),
+                10, // hz
+                "talker",
+                publishTalkerCallback));
 
     return true;
 }
@@ -266,6 +343,9 @@ static bool createEntities(void)
 static void destroyEntities()
 {
     RCSOFTCHECK(rcl_timer_fini(&timer_timesync));
+
+    RCSOFTCHECK(rcl_publisher_fini(&publisher_talker, &node));
+    RCSOFTCHECK(rcl_timer_fini(&timer_talker));
 
     RCSOFTCHECK(rcl_node_options_fini(&node_ops));
     RCSOFTCHECK(rcl_node_fini(&node));
