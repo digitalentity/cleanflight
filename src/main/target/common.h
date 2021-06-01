@@ -78,6 +78,10 @@
 #define SCHEDULER_DELAY_LIMIT           100
 #endif
 
+#if (MCU_FLASH_SIZE > 512)
+#define USE_TELEMETRY_MICRO_ROS
+#endif
+
 #if (MCU_FLASH_SIZE > 256)
 #define USE_MR_BRAKING_MODE
 #define USE_PITOT

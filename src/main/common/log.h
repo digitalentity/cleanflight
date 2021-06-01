@@ -30,6 +30,7 @@ typedef enum {
     LOG_TOPIC_POS_ESTIMATOR,    // 8, mask = 256
     LOG_TOPIC_VTX,              // 9, mask = 512
     LOG_TOPIC_OSD,              // 10, mask = 1024
+    LOG_TOPIC_MICRO_ROS,        // 11, mask = 2048
 
     LOG_TOPIC_COUNT,
 } logTopic_e;
