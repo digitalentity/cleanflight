@@ -2,6 +2,7 @@ set(MAIN_INCLUDE_DIRS
     "${MAIN_LIB_DIR}"
     "${MAIN_SRC_DIR}"
     "${MAIN_LIB_DIR}/main/MAVLink"
+    "${MAIN_LIB_DIR}/main/micro_ros_arduino/src"
 )
 
 set(MAIN_DEFINITIONS

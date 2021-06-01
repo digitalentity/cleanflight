@@ -73,6 +73,8 @@ set(STM32_DEFINITIONS
 )
 set(STM32_DEFAULT_HSE_MHZ 8)
 set(STM32_LINKER_DIR "${MAIN_SRC_DIR}/target/link")
+set(MICROROS_LINKER_DIR "${MAIN_LIB_DIR}/main/micro_ros_arduino/src/cortex-m7/fpv5-sp-d16-hardfp")
+
 set(STM32_COMPILE_OPTIONS
     -ffunction-sections
     -fdata-sections
@@ -82,6 +84,7 @@ set(STM32_COMPILE_OPTIONS
 set(STM32_LINK_LIBRARIES
     -lm
     -lc
+    -lmicroros
 )
 
 if(SEMIHOSTING)
@@ -97,6 +100,7 @@ set(STM32_LINK_OPTIONS
     -static
     -Wl,-gc-sections
     -Wl,-L${STM32_LINKER_DIR}
+    -Wl,-L${MICROROS_LINKER_DIR}
     -Wl,--cref
     -Wl,--no-wchar-size-warning
     -Wl,--print-memory-usage
