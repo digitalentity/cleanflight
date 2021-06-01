@@ -109,12 +109,12 @@ int clock_gettime(clockid_t unused, struct timespec* tp)
     return 0;
 }
 
-static void set_stamp(builtin_interfaces__msg__Time* stamp)
-{
-    int64_t nanos = rmw_uros_epoch_nanos();
-    stamp->nanosec = nanos % (USECS_PER_SEC * 1000);
-    stamp->sec = RCL_NS_TO_S(nanos);
-}
+/* static void set_stamp(builtin_interfaces__msg__Time* stamp) */
+/* { */
+/*     int64_t nanos = rmw_uros_epoch_nanos(); */
+/*     stamp->nanosec = nanos % (USECS_PER_SEC * 1000); */
+/*     stamp->sec = RCL_NS_TO_S(nanos); */
+/* } */
 
 static bool transportOpen(struct uxrCustomTransport* transport)
 {
