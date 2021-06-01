@@ -3348,6 +3348,13 @@ groups:
         default_value: 3
         description: Height of sidebars in rows. 0 leaves only the level indicator arrows (Not for pixel OSD)
 
+      - name: osd_ahi_pitch_interval
+        field: ahi_pitch_interval
+        min: 0
+        max: 30
+        default_value: 10
+        description: Draws AHI at increments of the set pitch interval over the full pitch range. AHI line is drawn with ends offset when pitch first exceeds interval with offset increasing with increasing pitch. Offset direction changes between climb and dive. Set to 0 to disable (Not for pixel OSD)
+
       - name: osd_home_position_arm_screen
         type: bool
         default_value: ON

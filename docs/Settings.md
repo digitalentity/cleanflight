@@ -392,6 +392,7 @@
 | osd_ahi_bordered | OFF |  |  | Shows a border/corners around the AHI region (pixel OSD only) |
 | osd_ahi_height | 162 |  | 255 | AHI height in pixels (pixel OSD only) |
 | osd_ahi_max_pitch | 20 | 10 | 90 | Max pitch, in degrees, for OSD artificial horizon |
+| osd_ahi_pitch_interval | 10 | 0 | 30 | Draws AHI at increments of the set pitch interval over the full pitch range. AHI line is drawn with ends offset when pitch first exceeds interval with offset increasing with increasing pitch. Offset direction changes between climb and dive. Set to 0 to disable (Not for pixel OSD) |
 | osd_ahi_reverse_roll | OFF |  |  |  |
 | osd_ahi_style | DEFAULT |  |  | Sets OSD Artificial Horizon style "DEFAULT" or "LINE" for the FrSky Graphical OSD. |
 | osd_ahi_vertical_offset | -18 | -128 | 127 | AHI vertical offset from center (pixel OSD only) |

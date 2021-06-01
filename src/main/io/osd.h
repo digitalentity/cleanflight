@@ -374,6 +374,7 @@ typedef struct osdConfig_s {
     int8_t pan_servo_pwm2centideg;      // Centidegrees of servo rotation per us pwm
     uint8_t crsf_lq_format;
     uint8_t sidebar_height;             // sidebar height in rows, 0 turns off sidebars leaving only level indicator arrows
+    uint8_t ahi_pitch_interval;         // redraws AHI at set pitch interval (Not pixel OSD)
     uint8_t telemetry; 				    // use telemetry on displayed pixel line 0
 
 } osdConfig_t;
