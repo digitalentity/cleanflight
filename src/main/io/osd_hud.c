@@ -202,7 +202,7 @@ void osdHudDrawPoi(uint32_t poiDistance, int16_t poiDirection, int32_t poiAltitu
 
     // Distance or relative altitude
 
-    if (((millis() / 1000) % 6 == 0) && poiType > 0) { // For Radar and WPs, display the difference in altitude
+    if (((millis() / 1700) % 4 == 0) && poiType > 0) { // For Radar and WPs, display the difference in altitude
         altc = ((osd_unit_e)osdConfig()->units == OSD_UNIT_IMPERIAL) ? constrain(CENTIMETERS_TO_FEET(poiAltitude * 100), -99, 99) : constrain(poiAltitude, -99 , 99);
         tfp_sprintf(buff, "%3d", altc);
         buff[0] = (poiAltitude >= 0) ? SYM_VARIO_UP_2A : SYM_VARIO_DOWN_2A;
