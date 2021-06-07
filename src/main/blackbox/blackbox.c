@@ -1756,8 +1756,9 @@ static bool blackboxWriteSysinfo(void)
         BLACKBOX_PRINT_HEADER_LINE("acc_notch_cutoff", "%d",                accelerometerConfig()->acc_notch_cutoff);
         BLACKBOX_PRINT_HEADER_LINE("pidSumLimit", "%d",                     pidProfile()->pidSumLimit);
         BLACKBOX_PRINT_HEADER_LINE("pidSumLimitYaw", "%d",                  pidProfile()->pidSumLimitYaw);
-        BLACKBOX_PRINT_HEADER_LINE("axisAccelerationLimitYaw", "%d",        pidProfile()->axisAccelerationLimitYaw);
-        BLACKBOX_PRINT_HEADER_LINE("axisAccelerationLimitRollPitch", "%d",  pidProfile()->axisAccelerationLimitRollPitch);
+        BLACKBOX_PRINT_HEADER_LINE("axisAccelerationLimitRoll", "%d",       pidProfile()->axisAccelerationLimit[FD_ROLL]);
+        BLACKBOX_PRINT_HEADER_LINE("axisAccelerationLimitPitch", "%d",      pidProfile()->axisAccelerationLimit[FD_PITCH]);
+        BLACKBOX_PRINT_HEADER_LINE("axisAccelerationLimitYaw", "%d",        pidProfile()->axisAccelerationLimit[FD_YAW]);
 #ifdef USE_RPM_FILTER
         BLACKBOX_PRINT_HEADER_LINE("rpm_gyro_filter_enabled", "%d",         rpmFilterConfig()->gyro_filter_enabled);
         BLACKBOX_PRINT_HEADER_LINE("rpm_gyro_harmonics", "%d",              rpmFilterConfig()->gyro_harmonics);

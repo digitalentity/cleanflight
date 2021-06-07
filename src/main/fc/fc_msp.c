@@ -1265,8 +1265,9 @@ static bool mspFcProcessOutCommand(uint16_t cmdMSP, sbuf_t *dst, mspPostProcessF
          * To keep compatibility on MSP frame length level with Betaflight, axis axisAccelerationLimitYaw
          * limit will be sent and received in [dps / 10]
          */
-        sbufWriteU16(dst, constrain(pidProfile()->axisAccelerationLimitRollPitch / 10, 0, 65535));
-        sbufWriteU16(dst, constrain(pidProfile()->axisAccelerationLimitYaw / 10, 0, 65535));
+        sbufWriteU16(dst, constrain(pidProfile()->axisAccelerationLimit[FD_ROLL] / 10, 0, 65535));
+        sbufWriteU16(dst, constrain(pidProfile()->axisAccelerationLimit[FD_PITCH] / 10, 0, 65535));
+        sbufWriteU16(dst, constrain(pidProfile()->axisAccelerationLimit[FD_YAW] / 10, 0, 65535));
         break;
 
     case MSP_INAV_PID:
@@ -2227,8 +2228,9 @@ static mspResult_e mspFcProcessInCommand(uint16_t cmdMSP, sbuf_t *src)
              * To keep compatibility on MSP frame length level with Betaflight, axis axisAccelerationLimitYaw
              * limit will be sent and received in [dps / 10]
              */
-            pidProfileMutable()->axisAccelerationLimitRollPitch = sbufReadU16(src) * 10;
-            pidProfileMutable()->axisAccelerationLimitYaw = sbufReadU16(src) * 10;
+            pidProfileMutable()->axisAccelerationLimit[FD_ROLL] = sbufReadU16(src) * 10;
+            pidProfileMutable()->axisAccelerationLimit[FD_PITCH] = sbufReadU16(src) * 10;
+            pidProfileMutable()->axisAccelerationLimit[FD_YAW] = sbufReadU16(src) * 10;
         } else
             return MSP_RESULT_ERROR;
         break;

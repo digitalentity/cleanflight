@@ -258,8 +258,9 @@ PG_RESET_TEMPLATE(pidProfile_t, pidProfile,
 
         .itermWindupPointPercent = SETTING_ITERM_WINDUP_DEFAULT,
 
-        .axisAccelerationLimitYaw = SETTING_RATE_ACCEL_LIMIT_YAW_DEFAULT,
-        .axisAccelerationLimitRollPitch = SETTING_RATE_ACCEL_LIMIT_ROLL_PITCH_DEFAULT,
+        .axisAccelerationLimit[FD_ROLL] = SETTING_RATE_ACCEL_LIMIT_ROLL_DEFAULT,
+        .axisAccelerationLimit[FD_PITCH] = SETTING_RATE_ACCEL_LIMIT_PITCH_DEFAULT,
+        .axisAccelerationLimit[FD_YAW] = SETTING_RATE_ACCEL_LIMIT_YAW_DEFAULT,
 
         .heading_hold_rate_limit = SETTING_HEADING_HOLD_RATE_LIMIT_DEFAULT,
 
@@ -689,7 +690,7 @@ static void pidLevel(pidState_t *pidState, flight_dynamics_index_t axis, float h
 /* Apply angular acceleration limit to rate target to limit extreme stick inputs to respect physical capabilities of the machine */
 static void pidApplySetpointRateLimiting(pidState_t *pidState, flight_dynamics_index_t axis, float dT)
 {
-    const uint32_t axisAccelLimit = (axis == FD_YAW) ? pidProfile()->axisAccelerationLimitYaw : pidProfile()->axisAccelerationLimitRollPitch;
+    const uint32_t axisAccelLimit = pidProfile()->axisAccelerationLimit[axis];
 
     if (axisAccelLimit > AXIS_ACCEL_MIN_LIMIT) {
         pidState->rateTarget = rateLimitFilterApply4(&pidState->axisAccelFilter, pidState->rateTarget, (float)axisAccelLimit, dT);
@@ -741,6 +742,13 @@ static float applyDBoost(pidState_t *pidState, float dT) {
 }
 #endif
 
+static float gyroAcceleration(pidState_t *pidState, float dT) {
+    float acceleration = (pidState->gyroRate - pidState->previousRateGyro) / dT;
+    acceleration = dTermLpfFilterApplyFn((filter_t *) &pidState->dtermLpfState, acceleration);
+    acceleration = dTermLpf2FilterApplyFn((filter_t *) &pidState->dtermLpf2State, acceleration);
+    return acceleration;
+}
+
 static float dTermProcess(pidState_t *pidState, float dT) {
     // Calculate new D-term
     float newDTerm = 0;
@@ -748,16 +756,15 @@ static float dTermProcess(pidState_t *pidState, float dT) {
         // optimisation for when D is zero, often used by YAW axis
         newDTerm = 0;
     } else {
-        float delta = pidState->previousRateGyro - pidState->gyroRate;
-
-        delta = dTermLpfFilterApplyFn((filter_t *) &pidState->dtermLpfState, delta);
-        delta = dTermLpf2FilterApplyFn((filter_t *) &pidState->dtermLpf2State, delta);
+        float delta = -gyroAcceleration(pidState, dT);
 
         // Calculate derivative
-        newDTerm =  delta * (pidState->kD / dT) * applyDBoost(pidState, dT);
+        newDTerm = delta * pidState->kD * applyDBoost(pidState, dT);
     }
     return(newDTerm);
 }
+
+
 
 static void applyItermLimiting(pidState_t *pidState) {
     if (pidState->itermLimitActive) {
@@ -799,7 +806,8 @@ static void NOINLINE pidApplyFixedWingRateController(pidState_t *pidState, fligh
 
 #ifdef USE_AUTOTUNE_FIXED_WING
     if (FLIGHT_MODE(AUTO_TUNE) && !FLIGHT_MODE(MANUAL_MODE)) {
-        autotuneFixedWingUpdate(axis, pidState->rateTarget, pidState->gyroRate, constrainf(newPTerm + newFFTerm, -pidState->pidSumLimit, +pidState->pidSumLimit));
+        autotuneFixedWingUpdate(axis, pidState->rateTarget, pidState->gyroRate, gyroAcceleration(pidState, dT),
+                                constrainf(newPTerm + newFFTerm, -pidState->pidSumLimit, +pidState->pidSumLimit));
     }
 #endif
 

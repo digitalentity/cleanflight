@@ -51,12 +51,14 @@
 #define AUTOTUNE_FIXED_WING_MIN_ROLL_PITCH_RATE 40
 #define AUTOTUNE_FIXED_WING_MIN_YAW_RATE        10
 #define AUTOTUNE_FIXED_WING_MAX_RATE            720
+#define AUTOTUNE_FIXED_WING_MIN_ACCEL_LIMIT     300     // Minimum max acceleration limit
+#define AUTOTUNE_FIXED_WING_MAX_ACCEL_LIMIT     50000   // Minimum max acceleration limit
 #define AUTOTUNE_FIXED_WING_CONVERGENCE_RATE    10
 #define AUTOTUNE_FIXED_WING_SAMPLE_INTERVAL     20      // ms
 #define AUTOTUNE_FIXED_WING_SAMPLES             1000    // Use averagea over the last 20 seconds
 #define AUTOTUNE_FIXED_WING_MIN_SAMPLES         250     // Start updating tune after 5 seconds
 
-PG_REGISTER_WITH_RESET_TEMPLATE(pidAutotuneConfig_t, pidAutotuneConfig, PG_PID_AUTOTUNE_CONFIG, 2);
+PG_REGISTER_WITH_RESET_TEMPLATE(pidAutotuneConfig_t, pidAutotuneConfig, PG_PID_AUTOTUNE_CONFIG, 3);
 
 PG_RESET_TEMPLATE(pidAutotuneConfig_t, pidAutotuneConfig,
     .fw_min_stick = SETTING_FW_AUTOTUNE_MIN_STICK_DEFAULT,
@@ -65,6 +67,7 @@ PG_RESET_TEMPLATE(pidAutotuneConfig_t, pidAutotuneConfig,
     .fw_p_to_d_gain = SETTING_FW_AUTOTUNE_P_TO_D_GAIN_DEFAULT,
     .fw_rate_adjustment = SETTING_FW_AUTOTUNE_RATE_ADJUSTMENT_DEFAULT,
     .fw_max_rate_deflection = SETTING_FW_AUTOTUNE_MAX_RATE_DEFLECTION_DEFAULT,
+    .fw_acceleration = SETTING_FW_AUTOTUNE_ACCELERATION_DEFAULT,
 );
 
 typedef enum {
@@ -84,6 +87,8 @@ typedef struct {
     float   absDesiredRateAccum;
     float   absReachedRateAccum;
     float   absPidOutputAccum;
+    float   maxReachedAcceleration;
+    float   accelerationLimit;
     uint32_t updateCount;
 } pidAutotuneData_t;
 
@@ -103,6 +108,7 @@ void autotuneUpdateGains(pidAutotuneData_t * data)
         pidBankMutable()->pid[axis].D = lrintf(data[axis].gainD);
         pidBankMutable()->pid[axis].FF = lrintf(data[axis].gainFF);
         ((controlRateConfig_t *)currentControlRateProfile)->stabilized.rates[axis] = lrintf(data[axis].rate/10.0f);
+        pidProfileMutable()->axisAccelerationLimit[axis] = lrintf(data[axis].accelerationLimit);
     }
     schedulePidGainsUpdate();
 }
@@ -133,6 +139,8 @@ void autotuneStart(void)
         tuneCurrent[axis].absDesiredRateAccum = 0;
         tuneCurrent[axis].absReachedRateAccum = 0;
         tuneCurrent[axis].absPidOutputAccum = 0;
+        tuneCurrent[axis].maxReachedAcceleration = 0;
+        tuneCurrent[axis].accelerationLimit = pidAutotuneConfig()->fw_acceleration ? 50000.0f : 0.0f;
         tuneCurrent[axis].updateCount = 0;
     }
 
@@ -177,7 +185,7 @@ static void blackboxLogAutotuneEvent(adjustmentFunction_e adjustmentFunction, in
 
 #if defined(USE_AUTOTUNE_FIXED_WING)
 
-void autotuneFixedWingUpdate(const flight_dynamics_index_t axis, float desiredRate, float reachedRate, float pidOutput)
+void autotuneFixedWingUpdate(const flight_dynamics_index_t axis, float desiredRate, float reachedRate, float acceleration, float pidOutput)
 {
     float maxRateSetting = tuneCurrent[axis].rate;
     float gainFF = tuneCurrent[axis].gainFF;
@@ -187,6 +195,7 @@ void autotuneFixedWingUpdate(const flight_dynamics_index_t axis, float desiredRa
     const float absDesiredRate = fabsf(desiredRate);
     const float absReachedRate = fabsf(reachedRate);
     const float absPidOutput = fabsf(pidOutput);
+    const float absAcceleration = fabsf(acceleration);
     const bool correctDirection = (desiredRate>0) == (reachedRate>0);
     float rateFullStick;
 
@@ -203,14 +212,16 @@ void autotuneFixedWingUpdate(const flight_dynamics_index_t axis, float desiredRa
         maxDesiredRate = MIN(maxRateSetting, maxDesiredRateInAngleMode);
     }
 
-    const float stickInput = absDesiredRate / maxDesiredRate;
+    // Max acceleration and deceleration will occur around mid-stick. Record values regardless of stick input to avoid missing the highest values.
+    tuneCurrent[axis].maxReachedAcceleration = MAX(tuneCurrent[axis].maxReachedAcceleration, absAcceleration);
 
+    const float stickInput = absDesiredRate / maxDesiredRate;
     if ((stickInput > (pidAutotuneConfig()->fw_min_stick / 100.0f)) && correctDirection && (timeSincePreviousSample >= AUTOTUNE_FIXED_WING_SAMPLE_INTERVAL)) {
         // Record values every 20ms and calculate moving average over samples
         tuneCurrent[axis].updateCount++;
         tuneCurrent[axis].absDesiredRateAccum += (absDesiredRate - tuneCurrent[axis].absDesiredRateAccum) / MIN(tuneCurrent[axis].updateCount, (uint32_t)AUTOTUNE_FIXED_WING_SAMPLES);
         tuneCurrent[axis].absReachedRateAccum += (absReachedRate - tuneCurrent[axis].absReachedRateAccum) / MIN(tuneCurrent[axis].updateCount, (uint32_t)AUTOTUNE_FIXED_WING_SAMPLES);
-        tuneCurrent[axis].absPidOutputAccum += (absPidOutput - tuneCurrent[axis].absPidOutputAccum) / MIN(tuneCurrent[axis].updateCount, (uint32_t)AUTOTUNE_FIXED_WING_SAMPLES);;
+        tuneCurrent[axis].absPidOutputAccum += (absPidOutput - tuneCurrent[axis].absPidOutputAccum) / MIN(tuneCurrent[axis].updateCount, (uint32_t)AUTOTUNE_FIXED_WING_SAMPLES);
 
         if ((tuneCurrent[axis].updateCount & 25) == 0 && tuneCurrent[axis].updateCount >= AUTOTUNE_FIXED_WING_MIN_SAMPLES) {
             if (pidAutotuneConfig()->fw_rate_adjustment != FIXED  && !FLIGHT_MODE(ANGLE_MODE)) { // Rate discovery is not possible in ANGLE mode
@@ -232,6 +243,17 @@ void autotuneFixedWingUpdate(const flight_dynamics_index_t axis, float desiredRa
                 uint16_t minRate = (axis == FD_YAW) ? AUTOTUNE_FIXED_WING_MIN_YAW_RATE : AUTOTUNE_FIXED_WING_MIN_ROLL_PITCH_RATE;
                 uint16_t maxRate = (pidAutotuneConfig()->fw_rate_adjustment == AUTO) ? AUTOTUNE_FIXED_WING_MAX_RATE : MAX(tuneCurrent[axis].initialRate, minRate);
                 tuneCurrent[axis].rate = constrainf(maxRateSetting, minRate, maxRate);
+
+                // Decrease acceleration limits when the max observed acceleration is lower than the current setting
+                if (pidAutotuneConfig()->fw_acceleration) {
+                    if (tuneCurrent[axis].maxReachedAcceleration < (tuneCurrent[axis].accelerationLimit - 50.0f)) {
+                        tuneCurrent[axis].accelerationLimit -= 50.0f;
+                    } else if (tuneCurrent[axis].maxReachedAcceleration > (tuneCurrent[axis].accelerationLimit + 50.0f)) {
+                        tuneCurrent[axis].accelerationLimit += 50.0f;
+                    }
+                    tuneCurrent[axis].accelerationLimit = constrainf(tuneCurrent[axis].accelerationLimit, AUTOTUNE_FIXED_WING_MIN_ACCEL_LIMIT, AUTOTUNE_FIXED_WING_MAX_ACCEL_LIMIT);
+                }
+
                 ratesUpdated = true;
             }
 
@@ -292,6 +314,7 @@ void autotuneFixedWingUpdate(const flight_dynamics_index_t axis, float desiredRa
 
         // Debug
         DEBUG_SET(DEBUG_AUTOTUNE, axis, rateFullStick);
+        DEBUG_SET(DEBUG_AUTOTUNE, axis + 3, tuneCurrent[axis].accelerationLimit);
         ratesUpdated = false;
     }
 }

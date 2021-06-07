@@ -117,8 +117,7 @@ typedef struct pidProfile_s {
 
     uint8_t itermWindupPointPercent;        // Experimental ITerm windup threshold, percent of motor saturation
 
-    uint32_t axisAccelerationLimitYaw;          // Max rate of change of yaw angular rate setpoint (deg/s^2 = dps/s)
-    uint32_t axisAccelerationLimitRollPitch;    // Max rate of change of roll/pitch angular rate setpoint (deg/s^2 = dps/s)
+    uint32_t axisAccelerationLimit[FLIGHT_DYNAMICS_INDEX_COUNT];     // Max rate of change angular rate setpoint (deg/s^2 = dps/s)
 
     int16_t max_angle_inclination[ANGLE_INDEX_COUNT];       // Max possible inclination (roll and pitch axis separately
 
@@ -181,6 +180,7 @@ typedef struct pidAutotuneConfig_s {
     uint16_t    fw_ff_to_i_time_constant;   // FF to I time (defines time for I to reach the same level of response as FF) [ms]
     uint8_t     fw_rate_adjustment;         // Adjust rate settings during autotune?
     uint8_t     fw_max_rate_deflection;     // Percentage of max mixer output used for calculating the rates
+    bool        fw_acceleration;            // Should the max acceleration of each axis be tuned?
 } pidAutotuneConfig_t;
 
 typedef enum {
@@ -228,7 +228,7 @@ void resetHeadingHoldTarget(int16_t heading);
 int16_t getHeadingHoldTarget(void);
 
 void autotuneUpdateState(void);
-void autotuneFixedWingUpdate(const flight_dynamics_index_t axis, float desiredRateDps, float reachedRateDps, float pidOutput);
+void autotuneFixedWingUpdate(const flight_dynamics_index_t axis, float desiredRateDps, float reachedRateDps, float acceleration, float pidOutput);
 
 pidType_e pidIndexGetType(pidIndex_e pidIndex);
 

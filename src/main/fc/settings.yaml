@@ -1814,15 +1814,23 @@ groups:
         field: itermWindupPointPercent
         min: 0
         max: 90
-      - name: rate_accel_limit_roll_pitch
-        description: "Limits acceleration of ROLL/PITCH rotation speed that can be requested by stick input. In degrees-per-second-squared. Small and powerful UAV flies great with high acceleration limit ( > 5000 dps^2 and even > 10000 dps^2). Big and heavy multirotors will benefit from low acceleration limit (~ 360 dps^2). When set correctly, it greatly improves stopping performance. Value of 0 disables limiting."
+      - name: rate_accel_limit_roll
+        description: "Limits acceleration of ROLL rotation speed that can be requested by stick input. In degrees-per-second-squared. Small and powerful UAV flies great with high acceleration limit ( > 5000 dps^2 and even > 10000 dps^2). Big and heavy multirotors will benefit from low acceleration limit (~ 360 dps^2). When set correctly, it greatly improves stopping performance. Value of 0 disables limiting."
         default_value: 0
-        field: axisAccelerationLimitRollPitch
+        field: axisAccelerationLimit[FD_ROLL]
+        min: 0
+        max: 500000
+      - name: rate_accel_limit_pitch
+        description: "Limits acceleration of PITCH rotation speed that can be requested by stick input. In degrees-per-second-squared. Small and powerful UAV flies great with high acceleration limit ( > 5000 dps^2 and even > 10000 dps^2). Big and heavy multirotors will benefit from low acceleration limit (~ 360 dps^2). When set correctly, it greatly improves stopping performance. Value of 0 disables limiting."
+        default_value: 0
+        field: axisAccelerationLimit[FD_PITCH]
+        min: 0
         max: 500000
       - name: rate_accel_limit_yaw
         description: "Limits acceleration of YAW rotation speed that can be requested by stick input. In degrees-per-second-squared. Small and powerful UAV flies great with high acceleration limit ( > 10000 dps^2). Big and heavy multirotors will benefit from low acceleration limit (~ 180 dps^2). When set correctly, it greatly improves stopping performance and general stability during yaw turns. Value of 0 disables limiting."
         default_value: 10000
-        field: axisAccelerationLimitYaw
+        field: axisAccelerationLimit[FD_YAW]
+        min: 0
         max: 500000
       - name: heading_hold_rate_limit
         description: "This setting limits yaw rotation rate that HEADING_HOLD controller can request from PID inner loop controller. It is independent from manual yaw rate and used only when HEADING_HOLD flight mode is enabled by pilot, RTH or WAYPOINT modes."
@@ -2165,6 +2173,11 @@ groups:
         field: fw_max_rate_deflection
         min: 50
         max: 100
+      - name: fw_autotune_acceleration
+        description: "When set to `ON`, autotune will determine the max acceleration of the airplane and use these to limit the changes of the setpoints. This results in better stopping performance, but may slow down the servo movement."
+        field: fw_acceleration
+        default_value: OFF
+        type: bool
 
   - name: PG_POSITION_ESTIMATION_CONFIG
     type: positionEstimationConfig_t
