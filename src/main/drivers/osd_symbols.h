@@ -218,6 +218,8 @@
 #define SYM_HUD_SIGNAL_3          0xFB  // 251 Hud signal icon 75%
 #define SYM_HUD_SIGNAL_4          0xFC  // 252 Hud signal icon 100%
 
+#define SYM_ADSB                  0xFD  // 253 ADSB
+
 #define SYM_LOGO_START            0x101 // 257 to 280, INAV logo
 #define SYM_LOGO_WIDTH            6
 #define SYM_LOGO_HEIGHT           4

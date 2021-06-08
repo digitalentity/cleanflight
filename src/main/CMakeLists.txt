@@ -346,6 +346,8 @@ main_sources(COMMON_SRC
     flight/secondary_imu.c
     flight/secondary_imu.h
 
+    io/adsb.c
+    io/adsb.h
     io/beeper.c
     io/beeper.h
     io/esc_serialshot.c

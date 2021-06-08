@@ -3231,7 +3231,6 @@ groups:
         description: "How many navigation waypoints are displayed, set to 0 (zero) to disable. As sample, if set to 2, and you just passed the 3rd waypoint of the mission, you'll see markers for the 4th waypoint (marked 1) and the 5th waypoint (marked 2)"
         default_value: 0
         field: hud_wp_disp
-
         min: 0
         max: 3
       - name: osd_left_sidebar_scroll
@@ -3248,6 +3247,16 @@ groups:
         field: sidebar_scroll_arrows
         type: bool
         default_value: OFF
+      - name: osd_adsb_range
+        description: "Distance outside which ADSB aircraft are NOT displayed. In meters"
+        default_value: 20000
+        field: adsb_range
+        max: 64000     
+      - name: osd_adsb_alarm
+        description: "Distance inside which ADSB data flashes for proximity warning. In meters"
+        default_value: 2000
+        field: adsb_alarm
+        max: 64000    
       - name: osd_main_voltage_decimals
         description: "Number of decimals for the battery voltages displayed in the OSD [1-2]."
         default_value: 1

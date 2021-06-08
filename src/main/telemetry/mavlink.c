@@ -58,6 +58,7 @@
 #include "flight/pid.h"
 #include "flight/servos.h"
 
+#include "io/adsb.h" 
 #include "io/gps.h"
 #include "io/ledstrip.h"
 #include "io/serial.h"
@@ -1058,6 +1059,13 @@ static bool handleIncoming_RC_CHANNELS_OVERRIDE(void) {
     return true;
 }
 
+static bool handleIncoming_ADSB_VEHICLE(void) {
+    mavlink_adsb_vehicle_t msg;
+    mavlink_msg_adsb_vehicle_decode(&mavRecvMsg, &msg);
+    adsbNewVehicle(msg.ICAO_address,msg.lat,msg.lon,msg.altitude);  
+    return true;
+}
+
 static bool processMAVLinkIncomingTelemetry(void)
 {
     while (serialRxBytesWaiting(mavlinkPort) > 0) {
@@ -1080,6 +1088,8 @@ static bool processMAVLinkIncomingTelemetry(void)
                     return handleIncoming_MISSION_REQUEST();
                 case MAVLINK_MSG_ID_RC_CHANNELS_OVERRIDE:
                     return handleIncoming_RC_CHANNELS_OVERRIDE();
+                case MAVLINK_MSG_ID_ADSB_VEHICLE:
+                    return handleIncoming_ADSB_VEHICLE();                
                 default:
                     return false;
             }

@@ -389,6 +389,8 @@
 | nav_wp_safe_distance | 10000 |  | 65000 | First waypoint in the mission should be closer than this value [cm]. A value of 0 disables this check. |
 | opflow_hardware | NONE |  |  | Selection of OPFLOW hardware. |
 | opflow_scale | 10.5 | 0 | 10000 |  |
+| osd_adsb_alarm | 2000 |  | 64000 | Distance inside which ADSB data flashes for proximity warning. In meters |
+| osd_adsb_range | 20000 |  | 64000 | Distance outside which ADSB aircraft are NOT displayed. In meters |
 | osd_ahi_bordered | OFF |  |  | Shows a border/corners around the AHI region (pixel OSD only) |
 | osd_ahi_height | 162 |  | 255 | AHI height in pixels (pixel OSD only) |
 | osd_ahi_max_pitch | 20 | 10 | 90 | Max pitch, in degrees, for OSD artificial horizon |

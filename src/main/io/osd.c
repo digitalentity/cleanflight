@@ -64,6 +64,7 @@ FILE_COMPILE_FOR_SPEED
 #include "drivers/time.h"
 #include "drivers/vtx_common.h"
 
+#include "io/adsb.h" 
 #include "io/flashfs.h"
 #include "io/gps.h"
 #include "io/osd.h"
@@ -1632,7 +1633,33 @@ static bool osdDrawSingleElement(uint8_t item)
             osdFormatCentiNumber(&buff[2], centiHDOP, 0, 1, 0, 2);
             break;
         }
-
+#if defined(USE_TELEMETRY) && defined(USE_TELEMETRY_MAVLINK)
+    case OSD_ADSB:
+        {         
+            static uint8_t adsb_len = 1;
+            memset(buff, SYM_BLANK, adsb_len);
+            buff[adsb_len] = '\0';
+            displayWrite(osdDisplayPort, elemPosX, elemPosY, buff); // clear any previous chars because variable element size
+            adsbExpiry();
+            adsb_len = 1;
+            buff[0] = SYM_ADSB;   
+            if ((adsbNearest.dist > 0) && (adsbNearest.dist < osdConfig()->adsb_range)) {
+                osdFormatDistanceStr(buff + 1, adsbNearest.dist * 100);
+                adsb_len = strlen(buff);
+                int dir = osdGetHeadingAngle(adsbNearest.dir + 11);
+                unsigned arrowOffset = dir * 2 / 45;
+                buff[adsb_len-1] = SYM_ARROW_UP + arrowOffset;
+                osdFormatDistanceStr(buff + adsb_len, adsbNearest.alt * 100);
+                adsb_len = strlen(buff) - 1;
+                if (adsbNearest.dist < osdConfig()->adsb_alarm) {
+                    TEXT_ATTRIBUTES_ADD_BLINK(elemAttr);
+                }
+            }  
+            buff[adsb_len] = '\0';          
+            displayWriteWithAttr(osdDisplayPort, elemPosX, elemPosY, buff, elemAttr);
+            return true;
+        }
+#endif  
     case OSD_MAP_NORTH:
         {
             static uint16_t drawn = 0;
@@ -2909,6 +2936,8 @@ PG_RESET_TEMPLATE(osdConfig_t, osdConfig,
     .right_sidebar_scroll = SETTING_OSD_RIGHT_SIDEBAR_SCROLL_DEFAULT,
     .sidebar_scroll_arrows = SETTING_OSD_SIDEBAR_SCROLL_ARROWS_DEFAULT,
     .sidebar_horizontal_offset = SETTING_OSD_SIDEBAR_HORIZONTAL_OFFSET_DEFAULT,
+    .adsb_range = SETTING_OSD_ADSB_RANGE_DEFAULT,
+    .adsb_alarm = SETTING_OSD_ADSB_ALARM_DEFAULT,
     .left_sidebar_scroll_step = SETTING_OSD_LEFT_SIDEBAR_SCROLL_STEP_DEFAULT,
     .right_sidebar_scroll_step = SETTING_OSD_RIGHT_SIDEBAR_SCROLL_STEP_DEFAULT,
     .sidebar_height = SETTING_OSD_SIDEBAR_HEIGHT_DEFAULT,

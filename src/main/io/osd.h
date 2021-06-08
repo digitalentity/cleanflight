@@ -231,6 +231,7 @@ typedef enum {
     OSD_PLIMIT_REMAINING_BURST_TIME,
     OSD_PLIMIT_ACTIVE_CURRENT_LIMIT,
     OSD_PLIMIT_ACTIVE_POWER_LIMIT,
+    OSD_ADSB,       
     OSD_ITEM_COUNT // MUST BE LAST
 } osd_items_e;
 
@@ -302,6 +303,7 @@ typedef struct osdConfig_s {
     uint16_t dist_alarm; // home distance in m
     uint16_t neg_alt_alarm; // abs(negative altitude) in m
     uint8_t current_alarm; // current consumption in A
+    uint16_t adsb_alarm; 
     int16_t imu_temp_alarm_min;
     int16_t imu_temp_alarm_max;
     int16_t esc_temp_alarm_min;
@@ -342,6 +344,7 @@ typedef struct osdConfig_s {
     uint16_t hud_radar_range_max;
     uint16_t hud_radar_nearest;
     uint8_t hud_wp_disp;
+    uint16_t adsb_range;
 
     uint8_t left_sidebar_scroll; // from osd_sidebar_scroll_e
     uint8_t right_sidebar_scroll; // from osd_sidebar_scroll_e
