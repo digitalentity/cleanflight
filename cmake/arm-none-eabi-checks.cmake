@@ -2,13 +2,13 @@ include(gcc)
 set(arm_none_eabi_triplet "arm-none-eabi")
 
 # Keep version in sync with the distribution files below
-set(arm_none_eabi_gcc_version "9.3.1")
-set(arm_none_eabi_base_url "https://developer.arm.com/-/media/Files/downloads/gnu-rm/9-2020q2/gcc-arm-none-eabi-9-2020-q2-update")
+set(arm_none_eabi_gcc_version "10.2.1")
+set(arm_none_eabi_base_url "https://developer.arm.com/-/media/Files/downloads/gnu-rm/10-2020q4/gcc-arm-none-eabi-10-2020-q4-major")
 # suffix and checksum
-set(arm_none_eabi_win32 "win32.zip" 184b3397414485f224e7ba950989aab6)
-set(arm_none_eabi_linux_amd64 "x86_64-linux.tar.bz2" 2b9eeccc33470f9d3cda26983b9d2dc6)
-set(arm_none_eabi_linux_aarch64 "aarch64-linux.tar.bz2" 000b0888cbe7b171e2225b29be1c327c)
-set(arm_none_eabi_gcc_macos "mac.tar.bz2" 75a171beac35453fd2f0f48b3cb239c3)
+set(arm_none_eabi_win32 "win32.zip" 5ee6542a2af847934177bc8fa1294c0d)
+set(arm_none_eabi_linux_amd64 "x86_64-linux.tar.bz2" 8312c4c91799885f222f663fc81f9a31)
+set(arm_none_eabi_linux_aarch64 "aarch64-linux.tar.bz2" 1c3b8944c026d50362eef1f01f329a8e)
+set(arm_none_eabi_gcc_macos "mac.tar.bz2" e588d21be5a0cc9caa60938d2422b058)
 
 function(arm_none_eabi_gcc_distname var)
     string(REPLACE "/" ";" url_parts ${arm_none_eabi_base_url})
