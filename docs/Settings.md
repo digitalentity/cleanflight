@@ -4782,16 +4782,6 @@ Maximum count of nearby aircrafts or points of interest to display in the hud, a
 
 ---
 
-### osd_hud_radar_nearest
-
-To display an extra bar of informations at the bottom of the hud area for the closest radar aircraft found, if closest than the set value, in meters. Shows relative altitude (meters or feet, with an up or down arrow to indicate if above or below), speed (in m/s or f/s), and absolute heading (in °, 0 is north, 90 is east, 180 is south, 270 is west). Set to 0 (zero) to disable.
-
-| Default | Min | Max |
-| --- | --- | --- |
-| 0 | 0 | 4000 |
-
----
-
 ### osd_hud_radar_range_max
 
 In meters, radar aircrafts further away than this will not be displayed in the hud
