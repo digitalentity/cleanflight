@@ -40,6 +40,7 @@
 #include "fc/settings.h"
 
 #include "flight/secondary_imu.h"
+#include "flight/pid.h"
 
 #include "sensors/boardalignment.h"
 #include "sensors/compass.h"
@@ -140,7 +141,7 @@ void secondaryImuProcess(void) {
     rotated.z = ((int32_t)(rotated.z + secondaryImuConfig()->yawDeciDegrees)) % 3600;
 
     secondaryImuState.eulerAngles.values.roll = rotated.x;
-    secondaryImuState.eulerAngles.values.pitch = rotated.y;
+    secondaryImuState.eulerAngles.values.pitch = rotated.y + DEGREES_TO_DECIDEGREES(getFixedWingLevelTrim());
     secondaryImuState.eulerAngles.values.yaw = rotated.z;
 
     DEBUG_SET(DEBUG_IMU2, 0, secondaryImuState.eulerAngles.values.roll);

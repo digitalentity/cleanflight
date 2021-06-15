@@ -507,7 +507,7 @@ void processContinuousServoAutotrim(const float dT)
             const bool planeIsFlyingStraight = rotRateMagnitudeFiltered <= DEGREES_TO_RADIANS(servoConfig()->servo_autotrim_rotation_limit);
             const bool noRotationCommanded = targetRateMagnitudeFiltered <= servoConfig()->servo_autotrim_rotation_limit;
             const bool sticksAreCentered = !areSticksDeflected();
-            const bool planeIsFlyingLevel = ABS(attitude.values.pitch + DEGREES_TO_DECIDEGREES(getFixedWingLevelTrim())) <= SERVO_AUTOTRIM_ATIITUDE_LIMIT 
+            const bool planeIsFlyingLevel = ABS(attitude.values.pitch) <= SERVO_AUTOTRIM_ATIITUDE_LIMIT 
                                             && ABS(attitude.values.roll) <= SERVO_AUTOTRIM_ATIITUDE_LIMIT;
             if (
                 planeIsFlyingStraight && 

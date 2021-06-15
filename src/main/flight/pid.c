@@ -609,42 +609,18 @@ static void pidLevel(pidState_t *pidState, flight_dynamics_index_t axis, float h
         angleTarget += scaleRange(MAX(0, navConfig()->fw.cruise_throttle - rcCommand[THROTTLE]), 0, navConfig()->fw.cruise_throttle - PWM_RANGE_MIN, 0, mixerConfig()->fwMinThrottleDownPitchAngle);        
     }
 
-    //PITCH trim applied by a AutoLevel flight mode and manual pitch trimming
-    if (axis == FD_PITCH && STATE(AIRPLANE)) {
-        DEBUG_SET(DEBUG_AUTOLEVEL, 0, angleTarget * 10);
-        DEBUG_SET(DEBUG_AUTOLEVEL, 1, fixedWingLevelTrim * 10);
-        DEBUG_SET(DEBUG_AUTOLEVEL, 2, getEstimatedActualVelocity(Z));
-
-        /* 
-         * fixedWingLevelTrim has opposite sign to rcCommand.
-         * Positive rcCommand means nose should point downwards
-         * Negative rcCommand mean nose should point upwards
-         * This is counter intuitive and a natural way suggests that + should mean UP
-         * This is why fixedWingLevelTrim has opposite sign to rcCommand
-         * Positive fixedWingLevelTrim means nose should point upwards
-         * Negative fixedWingLevelTrim means nose should point downwards
-         */
-        angleTarget -= DEGREES_TO_DECIDEGREES(fixedWingLevelTrim);   
-        DEBUG_SET(DEBUG_AUTOLEVEL, 3, angleTarget * 10);
-    }
-
 #ifdef USE_SECONDARY_IMU
     float actual;
     if (secondaryImuState.active && secondaryImuConfig()->useForStabilized) {
-        if (axis == FD_ROLL) {
-            actual = secondaryImuState.eulerAngles.values.roll;
-        } else {
-            actual = secondaryImuState.eulerAngles.values.pitch;
-        }
+        actual = (axis == FD_ROLL) ? secondaryImuState.eulerAngles.values.roll : secondaryImuState.eulerAngles.values.pitch;
     } else {
-        actual = attitude.raw[axis];
+        actual = (axis == FD_ROLL) ? attitude.values.roll : attitude.values.pitch;
     }
-
-    const float angleErrorDeg = DECIDEGREES_TO_DEGREES(angleTarget - actual);
 #else
-    const float angleErrorDeg = DECIDEGREES_TO_DEGREES(angleTarget - attitude.raw[axis]);
+    const float actual = (axis == FD_ROLL) ? attitude.values.roll : attitude.values.pitch;
 #endif
 
+    const float angleErrorDeg = DECIDEGREES_TO_DEGREES(angleTarget - actual);
     float angleRateTarget = constrainf(angleErrorDeg * (pidBank()->pid[PID_LEVEL].P / FP_PID_LEVEL_P_MULTIPLIER), -currentControlRateProfile->stabilized.rates[axis] * 10.0f, currentControlRateProfile->stabilized.rates[axis] * 10.0f);
 
     // Apply simple LPF to angleRateTarget to make response less jerky
@@ -1334,8 +1310,12 @@ void updateFixedWingLevelTrim(timeUs_t currentTimeUs)
         1.0f
     );
 
-    DEBUG_SET(DEBUG_AUTOLEVEL, 4, output);
     fixedWingLevelTrim = pidProfile()->fixedWingLevelTrim + (output * FIXED_WING_LEVEL_TRIM_MULTIPLIER);
+
+    // Debug
+    DEBUG_SET(DEBUG_AUTOLEVEL, 0, fixedWingLevelTrim * 10);
+    DEBUG_SET(DEBUG_AUTOLEVEL, 1, getEstimatedActualVelocity(Z));
+    DEBUG_SET(DEBUG_AUTOLEVEL, 2, output);
 
     previousArmingState = !!ARMING_FLAG(ARMED);
 }

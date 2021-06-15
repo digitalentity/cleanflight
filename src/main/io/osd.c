@@ -2073,7 +2073,6 @@ static bool osdDrawSingleElement(uint8_t item)
             pitchAngle = DECIDEGREES_TO_RADIANS(attitude.values.pitch);
 #endif
             pitchAngle -= osdConfig()->ahi_camera_uptilt_comp ? DEGREES_TO_RADIANS(osdConfig()->camera_uptilt) : 0;
-            pitchAngle += DEGREES_TO_RADIANS(getFixedWingLevelTrim());
             if (osdConfig()->ahi_reverse_roll) {
                 rollAngle = -rollAngle;
             }
