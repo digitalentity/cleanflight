@@ -1382,6 +1382,8 @@ static void printWaypoints(uint8_t dumpMask, const navWaypoint_t *navWaypoint, c
 
 static void cliWaypoints(char *cmdline)
 {
+    static int8_t multiMissionWPCounter = 0;
+
     if (isEmpty(cmdline)) {
         printWaypoints(DUMP_MASTER, posControl.waypointList, NULL);
     } else if (sl_strcasecmp(cmdline, "reset") == 0) {
@@ -1393,9 +1395,16 @@ static void cliWaypoints(char *cmdline)
         for (int i = 0; i < NAV_MAX_WAYPOINTS; i++) {
             if (!(posControl.waypointList[i].action == NAV_WP_ACTION_WAYPOINT || posControl.waypointList[i].action == NAV_WP_ACTION_JUMP || posControl.waypointList[i].action == NAV_WP_ACTION_RTH || posControl.waypointList[i].action == NAV_WP_ACTION_HOLD_TIME || posControl.waypointList[i].action == NAV_WP_ACTION_LAND || posControl.waypointList[i].action == NAV_WP_ACTION_SET_POI || posControl.waypointList[i].action == NAV_WP_ACTION_SET_HEAD)) break;
             if (posControl.waypointList[i].flag == NAV_WP_FLAG_LAST) {
-                posControl.waypointCount = i + 1;
-                posControl.waypointListValid = true;
-                break;
+                if (posControl.multiMissionCount == 1) {
+                    posControl.waypointCount = i + 1;
+                    posControl.waypointListValid = true;
+                    multiMissionWPCounter = 0;
+                    posControl.multiMissionCount = 0;
+                    navConfigMutable()->general.waypoint_multi_mission_index = 1;    // reset selected mission to 1 when new entries loaded
+                    break;
+                } else {
+                    posControl.multiMissionCount -= 1;
+                }
             }
         }
         if (posControl.waypointListValid) {
@@ -1410,7 +1419,7 @@ static void cliWaypoints(char *cmdline)
         uint8_t validArgumentCount = 0;
         const char *ptr = cmdline;
         i = fastA2I(ptr);
-        if (i >= 0 && i < NAV_MAX_WAYPOINTS) {
+        if (i + multiMissionWPCounter >= 0 && i + multiMissionWPCounter < NAV_MAX_WAYPOINTS) {
             ptr = nextArg(ptr);
             if (ptr) {
                 action = fastA2I(ptr);
@@ -1460,17 +1469,28 @@ static void cliWaypoints(char *cmdline)
 
             if (!(validArgumentCount == 6 || validArgumentCount == 8)) {
                 cliShowParseError();
-            } else if (!(action == 0 || action == NAV_WP_ACTION_WAYPOINT || action == NAV_WP_ACTION_RTH || action == NAV_WP_ACTION_JUMP || action == NAV_WP_ACTION_HOLD_TIME || action == NAV_WP_ACTION_LAND || action == NAV_WP_ACTION_SET_POI || action == NAV_WP_ACTION_SET_HEAD) || !(flag == 0 || flag == NAV_WP_FLAG_LAST || flag == NAV_WP_FLAG_HOME)) {
+            } else if (!(action == 0 || action == NAV_WP_ACTION_WAYPOINT || (action == NAV_WP_ACTION_RTH && i > 0) || action == NAV_WP_ACTION_JUMP || action == NAV_WP_ACTION_HOLD_TIME || action == NAV_WP_ACTION_LAND || action == NAV_WP_ACTION_SET_POI || action == NAV_WP_ACTION_SET_HEAD) || !(flag == 0 || flag == NAV_WP_FLAG_LAST || flag == NAV_WP_FLAG_HOME)) {
                 cliShowParseError();
             } else {
-                posControl.waypointList[i].action = action;
-                posControl.waypointList[i].lat = lat;
-                posControl.waypointList[i].lon = lon;
-                posControl.waypointList[i].alt = alt;
-                posControl.waypointList[i].p1 = p1;
-                posControl.waypointList[i].p2 = p2;
-                posControl.waypointList[i].p3 = p3;
-                posControl.waypointList[i].flag = flag;
+                if (i + multiMissionWPCounter == 0) {
+                    posControl.multiMissionCount = 0;
+                }
+
+                posControl.waypointList[i + multiMissionWPCounter].action = action;
+                posControl.waypointList[i + multiMissionWPCounter].lat = lat;
+                posControl.waypointList[i + multiMissionWPCounter].lon = lon;
+                posControl.waypointList[i + multiMissionWPCounter].alt = alt;
+                posControl.waypointList[i + multiMissionWPCounter].p1 = p1;
+                posControl.waypointList[i + multiMissionWPCounter].p2 = p2;
+                posControl.waypointList[i + multiMissionWPCounter].p3 = p3;
+                posControl.waypointList[i + multiMissionWPCounter].flag = flag;
+
+                // Process WP entries made up of multiple successive WP missions (multiple NAV_WP_FLAG_LAST entries)
+                // Individial missions loaded at runtime, mission selected nav_waypoint_multi_mission_index
+                if (flag == NAV_WP_FLAG_LAST) {
+                    multiMissionWPCounter += i + 1;
+                    posControl.multiMissionCount += 1;
+                }
             }
         } else {
             cliShowArgumentRangeError("wp index", 0, NAV_MAX_WAYPOINTS - 1);

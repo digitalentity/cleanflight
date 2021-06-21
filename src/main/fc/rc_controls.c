@@ -263,6 +263,20 @@ void processRcStickPositions(throttleStatus_e throttleStatus)
         const bool success = loadNonVolatileWaypointList();
         beeper(success ? BEEPER_ACTION_SUCCESS : BEEPER_ACTION_FAIL);
     }
+
+    // Increment multi missiom index up
+    if (rcSticks == THR_LO + YAW_CE + PIT_CE + ROL_HI) {
+        selectMultiMissionIndex(1);
+        rcDelayCommand = 0;
+        return;
+    }
+
+    // Increment multi missiom index down
+    if (rcSticks == THR_LO + YAW_CE + PIT_CE + ROL_LO) {
+        selectMultiMissionIndex(-1);
+        rcDelayCommand = 0;
+        return;
+    }
 #endif
 
     // Multiple configuration profiles

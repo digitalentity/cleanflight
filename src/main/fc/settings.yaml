@@ -2434,6 +2434,12 @@ groups:
         default_value: 10000
         field: general.waypoint_safe_distance
         max: 65000
+      - name: nav_wp_multi_mission_index
+        description: "Index of mission selected from multi mission WP entry. 1 is the first useable WP mission in the entry. Limited to a maximum of 9 missions. Loading mission index 0 resets all missions (no mission is loaded)."
+        default_value: 1
+        field: general.waypoint_multi_mission_index
+        min: 0
+        max: 9
       - name: nav_auto_speed
         description: "Maximum velocity firmware is allowed in full auto modes (RTH, WP) [cm/s] [Multirotor only]"
         default_value: 300

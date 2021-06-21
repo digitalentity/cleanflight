@@ -39,6 +39,7 @@
 #include "fc/rc_controls.h"
 #include "fc/rc_modes.h"
 #include "fc/runtime_config.h"
+#include "fc/cli.h"
 #include "fc/settings.h"
 
 #include "flight/imu.h"
@@ -120,6 +121,7 @@ PG_RESET_TEMPLATE(navConfig_t, navConfig,
         .pos_failure_timeout = SETTING_NAV_POSITION_TIMEOUT_DEFAULT,                  // 5 sec
         .waypoint_radius = SETTING_NAV_WP_RADIUS_DEFAULT,                             // 2m diameter
         .waypoint_safe_distance = SETTING_NAV_WP_SAFE_DISTANCE_DEFAULT,               // centimeters - first waypoint should be closer than this
+        .waypoint_multi_mission_index = SETTING_NAV_WP_MULTI_MISSION_INDEX_DEFAULT,   // mission index selected from multi mission WP entry
         .waypoint_load_on_boot = SETTING_NAV_WP_LOAD_ON_BOOT_DEFAULT,               // load waypoints automatically during boot
         .max_auto_speed = SETTING_NAV_AUTO_SPEED_DEFAULT,                             // 3 m/s = 10.8 km/h
         .max_auto_climb_rate = SETTING_NAV_AUTO_CLIMB_RATE_DEFAULT,                   // 5 m/s
@@ -2855,6 +2857,7 @@ void resetWaypointList(void)
         posControl.waypointCount = 0;
         posControl.waypointListValid = false;
         posControl.geoWaypointCount = 0;
+        posControl.loadedMultiMissionIndex = 0;
     }
 }
 
@@ -2866,6 +2869,11 @@ bool isWaypointListValid(void)
 int getWaypointCount(void)
 {
     return posControl.waypointCount;
+}
+
+void selectMultiMissionIndex(int8_t increment)
+{
+    navConfigMutable()->general.waypoint_multi_mission_index = constrain(navConfigMutable()->general.waypoint_multi_mission_index + increment, 0, posControl.multiMissionCount);
 }
 
 #ifdef NAV_NON_VOLATILE_WAYPOINT_STORAGE
@@ -2882,14 +2890,31 @@ bool loadNonVolatileWaypointList(void)
 
     resetWaypointList();
 
+    posControl.multiMissionCount = 0;
+    int8_t WPCounter = 0;
+
+    // when in CLI mode load all WPs in EEPROM so all multi mission WPs are visible
     for (int i = 0; i < NAV_MAX_WAYPOINTS; i++) {
-        // Load waypoint
-        setWaypoint(i + 1, nonVolatileWaypointList(i));
+        if ((posControl.multiMissionCount + 1 == navConfig()->general.waypoint_multi_mission_index) || cliMode) {
+            // Load waypoints
+            setWaypoint(i + 1 - WPCounter, nonVolatileWaypointList(i));
+        } else {
+            WPCounter = i + 1;  // count WPs not in selected multi mission entry to ensure set WP numbering starts at 1
+        }
 
         // Check if this is the last waypoint
-        if (nonVolatileWaypointList(i)->flag == NAV_WP_FLAG_LAST)
-            break;
+        if (nonVolatileWaypointList(i)->flag == NAV_WP_FLAG_LAST) {
+            posControl.multiMissionCount += 1;  // count up number missions in multi mission WP entry
+            posControl.multiMissionTotalWPCount = i + 1;
+            if (i != NAV_MAX_WAYPOINTS - 1) {
+                if (nonVolatileWaypointList(i + 1)->flag == NAV_WP_FLAG_LAST && nonVolatileWaypointList(i + 1)->action == NAV_WP_ACTION_RTH) {
+                    break;      // end of multi mission file if successive NAV_WP_FLAG_LAST and default action (RTH)
+                }
+            }
+        }
     }
+
+    posControl.loadedMultiMissionIndex = posControl.multiMissionCount > 0 ? navConfig()->general.waypoint_multi_mission_index : 0;
 
     // Mission sanity check failed - reset the list
     if (!posControl.waypointListValid) {
@@ -3576,6 +3601,18 @@ void navigationInit(void)
     posControl.waypointCount = 0;
     posControl.activeWaypointIndex = 0;
     posControl.waypointListValid = false;
+#if defined(NAV_NON_VOLATILE_WAYPOINT_STORAGE)
+    uint8_t savedMultiMissionIndex = navConfig()->general.waypoint_multi_mission_index;
+
+    /* check number missions loaded by loading waypoint list.
+     * Set index to 0 so no mission is loaded during check if waypoint_load_on_boot option is OFF */
+    if (!navConfig()->general.waypoint_load_on_boot) {
+        navConfigMutable()->general.waypoint_multi_mission_index = 0;
+    }
+    loadNonVolatileWaypointList();
+    // set index to 1 if saved mission index > available missions
+    navConfigMutable()->general.waypoint_multi_mission_index = savedMultiMissionIndex > posControl.multiMissionCount ? 1 : savedMultiMissionIndex;
+#endif
 
     /* Set initial surface invalid */
     posControl.actualState.surfaceMin = -1.0f;
@@ -3595,11 +3632,6 @@ void navigationInit(void)
     } else {
         DISABLE_STATE(FW_HEADING_USE_YAW);
     }
-
-#if defined(NAV_NON_VOLATILE_WAYPOINT_STORAGE)
-    if (navConfig()->general.waypoint_load_on_boot)
-        loadNonVolatileWaypointList();
-#endif
 }
 
 /*-----------------------------------------------------------

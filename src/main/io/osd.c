@@ -2778,6 +2778,24 @@ static bool osdDrawSingleElement(uint8_t item)
         osdDisplayAdjustableDecimalValue(elemPosX, elemPosY, "CTL S", 0, navConfig()->fw.control_smoothness, 1, 0, ADJUSTMENT_NAV_FW_CONTROL_SMOOTHNESS);
         return true;
 
+    case OSD_MISSION:
+        {
+            if (ARMING_FLAG(ARMED)){
+                tfp_sprintf(buff, "M%u       ", posControl.loadedMultiMissionIndex);    // only show selected mission index when armed
+            } else {
+                if (navConfig()->general.waypoint_multi_mission_index != posControl.loadedMultiMissionIndex && posControl.multiMissionCount > 0) {
+                    tfp_sprintf(buff, "M%u/%u>LOAD", navConfig()->general.waypoint_multi_mission_index, posControl.multiMissionCount);
+                } else {
+                    if (posControl.waypointListValid && posControl.waypointCount > 0) {
+                        tfp_sprintf(buff, "M%u/%u>%2uWP", posControl.loadedMultiMissionIndex, posControl.multiMissionCount, posControl.waypointCount);
+                    } else {
+                        tfp_sprintf(buff, "M0/%u> 0WP", posControl.multiMissionCount);
+                    }
+                }
+            }
+            displayWrite(osdDisplayPort, elemPosX, elemPosY, buff);
+            return true;
+        }
 #ifdef USE_POWER_LIMITS
     case OSD_PLIMIT_REMAINING_BURST_TIME:
         osdFormatCentiNumber(buff, powerLimiterGetRemainingBurstTime() * 100, 0, 1, 0, 3);
@@ -3061,6 +3079,7 @@ void pgResetFn_osdLayoutsConfig(osdLayoutsConfig_t *osdLayoutsConfig)
     osdLayoutsConfig->item_pos[0][OSD_REMAINING_FLIGHT_TIME_BEFORE_RTH] = OSD_POS(23, 7);
     osdLayoutsConfig->item_pos[0][OSD_REMAINING_DISTANCE_BEFORE_RTH] = OSD_POS(23, 6);
 
+    osdLayoutsConfig->item_pos[0][OSD_MISSION] = OSD_POS(0, 10);
     osdLayoutsConfig->item_pos[0][OSD_GPS_SATS] = OSD_POS(0, 11) | OSD_VISIBLE_FLAG;
     osdLayoutsConfig->item_pos[0][OSD_GPS_HDOP] = OSD_POS(0, 10);
 
@@ -3548,7 +3567,8 @@ static void osdShowArmed(void)
     }
 
     if (posControl.waypointListValid && posControl.waypointCount > 0) {
-        displayWrite(osdDisplayPort, 7, y, "*MISSION LOADED*");
+        tfp_sprintf(buf, "MISSION %u/%u (%u WP)", posControl.loadedMultiMissionIndex, posControl.multiMissionCount, posControl.waypointCount);
+        displayWrite(osdDisplayPort, 6, y, buf);
     }
     y += 1;
 
