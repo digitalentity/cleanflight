@@ -265,6 +265,7 @@ typedef struct navConfig_s {
         uint16_t launch_max_altitude;        // cm, altitude where to consider launch ended
         uint8_t  launch_climb_angle;         // Target climb angle for launch (deg)
         uint8_t  launch_max_angle;           // Max tilt angle (pitch/roll combined) to consider launch successful. Set to 180 to disable completely [deg]
+        bool     launch_allow_throttle_low;  // Allow launch with throttle low
         uint8_t  cruise_yaw_rate;            // Max yaw rate (dps) when CRUISE MODE is enabled
         bool     allow_manual_thr_increase;
         bool    useFwNavYawControl;
@@ -516,6 +517,7 @@ rthState_e getStateOfForcedRTH(void);
 
 /* Getter functions which return data about the state of the navigation system */
 bool navigationInAutomaticThrottleMode(void);
+bool launchAllowedWithThrottleLow(void);
 bool navigationIsControllingThrottle(void);
 bool isFixedWingAutoThrottleManuallyIncreased(void);
 bool navigationIsFlyingAutonomousMode(void);
@@ -530,6 +532,7 @@ bool isWaypointMissionRTHActive(void);
 bool isNavLaunchEnabled(void);
 bool isFixedWingLaunchDetected(void);
 bool isFixedWingLaunchFinishedOrAborted(void);
+bool isFixedWingLaunchFinishedThrottleLow(void);
 const char * fixedWingLaunchStateMessage(void);
 
 float calculateAverageSpeed(void);

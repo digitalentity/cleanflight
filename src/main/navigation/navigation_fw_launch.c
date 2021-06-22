@@ -60,6 +60,7 @@
 #define FW_LAUNCH_MESSAGE_TEXT_WAIT_DETECTION "READY"
 #define FW_LAUNCH_MESSAGE_TEXT_IN_PROGRESS "MOVE THE STICKS TO ABORT"
 #define FW_LAUNCH_MESSAGE_TEXT_FINISHING "FINISHING"
+#define FW_LAUNCH_MESSAGE_TEXT_FINISHING_THR_LOW "RAISE THROTTLE/MOVE STICKS"
 
 typedef enum {
     FW_LAUNCH_MESSAGE_TYPE_NONE = 0,
@@ -67,7 +68,8 @@ typedef enum {
     FW_LAUNCH_MESSAGE_TYPE_WAIT_IDLE,
     FW_LAUNCH_MESSAGE_TYPE_WAIT_DETECTION,
     FW_LAUNCH_MESSAGE_TYPE_IN_PROGRESS,
-    FW_LAUNCH_MESSAGE_TYPE_FINISHING
+    FW_LAUNCH_MESSAGE_TYPE_FINISHING,
+    FW_LAUNCH_MESSAGE_TYPE_FINISHING_THR_LOW
 } fixedWingLaunchMessage_t;
 
 typedef enum {
@@ -76,6 +78,7 @@ typedef enum {
     FW_LAUNCH_EVENT_GOTO_DETECTION,
     FW_LAUNCH_EVENT_ABORT,
     FW_LAUNCH_EVENT_THROTTLE_LOW,
+    FW_LAUNCH_EVENT_FINISH_THR_LOW,
     FW_LAUNCH_EVENT_COUNT
 } fixedWingLaunchEvent_t;
 
@@ -90,6 +93,7 @@ typedef enum {
     FW_LAUNCH_STATE_MOTOR_SPINUP,
     FW_LAUNCH_STATE_IN_PROGRESS,
     FW_LAUNCH_STATE_FINISH,
+    FW_LAUNCH_STATE_FINISH_THR_LOW,
     FW_LAUNCH_STATE_COUNT
 } fixedWingLaunchState_t;
 
@@ -103,6 +107,7 @@ static fixedWingLaunchEvent_t fwLaunchState_FW_LAUNCH_STATE_MOTOR_DELAY(timeUs_t
 static fixedWingLaunchEvent_t fwLaunchState_FW_LAUNCH_STATE_MOTOR_SPINUP(timeUs_t currentTimeUs);
 static fixedWingLaunchEvent_t fwLaunchState_FW_LAUNCH_STATE_IN_PROGRESS(timeUs_t currentTimeUs);
 static fixedWingLaunchEvent_t fwLaunchState_FW_LAUNCH_STATE_FINISH(timeUs_t currentTimeUs);
+static fixedWingLaunchEvent_t fwLaunchState_FW_LAUNCH_STATE_FINISH_THR_LOW(timeUs_t currentTimeUs);
 
 typedef struct fixedWingLaunchStateDescriptor_s {
     fixedWingLaunchEvent_t (*onEntry)(timeUs_t currentTimeUs);
@@ -204,9 +209,18 @@ static const fixedWingLaunchStateDescriptor_t launchStateMachine[FW_LAUNCH_STATE
         .onEntry                                    = fwLaunchState_FW_LAUNCH_STATE_FINISH,
         .onEvent = {
             [FW_LAUNCH_EVENT_SUCCESS]               = FW_LAUNCH_STATE_IDLE,
-            [FW_LAUNCH_EVENT_ABORT]                 = FW_LAUNCH_STATE_IDLE
+            [FW_LAUNCH_EVENT_ABORT]                 = FW_LAUNCH_STATE_IDLE,
+            [FW_LAUNCH_EVENT_FINISH_THR_LOW]        = FW_LAUNCH_STATE_FINISH_THR_LOW
         },
         .messageType                                = FW_LAUNCH_MESSAGE_TYPE_FINISHING
+    },
+
+        [FW_LAUNCH_STATE_FINISH_THR_LOW] = {
+        .onEntry                                    = fwLaunchState_FW_LAUNCH_STATE_FINISH_THR_LOW,
+        .onEvent = {
+            [FW_LAUNCH_EVENT_SUCCESS]               = FW_LAUNCH_STATE_IDLE
+        },
+        .messageType                                = FW_LAUNCH_MESSAGE_TYPE_FINISHING_THR_LOW
     }
 };
 
@@ -285,7 +299,9 @@ static fixedWingLaunchEvent_t fwLaunchState_FW_LAUNCH_STATE_WAIT_THROTTLE(timeUs
 {
     UNUSED(currentTimeUs);
 
-    if (!isThrottleLow()) {
+    if (!isThrottleLow() || navConfig()->fw.launch_allow_throttle_low) {
+        applyThrottleIdleLogic(true);   // Stick low, force mixer idle (motor stop or low rpm)
+
         if (isThrottleIdleEnabled()) {
             return FW_LAUNCH_EVENT_SUCCESS;
         }
@@ -323,7 +339,7 @@ static fixedWingLaunchEvent_t fwLaunchState_FW_LAUNCH_STATE_IDLE_MOTOR_DELAY(tim
 
 static fixedWingLaunchEvent_t fwLaunchState_FW_LAUNCH_STATE_MOTOR_IDLE(timeUs_t currentTimeUs)
 {
-    if (isThrottleLow()) {
+    if (isThrottleLow() && !navConfig()->fw.launch_allow_throttle_low) {
         return FW_LAUNCH_EVENT_THROTTLE_LOW; // go back to FW_LAUNCH_STATE_WAIT_THROTTLE
     }
 
@@ -342,7 +358,7 @@ static fixedWingLaunchEvent_t fwLaunchState_FW_LAUNCH_STATE_MOTOR_IDLE(timeUs_t 
 
 static fixedWingLaunchEvent_t fwLaunchState_FW_LAUNCH_STATE_WAIT_DETECTION(timeUs_t currentTimeUs)
 {
-    if (isThrottleLow()) {
+    if (isThrottleLow() && !navConfig()->fw.launch_allow_throttle_low) {
         return FW_LAUNCH_EVENT_THROTTLE_LOW; // go back to FW_LAUNCH_STATE_WAIT_THROTTLE
     }
 
@@ -440,13 +456,49 @@ static fixedWingLaunchEvent_t fwLaunchState_FW_LAUNCH_STATE_FINISH(timeUs_t curr
     if (isRollPitchStickDeflected()) {
         return FW_LAUNCH_EVENT_ABORT; // cancel the launch and do the FW_LAUNCH_STATE_IDLE state
     }
+
+    if (navConfig()->fw.launch_allow_throttle_low && isThrottleLow()) {
+        // if launch with throttle low selected default to cruise throttle
+        rcCommand[THROTTLE] = currentBatteryProfile->nav.fw.cruise_throttle;
+    }
+
     if (elapsedTimeMs > endTimeMs) {
-        return FW_LAUNCH_EVENT_SUCCESS;
+        // if launch with throttle low selected and throttle is low
+        // move to state FW_LAUNCH_EVENT_FINISH_THR_LOW, otherwise end launch
+        if (navConfig()->fw.launch_allow_throttle_low && isThrottleLow()) {
+            return FW_LAUNCH_EVENT_FINISH_THR_LOW;
+        } else {
+            return FW_LAUNCH_EVENT_SUCCESS;
+        }
     }
     else {
         // make a smooth transition from the launch state to the current state for throttle and the pitch angle
         rcCommand[THROTTLE] = scaleRangef(elapsedTimeMs, 0.0f, endTimeMs,  currentBatteryProfile->nav.fw.launch_throttle, rcCommand[THROTTLE]);
         fwLaunch.pitchAngle = scaleRangef(elapsedTimeMs, 0.0f, endTimeMs, navConfig()->fw.launch_climb_angle, rcCommand[PITCH]);
+    }
+
+    return FW_LAUNCH_EVENT_NONE;
+}
+
+static fixedWingLaunchEvent_t fwLaunchState_FW_LAUNCH_STATE_FINISH_THR_LOW(timeUs_t currentTimeUs)
+{
+    static timeMs_t throttleRaisedStartTimeMs;
+    const timeMs_t elapsedTimeMs = US2MS(currentTimeUs) - throttleRaisedStartTimeMs;
+    const timeMs_t endTimeMs = 1000;    // smooth throttle transistion over 1 second when throttle stick raised
+
+    if (isRollPitchStickDeflected()) {
+        return FW_LAUNCH_EVENT_SUCCESS;     // end the launch and go to FW_LAUNCH_STATE_IDLE
+    }
+
+    if (isThrottleLow()) {
+        throttleRaisedStartTimeMs = US2MS(currentTimeUs);
+        rcCommand[THROTTLE] = currentBatteryProfile->nav.fw.cruise_throttle;
+    } else {
+        // smooth throttle transition to launch finish when throttle stick raised
+        rcCommand[THROTTLE] = scaleRangef(elapsedTimeMs, 0.0f, endTimeMs, currentBatteryProfile->nav.fw.cruise_throttle, rcCommand[THROTTLE]);
+        if (elapsedTimeMs > endTimeMs) {
+            return FW_LAUNCH_EVENT_SUCCESS;
+        }
     }
 
     return FW_LAUNCH_EVENT_NONE;
@@ -503,6 +555,11 @@ bool isFixedWingLaunchFinishedOrAborted(void)
     return fwLaunch.currentState == FW_LAUNCH_STATE_IDLE;
 }
 
+bool isFixedWingLaunchFinishedThrottleLow(void)
+{
+    return fwLaunch.currentState == FW_LAUNCH_STATE_FINISH_THR_LOW;
+}
+
 void abortFixedWingLaunch(void)
 {
     setCurrentState(FW_LAUNCH_STATE_IDLE, 0);
@@ -525,6 +582,9 @@ const char * fixedWingLaunchStateMessage(void)
 
         case FW_LAUNCH_MESSAGE_TYPE_FINISHING:
             return FW_LAUNCH_MESSAGE_TEXT_FINISHING;
+
+        case FW_LAUNCH_MESSAGE_TYPE_FINISHING_THR_LOW:
+            return FW_LAUNCH_MESSAGE_TEXT_FINISHING_THR_LOW;
 
         default:
             return NULL;

@@ -3072,6 +3072,16 @@ Forward acceleration threshold for bungee launch of throw launch [cm/s/s], 1G = 
 
 ---
 
+### nav_fw_launch_allow_throttle_low
+
+Allow launch sequence with throttle maintained low throughout. When main launch sequence completes flight control is maintained with Nav cruise throttle until sticks moved/throttle raised or control switches to other Nav mode if preselected
+
+| Default | Min | Max |
+| --- | --- | --- |
+| OFF |  |  |
+
+---
+
 ### nav_fw_launch_climb_angle
 
 Climb angle (attitude of model, not climb slope) for launch sequence (degrees), is also restrained by global max_angle_inclination_pit
