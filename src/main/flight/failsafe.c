@@ -326,6 +326,7 @@ void failsafeOnRxResume(void)
 void failsafeOnValidDataReceived(void)
 {
     failsafeState.validRxDataReceivedAt = millis();
+    failsafeState.blockChangeArmState = false;
     if ((failsafeState.validRxDataReceivedAt - failsafeState.validRxDataFailedAt) > failsafeState.rxDataRecoveryPeriod) {
         failsafeState.rxLinkState = FAILSAFE_RXLINK_UP;
     }
@@ -334,9 +335,15 @@ void failsafeOnValidDataReceived(void)
 void failsafeOnValidDataFailed(void)
 {
     failsafeState.validRxDataFailedAt = millis();
+    failsafeState.blockChangeArmState = true;
     if ((failsafeState.validRxDataFailedAt - failsafeState.validRxDataReceivedAt) > failsafeState.rxDataFailurePeriod) {
         failsafeState.rxLinkState = FAILSAFE_RXLINK_DOWN;
     }
+}
+
+bool failsafeBlockChangeArmState(void)
+{
+    return failsafeState.blockChangeArmState;
 }
 
 static bool failsafeCheckStickMotion(void)

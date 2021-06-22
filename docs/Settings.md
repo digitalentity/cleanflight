@@ -5322,9 +5322,19 @@ Total flight time [in seconds]. The value is updated on every disarm when "stats
 
 ---
 
+### switch_arm_delay
+
+Delay before arming when set by switch (ms) [0-1000]
+
+| Default | Min | Max |
+| --- | --- | --- |
+| 250 | 0 | 1000 |
+
+---
+
 ### switch_disarm_delay
 
-Delay before disarming when requested by switch (ms) [0-1000]
+Delay before disarming when set by switch (ms) [0-1000]
 
 | Default | Min | Max |
 | --- | --- | --- |
