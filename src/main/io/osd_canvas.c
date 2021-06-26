@@ -502,6 +502,8 @@ static int32_t osdCanvasSidebarGetValue(osd_sidebar_scroll_e scroll)
             break;
         case OSD_SIDEBAR_SCROLL_ALTITUDE:
             switch ((osd_unit_e)osdConfig()->units) {
+                case OSD_UNIT_CANADA:
+                    FALLTHROUGH;
                 case OSD_UNIT_IMPERIAL:
                     return CENTIMETERS_TO_CENTIFEET(osdGetAltitude());
                 case OSD_UNIT_UK:
@@ -513,17 +515,19 @@ static int32_t osdCanvasSidebarGetValue(osd_sidebar_scroll_e scroll)
         case OSD_SIDEBAR_SCROLL_SPEED:
             {
 #if defined(USE_GPS)
-                int speed = osdGetSpeedFromSelectedSource();
-                switch ((osd_unit_e)osdConfig()->units) {
-                    case OSD_UNIT_UK:
-                        FALLTHROUGH;
-                    case OSD_UNIT_IMPERIAL:
-                        // cms/s to (mi/h) * 100
-                        return speed * 224 / 100;
-                    case OSD_UNIT_METRIC:
-                        // cm/s to (km/h) * 100
-                        return speed * 36 / 10;
-                }
+            int speed = osdGetSpeedFromSelectedSource();
+            switch ((osd_unit_e)osdConfig()->units) {
+                case OSD_UNIT_UK:
+                    FALLTHROUGH;
+                case OSD_UNIT_IMPERIAL:
+                    // cms/s to (mi/h) * 100
+                    return speed * 224 / 100;
+                case OSD_UNIT_CANADA:
+                    FALLTHROUGH;
+                case OSD_UNIT_METRIC:
+                    // cm/s to (km/h) * 100
+                    return speed * 36 / 10;
+            }
 #endif
                 break;
             }
@@ -533,6 +537,8 @@ static int32_t osdCanvasSidebarGetValue(osd_sidebar_scroll_e scroll)
                 case OSD_UNIT_IMPERIAL:
                     return CENTIMETERS_TO_CENTIFEET(GPS_distanceToHome * 100);
                 case OSD_UNIT_UK:
+                    FALLTHROUGH;
+                case OSD_UNIT_CANADA:
                     FALLTHROUGH;
                 case OSD_UNIT_METRIC:
                     return GPS_distanceToHome * 100;
@@ -575,6 +581,8 @@ static void osdCanvasSidebarGetUnit(osdUnit_t *unit, uint16_t *countsPerStep, os
             break;
         case OSD_SIDEBAR_SCROLL_ALTITUDE:
             switch ((osd_unit_e)osdConfig()->units) {
+                case OSD_UNIT_CANADA:
+                    FALLTHROUGH;
                 case OSD_UNIT_IMPERIAL:
                     unit->symbol = SYM_ALT_FT;
                     unit->divisor = FEET_PER_KILOFEET;
@@ -601,6 +609,8 @@ static void osdCanvasSidebarGetUnit(osdUnit_t *unit, uint16_t *countsPerStep, os
                     unit->divided_symbol = 0;
                     *countsPerStep = 5;
                     break;
+                case OSD_UNIT_CANADA:
+                    FALLTHROUGH;
                 case OSD_UNIT_METRIC:
                     unit->symbol = SYM_KMH;
                     unit->divisor = 0;
@@ -618,6 +628,8 @@ static void osdCanvasSidebarGetUnit(osdUnit_t *unit, uint16_t *countsPerStep, os
                     *countsPerStep = 300;
                     break;
                 case OSD_UNIT_UK:
+                    FALLTHROUGH;
+                case OSD_UNIT_CANADA:
                     FALLTHROUGH;
                 case OSD_UNIT_METRIC:
                     unit->symbol = SYM_M;

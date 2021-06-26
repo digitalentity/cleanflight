@@ -655,6 +655,8 @@ static int32_t osdConvertVelocityToUnit(int32_t vel)
 
         case OSD_UNIT_IMPERIAL:
             return (vel * 224) / 10000; // Convert to mph
+        case OSD_UNIT_CANADA:
+            FALLTHROUGH;
 
         case OSD_UNIT_METRIC:
             return (vel * 36) / 1000;   // Convert to kmh
@@ -732,6 +734,8 @@ static void osdDJIFormatDistanceStr(char *buff, int32_t dist)
             }
             break;
         case OSD_UNIT_UK:
+            FALLTHROUGH;
+        case OSD_UNIT_CANADA:
             FALLTHROUGH;
         case OSD_UNIT_METRIC:
             if (abs(dist) < METERS_PER_KILOMETER * 100) {

@@ -64,7 +64,7 @@ tables:
   - name: nav_rth_alt_mode
     values: ["CURRENT", "EXTRA", "FIXED", "MAX", "AT_LEAST", "AT_LEAST_LINEAR_DESCENT"]
   - name: osd_unit
-    values: ["IMPERIAL", "METRIC", "UK"]
+    values: ["IMPERIAL", "METRIC", "UK", "CANADA"]
     enum: osd_unit_e
   - name: osd_stats_energy_unit
     values: ["MAH", "WH"]

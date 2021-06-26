@@ -327,6 +327,8 @@ static void osdFormatDistanceSymbol(char *buff, int32_t dist, uint8_t decimals)
         break;
     case OSD_UNIT_UK:
         FALLTHROUGH;
+    case OSD_UNIT_CANADA:
+        FALLTHROUGH;
     case OSD_UNIT_METRIC:
         if (osdFormatCentiNumber(buff, dist, METERS_PER_KILOMETER, decimals, 3, 3)) {
             buff[3] = SYM_DIST_KM;
@@ -359,6 +361,8 @@ static void osdFormatDistanceStr(char *buff, int32_t dist)
     break;
  case OSD_UNIT_UK:
      FALLTHROUGH;
+ case OSD_UNIT_CANADA:
+     FALLTHROUGH;
  case OSD_UNIT_METRIC:
     if (abs(dist) < METERS_PER_KILOMETER * 100) {
         // Show meters when dist < 1km
@@ -383,6 +387,8 @@ static int32_t osdConvertVelocityToUnit(int32_t vel)
         FALLTHROUGH;
     case OSD_UNIT_IMPERIAL:
         return (vel * 224) / 10000; // Convert to mph
+    case OSD_UNIT_CANADA:
+        FALLTHROUGH;
     case OSD_UNIT_METRIC:
         return (vel * 36) / 1000;   // Convert to kmh
     }
@@ -402,6 +408,8 @@ void osdFormatVelocityStr(char* buff, int32_t vel, bool _3D)
     case OSD_UNIT_IMPERIAL:
         tfp_sprintf(buff, "%3d%c", (int)osdConvertVelocityToUnit(vel), (_3D ? SYM_3D_MPH : SYM_MPH));
         break;
+    case OSD_UNIT_CANADA:
+        FALLTHROUGH;
     case OSD_UNIT_METRIC:
         tfp_sprintf(buff, "%3d%c", (int)osdConvertVelocityToUnit(vel), (_3D ? SYM_3D_KMH : SYM_KMH));
         break;
@@ -426,6 +434,8 @@ static void osdFormatWindSpeedStr(char *buff, int32_t ws, bool isValid)
             centivalue = (ws * 224) / 100;
             suffix = SYM_MPH;
             break;
+        case OSD_UNIT_CANADA:
+            FALLTHROUGH;
         default:
         case OSD_UNIT_METRIC:
             centivalue = (ws * 36) / 10;
@@ -459,6 +469,8 @@ void osdFormatAltitudeSymbol(char *buff, int32_t alt)
     switch ((osd_unit_e)osdConfig()->units) {
         case OSD_UNIT_UK:
             FALLTHROUGH;
+        case OSD_UNIT_CANADA:
+            FALLTHROUGH;
         case OSD_UNIT_IMPERIAL:
             if (osdFormatCentiNumber(buff + 4 - digits, CENTIMETERS_TO_CENTIFEET(alt), 1000, 0, 2, digits)) {
                 // Scaled to kft
@@ -491,6 +503,8 @@ static void osdFormatAltitudeStr(char *buff, int32_t alt)
 {
     int32_t value;
     switch ((osd_unit_e)osdConfig()->units) {
+        case OSD_UNIT_CANADA:
+            FALLTHROUGH;
         case OSD_UNIT_IMPERIAL:
             value = CENTIMETERS_TO_FEET(alt);
             tfp_sprintf(buff, "%d%c", (int)value, SYM_FT);
@@ -1092,6 +1106,8 @@ static void osdDrawMap(int referenceHeading, uint8_t referenceSym, uint8_t cente
             initialScale = 16; // 16m ~= 0.01miles
             break;
         case OSD_UNIT_UK:
+            FALLTHROUGH;
+        case OSD_UNIT_CANADA:
             FALLTHROUGH;
         default:
         case OSD_UNIT_METRIC:
@@ -2118,6 +2134,8 @@ static bool osdDrawSingleElement(uint8_t item)
             switch ((osd_unit_e)osdConfig()->units) {
                 case OSD_UNIT_UK:
                     FALLTHROUGH;
+                case OSD_UNIT_CANADA:
+                    FALLTHROUGH;
                 case OSD_UNIT_IMPERIAL:
                     // Convert to centifeet/s
                     value = CENTIMETERS_TO_CENTIFEET(value);
@@ -2662,6 +2680,8 @@ static bool osdDrawSingleElement(uint8_t item)
                 maxDecimals = 2;
                 break;
             case OSD_UNIT_UK:
+                FALLTHROUGH;
+            case OSD_UNIT_CANADA:
                 FALLTHROUGH;
             default:
             case OSD_UNIT_METRIC:

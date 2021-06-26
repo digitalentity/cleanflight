@@ -239,7 +239,7 @@ typedef enum {
     OSD_UNIT_IMPERIAL,
     OSD_UNIT_METRIC,
     OSD_UNIT_UK, // Show speed in mp/h, other values in metric
-
+    OSD_UNIT_CANADA, // Altitude in feet, other values in metric
     OSD_UNIT_MAX = OSD_UNIT_UK,
 } osd_unit_e;
 
