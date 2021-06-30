@@ -332,9 +332,9 @@ static void crsfFrameFlightMode(sbuf_t *dst)
         } else if (FLIGHT_MODE(NAV_POSHOLD_MODE)) {
             flightMode = "HOLD";
         } else if (FLIGHT_MODE(NAV_COURSE_HOLD_MODE) && FLIGHT_MODE(NAV_ALTHOLD_MODE)) {
-            flightMode = "3CRS";
+            flightMode = "CRUZ";
         } else if (FLIGHT_MODE(NAV_COURSE_HOLD_MODE)) {
-            flightMode = "CRS";
+            flightMode = "CRSH";
         } else if (FLIGHT_MODE(NAV_ALTHOLD_MODE)) {
             flightMode = "AH";
         } else if (FLIGHT_MODE(NAV_WP_MODE)) {
