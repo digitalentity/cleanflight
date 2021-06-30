@@ -4542,6 +4542,16 @@ Display minimum voltage of the `BATTERY` or the average per `CELL` in the OSD st
 
 ---
 
+### osd_stats_page_auto_swap_time
+
+Auto swap display time interval between disarm stats pages (seconds). Reverts to manual control when Roll stick used to change pages. Disabled when set to 0.
+
+| Default | Min | Max |
+| --- | --- | --- |
+| 3 | 0 | 10 |
+
+---
+
 ### osd_telemetry
 
 To enable OSD telemetry for antenna tracker. Possible values are `OFF`, `ON` and `TEST`

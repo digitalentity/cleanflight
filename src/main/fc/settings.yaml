@@ -3073,7 +3073,12 @@ groups:
         field: stats_min_voltage_unit
         table: osd_stats_min_voltage_unit
         type: uint8_t
-
+      - name: osd_stats_page_auto_swap_time
+        description: "Auto swap display time interval between disarm stats pages (seconds). Reverts to manual control when Roll stick used to change pages. Disabled when set to 0."
+        default_value: 3
+        field: stats_page_auto_swap_time
+        min: 0
+        max: 10
       - name: osd_rssi_alarm
         description: "Value below which to make the OSD RSSI indicator blink"
         default_value: 20
