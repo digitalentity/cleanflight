@@ -2012,13 +2012,6 @@ static bool osdDrawSingleElement(uint8_t item)
                         }
                     }
                 }
-
-                if (osdConfig()->hud_radar_nearest > 0) { // Display extra datas for 1 POI closer than a set distance
-                    int poi_id = radarGetNearestPOI();
-                    if (poi_id >= 0 && radar_pois[poi_id].distance <= osdConfig()->hud_radar_nearest) {
-                        osdHudDrawExtras(poi_id);
-                    }
-                }
             }
 
             // -------- POI : Next waypoints from navigation
@@ -2962,7 +2955,6 @@ PG_RESET_TEMPLATE(osdConfig_t, osdConfig,
     .hud_radar_disp = SETTING_OSD_HUD_RADAR_DISP_DEFAULT,
     .hud_radar_range_min = SETTING_OSD_HUD_RADAR_RANGE_MIN_DEFAULT,
     .hud_radar_range_max = SETTING_OSD_HUD_RADAR_RANGE_MAX_DEFAULT,
-    .hud_radar_nearest = SETTING_OSD_HUD_RADAR_NEAREST_DEFAULT,
     .hud_wp_disp = SETTING_OSD_HUD_WP_DISP_DEFAULT,
     .left_sidebar_scroll = SETTING_OSD_LEFT_SIDEBAR_SCROLL_DEFAULT,
     .right_sidebar_scroll = SETTING_OSD_RIGHT_SIDEBAR_SCROLL_DEFAULT,
