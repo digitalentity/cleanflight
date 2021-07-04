@@ -1,0 +1,2 @@
+target_stm32f722xe(TMOTORF7)
+target_stm32f722xe(TMOTORF7HD)
