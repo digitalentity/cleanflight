@@ -589,6 +589,8 @@ main_sources(COMMON_SRC
     telemetry/ltm.h
     telemetry/mavlink.c
     telemetry/mavlink.h
+    telemetry/micro_ros.c
+    telemetry/micro_ros.h
     telemetry/msp_shared.c
     telemetry/msp_shared.h
     telemetry/smartport.c

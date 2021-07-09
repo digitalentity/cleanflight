@@ -1,0 +1,3 @@
+[submodule "lib/main/micro_ros_arduino"]
+	path = lib/main/micro_ros_arduino
+	url = git@github.com:amfern/micro_ros_arduino.git

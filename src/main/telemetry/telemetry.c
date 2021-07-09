@@ -46,6 +46,7 @@
 #include "telemetry/smartport.h"
 #include "telemetry/ltm.h"
 #include "telemetry/mavlink.h"
+#include "telemetry/micro_ros.h"
 #include "telemetry/jetiexbus.h"
 #include "telemetry/ibus.h"
 #include "telemetry/crsf.h"
@@ -115,6 +116,10 @@ void telemetryInit(void)
 
 #if defined(USE_TELEMETRY_MAVLINK)
     initMAVLinkTelemetry();
+#endif
+
+#if defined(USE_TELEMETRY_MICRO_ROS)
+    initMicroRosTelemetry();
 #endif
 
 #if defined(TELEMETRY_JETIEXBUS)
@@ -191,6 +196,10 @@ void telemetryCheckState(void)
     checkJetiExBusTelemetryState();
 #endif
 
+#if defined(USE_TELEMETRY_MICRO_ROS)
+    checkMicroRosTelemetryState();
+#endif
+
 #if defined(USE_TELEMETRY_IBUS)
     checkIbusTelemetryState();
 #endif
@@ -233,6 +242,10 @@ void telemetryProcess(timeUs_t currentTimeUs)
 
 #if defined(USE_TELEMETRY_MAVLINK)
     handleMAVLinkTelemetry(currentTimeUs);
+#endif
+
+#if defined(USE_TELEMETRY_MICRO_ROS)
+    handleMicroRosTelemetry(currentTimeUs);
 #endif
 
 #if defined(TELEMETRY_JETIEXBUS)
