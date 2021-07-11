@@ -5432,6 +5432,16 @@ Can be used in ANGLE and HORIZON mode and will automatically boost throttle when
 
 ---
 
+### tpa_airspeed_attenuation
+
+Calculate PID Attenuation based on AirSpeed (0 is disabled) ~ 1500 is a recommended value [cm/s]
+
+| Default | Min | Max |
+| --- | --- | --- |
+| 0 | 0 | 3000 |
+
+---
+
 ### tpa_breakpoint
 
 See tpa_rate.

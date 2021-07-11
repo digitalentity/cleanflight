@@ -308,6 +308,10 @@ PG_RESET_TEMPLATE(pidProfile_t, pidProfile,
         .smithPredictorDelay = SETTING_SMITH_PREDICTOR_DELAY_DEFAULT,
         .smithPredictorFilterHz = SETTING_SMITH_PREDICTOR_LPF_HZ_DEFAULT,
 #endif
+
+#ifdef USE_PITOT
+        .TPA_Scaling_Speed = SETTING_TPA_AIRSPEED_ATTENUATION_DEFAULT,
+#endif
 );
 
 bool pidInitFilters(void)
@@ -451,8 +455,45 @@ float pidRcCommandToRate(int16_t stick, uint8_t rate)
     return scaleRangef((float) stick, -500.0f, 500.0f, -maxRateDPS, maxRateDPS);
 }
 
+#ifdef USE_PITOT
+
+static float Get_PID_AirSpeed_Scaler(const float ScalingSpeed)
+{
+#define TPA_AIR_SPEED_MIN 9  //m/s ~ 32,4km/h
+#define TPA_AIR_SPEED_MAX 22 //m/s ~ 79,2km/h
+
+    float AirSpeedValue = CENTIMETERS_TO_METERS(pitotCalculateAirSpeed()); //in m/s
+    float AirSpeed_Scaler = 0.0f;
+    if (AirSpeedValue > 0.0001f)
+    {
+      AirSpeed_Scaler = ScalingSpeed / AirSpeedValue;
+    }
+    else
+    {
+      AirSpeed_Scaler = 2.0f;
+    }
+    float AirSpeed_TPA_Scale_Min = MIN(0.5f, (0.5f * TPA_AIR_SPEED_MIN) / ScalingSpeed);
+    float AirSpeed_TPA_Scale_Max = MAX(2.0f, (1.5f * TPA_AIR_SPEED_MAX) / ScalingSpeed);
+    AirSpeed_Scaler = constrainf(AirSpeed_Scaler, AirSpeed_TPA_Scale_Min, AirSpeed_TPA_Scale_Max);
+    return AirSpeed_Scaler;
+}
+
+#endif
+
 static float calculateFixedWingTPAFactor(uint16_t throttle)
 {
+
+#ifdef USE_PITOT
+
+  const float ParseScalingSpeed = CENTIMETERS_TO_METERS(pidProfile()->TPA_Scaling_Speed);
+
+  if (ParseScalingSpeed > 0 && pitotIsHealthy())
+  {
+    return Get_PID_AirSpeed_Scaler(ParseScalingSpeed);
+  }
+
+#endif
+
     float tpaFactor;
 
     // tpa_rate is amount of curve TPA applied to PIDs

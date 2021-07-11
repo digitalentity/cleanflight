@@ -2214,6 +2214,13 @@ groups:
         field: fixedWingLevelTrimGain
         min: 0
         max: 20
+      - name: tpa_airspeed_attenuation
+        description: "Calculate PID Attenuation based on AirSpeed (0 is disabled) ~ 1500 is a recommended value [cm/s]"
+        default_value: 0
+        field: TPA_Scaling_Speed
+        condition: USE_PITOT
+        min: 0
+        max: 3000
 
   - name: PG_PID_AUTOTUNE_CONFIG
     type: pidAutotuneConfig_t
