@@ -901,7 +901,9 @@ void taskMainPidLoop(timeUs_t currentTimeUs)
     }
 
 #ifdef USE_POWER_LIMITS
-    powerLimiterApply(&rcCommand[THROTTLE]);
+    if (!STATE(AIRPLANE) || !navigationInAutomaticThrottleMode()) {  // power limits are applied in navigation_fixedwing.c for fixed wings
+        powerLimiterApply(&rcCommand[THROTTLE]);
+    }
 #endif
 
     // Calculate stabilisation

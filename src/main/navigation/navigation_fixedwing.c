@@ -39,6 +39,7 @@
 #include "flight/pid.h"
 #include "flight/imu.h"
 #include "flight/mixer.h"
+#include "flight/power_limits.h"
 
 #include "fc/config.h"
 #include "fc/controlrate_profile.h"
@@ -125,6 +126,11 @@ bool adjustFixedWingAltitudeFromRCInput(void)
     }
 }
 
+static float maxClimbAngle(void) {
+    float thrMaxDerivedMaxAngle = (MAX(0, (float)motorConfig()->maxthrottle - navConfig()->fw.cruise_throttle)) / navConfig()->fw.pitch_to_throttle;
+    return MIN(navConfig()->fw.max_climb_angle, thrMaxDerivedMaxAngle);
+}
+
 // Position to velocity controller for Z axis
 static void updateAltitudeVelocityAndPitchController_FW(timeDelta_t deltaMicros)
 {
@@ -153,7 +159,7 @@ static void updateAltitudeVelocityAndPitchController_FW(timeDelta_t deltaMicros)
     const float pitchGainInv = 1.0f / 1.0f;
 
     // Here we use negative values for dive for better clarity
-    const float maxClimbDeciDeg = DEGREES_TO_DECIDEGREES(navConfig()->fw.max_climb_angle);
+    const float maxClimbDeciDeg = DEGREES_TO_DECIDEGREES(maxClimbAngle());
     const float minDiveDeciDeg = -DEGREES_TO_DECIDEGREES(navConfig()->fw.max_dive_angle);
 
     // PID controller to translate energy balance error [J] into pitch angle [decideg]
@@ -525,7 +531,12 @@ void applyFixedWingPitchRollThrottleController(navigationFSMStateFlags_t navStat
 
     if (isPitchAdjustmentValid && (navStateFlags & NAV_CTL_ALT)) {
         // PITCH >0 dive, <0 climb
-        int16_t pitchCorrection = constrain(posControl.rcAdjustment[PITCH], -DEGREES_TO_DECIDEGREES(navConfig()->fw.max_dive_angle), DEGREES_TO_DECIDEGREES(navConfig()->fw.max_climb_angle));
+        int16_t throttleForPitch = navConfig()->fw.cruise_throttle + DECIDEGREES_TO_DEGREES(posControl.rcAdjustment[PITCH]) * navConfig()->fw.pitch_to_throttle;
+
+        powerLimiterApply(&throttleForPitch);
+        const int16_t powerLimitedPitch = (throttleForPitch - navConfig()->fw.cruise_throttle) / navConfig()->fw.pitch_to_throttle;
+
+        int16_t pitchCorrection = constrain(posControl.rcAdjustment[PITCH], -DEGREES_TO_DECIDEGREES(navConfig()->fw.max_dive_angle), DEGREES_TO_DECIDEGREES(MIN(navConfig()->fw.max_climb_angle, powerLimitedPitch)));
         rcCommand[PITCH] = -pidAngleToRcCommand(pitchCorrection, pidProfile()->max_angle_inclination[FD_PITCH]);
         int16_t throttleCorrection = fixedWingPitchToThrottleCorrection(pitchCorrection, currentTimeUs);
 
