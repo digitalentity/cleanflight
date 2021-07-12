@@ -145,7 +145,7 @@ FILE_COMPILE_FOR_SPEED
 #define OSD_CENTER_LEN(x) ((osdDisplayPort->cols - x) / 2)
 #define OSD_CENTER_S(s) OSD_CENTER_LEN(strlen(s))
 
-#define OSD_MIN_FONT_VERSION 2
+#define OSD_MIN_FONT_VERSION 3
 
 static unsigned currentLayout = 0;
 static int layoutOverride = -1;
@@ -337,6 +337,14 @@ static void osdFormatDistanceSymbol(char *buff, int32_t dist, uint8_t decimals)
         }
         buff[4] = '\0';
         break;
+    case OSD_UNIT_GA:
+        if (osdFormatCentiNumber(buff, CENTIMETERS_TO_CENTIFEET(dist), FEET_PER_NAUTICALMILE, decimals, 3, 3)) {
+            buff[3] = SYM_DIST_NM;
+        } else {
+            buff[3] = SYM_DIST_FT;
+        }
+        buff[4] = '\0';
+        break;
     }
 }
 
@@ -373,6 +381,17 @@ static void osdFormatDistanceStr(char *buff, int32_t dist)
                 (abs(dist) % (100 * METERS_PER_KILOMETER)) / METERS_PER_KILOMETER, SYM_KM);
         }
         break;
+    case OSD_UNIT_GA:
+         centifeet = CENTIMETERS_TO_CENTIFEET(dist);
+        if (abs(centifeet) < FEET_PER_NAUTICALMILE * 100 / 2) {
+            // Show feet when dist < 0.5NM
+            tfp_sprintf(buff, "%d%c", (int)(centifeet / 100), SYM_FT);
+        } else {
+            // Show nautical miles when dist >= 0.5NM
+            tfp_sprintf(buff, "%d.%02d%c", (int)(centifeet / (100 * FEET_PER_NAUTICALMILE)),
+                (int)((abs(centifeet) % (int)(100 * FEET_PER_NAUTICALMILE)) / FEET_PER_NAUTICALMILE), SYM_NM);
+        }
+        break;
     }
 }
 
@@ -391,6 +410,8 @@ static int32_t osdConvertVelocityToUnit(int32_t vel)
         return (vel * 224) / 10000; // Convert to mph
     case OSD_UNIT_METRIC:
         return (vel * 36) / 1000;   // Convert to kmh
+    case OSD_UNIT_GA:
+        return (vel * 0.019438444924406); // Convert to Knots
     }
     // Unreachable
     return -1;
@@ -412,6 +433,9 @@ void osdFormatVelocityStr(char* buff, int32_t vel, bool _3D)
         break;
     case OSD_UNIT_METRIC:
         tfp_sprintf(buff, "%3d%c", (int)osdConvertVelocityToUnit(vel), (_3D ? SYM_3D_KMH : SYM_KMH));
+        break;
+    case OSD_UNIT_GA:
+        tfp_sprintf(buff, "%3d%c", (int)osdConvertVelocityToUnit(vel), (_3D ? SYM_3D_KT : SYM_KT));
         break;
     }
 }
@@ -435,6 +459,10 @@ static void osdFormatWindSpeedStr(char *buff, int32_t ws, bool isValid)
         case OSD_UNIT_IMPERIAL:
             centivalue = (ws * 224) / 100;
             suffix = SYM_MPH;
+            break;
+        case OSD_UNIT_GA:
+            centivalue = (ws * 0.019438444924406) * 100;
+            suffix = SYM_KT;
             break;
         default:
         case OSD_UNIT_METRIC:
@@ -468,6 +496,8 @@ void osdFormatAltitudeSymbol(char *buff, int32_t alt)
     }
     switch ((osd_unit_e)osdConfig()->units) {
         case OSD_UNIT_UK:
+            FALLTHROUGH;
+        case OSD_UNIT_GA:
             FALLTHROUGH;
         case OSD_UNIT_IMPERIAL:
             if (osdFormatCentiNumber(buff + 4 - digits, CENTIMETERS_TO_CENTIFEET(alt), 1000, 0, 2, digits)) {
@@ -504,6 +534,8 @@ static void osdFormatAltitudeStr(char *buff, int32_t alt)
     int32_t value;
     switch ((osd_unit_e)osdConfig()->units) {
         case OSD_UNIT_UK:
+            FALLTHROUGH;
+        case OSD_UNIT_GA:
             FALLTHROUGH;
         case OSD_UNIT_IMPERIAL:
             value = CENTIMETERS_TO_FEET(alt);
@@ -1072,8 +1104,8 @@ int osdGetHeadingAngle(int angle)
  * in-out used to store the last position where the craft was drawn to avoid
  * erasing all screen on each redraw.
  */
-static void osdDrawMap(int referenceHeading, uint8_t referenceSym, uint8_t centerSym,
-                       uint32_t poiDistance, int16_t poiDirection, uint8_t poiSymbol,
+static void osdDrawMap(int referenceHeading, uint16_t referenceSym, uint16_t centerSym,
+                       uint32_t poiDistance, int16_t poiDirection, uint16_t poiSymbol,
                        uint16_t *drawn, uint32_t *usedScale)
 {
     // TODO: These need to be tested with several setups. We might
@@ -1112,6 +1144,9 @@ static void osdDrawMap(int referenceHeading, uint8_t referenceSym, uint8_t cente
             FALLTHROUGH;
         case OSD_UNIT_IMPERIAL:
             initialScale = 16; // 16m ~= 0.01miles
+            break;
+        case OSD_UNIT_GA:
+            initialScale = 18; // 18m ~= 0.01 nautical miles
             break;
         default:
         case OSD_UNIT_METRIC_MPH:
@@ -1834,13 +1869,27 @@ static bool osdDrawSingleElement(uint8_t item)
 #endif
         buff[0] = SYM_TRIP_DIST;
         if ((!ARMING_FLAG(ARMED)) || (distanceMeters == -1)) {
-            buff[4] = SYM_DIST_M;
+            buff[4] = SYM_BLANK;
             buff[5] = '\0';
             strcpy(buff + 1, "---");
         } else if (distanceMeters == -2) {
             // Wind is too strong to come back with cruise throttle
             buff[1] = buff[2] = buff[3] = SYM_WIND_HORIZONTAL;
-            buff[4] = SYM_DIST_M;
+            switch ((osd_unit_e)osdConfig()->units){
+                case OSD_UNIT_UK:
+                    FALLTHROUGH;
+                case OSD_UNIT_IMPERIAL:
+                    buff[4] = SYM_DIST_MI;
+                    break;
+                case OSD_UNIT_METRIC_MPH:
+                    FALLTHROUGH;
+                case OSD_UNIT_METRIC:
+                    buff[4] = SYM_DIST_KM;
+                    break;
+                case OSD_UNIT_GA:
+                    buff[4] = SYM_DIST_NM;
+                    break;
+            }
             buff[5] = '\0';
             TEXT_ATTRIBUTES_ADD_BLINK(elemAttr);
         } else {
@@ -2144,6 +2193,11 @@ static bool osdDrawSingleElement(uint8_t item)
                     // Convert to centifeet/s
                     value = CENTIMETERS_TO_CENTIFEET(value);
                     sym = SYM_FTS;
+                    break;
+                case OSD_UNIT_GA:
+                    //Convert to centi-100feet/min
+                    value = (CENTIMETERS_TO_CENTIFEET(value / 60) / 100);
+                    sym = SYM_100FTM;
                     break;
                 default:
                 case OSD_UNIT_METRIC_MPH:
@@ -2450,6 +2504,20 @@ static bool osdDrawSingleElement(uint8_t item)
                         buff[5] = '\0';
                     }
                     break;
+                case OSD_UNIT_GA:
+                     moreThanAh = osdFormatCentiNumber(buff, value * METERS_PER_NAUTICALMILE / 10, 1000, 0, 2, 3);
+                    if (!moreThanAh) {
+                        tfp_sprintf(buff, "%s%c%c", buff, SYM_MAH_NM_0, SYM_MAH_NM_1);
+                    } else {
+                        tfp_sprintf(buff, "%s%c", buff, SYM_AH_NM);
+                    }
+                    if (!efficiencyValid) {
+                        buff[0] = buff[1] = buff[2] = '-';
+                        buff[3] = SYM_MAH_NM_0;
+                        buff[4] = SYM_MAH_NM_1;
+                        buff[5] = '\0';
+                    }
+                    break;
                 case OSD_UNIT_METRIC_MPH:
                     FALLTHROUGH;
                 case OSD_UNIT_METRIC:
@@ -2496,6 +2564,10 @@ static bool osdDrawSingleElement(uint8_t item)
                 case OSD_UNIT_IMPERIAL:
                     osdFormatCentiNumber(buff, value * METERS_PER_MILE / 10000, 0, 2, 0, 3);
                     buff[3] = SYM_WH_MI;
+                    break;
+                case OSD_UNIT_GA:
+                    osdFormatCentiNumber(buff, value * METERS_PER_NAUTICALMILE / 10000, 0, 2, 0, 3);
+                    buff[3] = SYM_WH_NM;
                     break;
                 case OSD_UNIT_METRIC_MPH:
                     FALLTHROUGH;
@@ -2689,6 +2761,13 @@ static bool osdDrawSingleElement(uint8_t item)
                 scaleUnitDivisor = 0;
                 symUnscaled = SYM_MI;
                 symScaled = SYM_MI;
+                maxDecimals = 2;
+                break;
+            case OSD_UNIT_GA:
+                scaleToUnit = 100 / 1852.0010f; // scale to 0.01mi for osdFormatCentiNumber()
+                scaleUnitDivisor = 0;
+                symUnscaled = SYM_NM;
+                symScaled = SYM_NM;
                 maxDecimals = 2;
                 break;
             default:
@@ -3234,12 +3313,15 @@ static void osdCompleteAsyncInitialization(void)
             y++;
         }
         y++;
-    } else {
-        if (!fontHasMetadata || metadata.version < OSD_MIN_FONT_VERSION) {
-            const char *m = "INVALID FONT";
-            displayWrite(osdDisplayPort, OSD_CENTER_S(m), 3, m);
-        }
+    } else if (!fontHasMetadata) {
+        const char *m = "INVALID FONT";
+        displayWrite(osdDisplayPort, OSD_CENTER_S(m), 3, m);
         y = 4;
+    }
+
+    if (fontHasMetadata && metadata.version < OSD_MIN_FONT_VERSION) {
+        const char *m = "INVALID FONT VERSION";
+        displayWrite(osdDisplayPort, OSD_CENTER_S(m), y++, m);
     }
 
     char string_buffer[30];
@@ -3264,6 +3346,10 @@ static void osdCompleteAsyncInitialization(void)
                 string_buffer[5] = SYM_MI;
                 break;
             default:
+            case OSD_UNIT_GA:
+                tfp_sprintf(string_buffer, "%5d", (int)(statsConfig()->stats_total_dist / METERS_PER_NAUTICALMILE));
+                string_buffer[5] = SYM_NM;
+                break;
             case OSD_UNIT_METRIC_MPH:
                 FALLTHROUGH;
             case OSD_UNIT_METRIC:
@@ -3295,6 +3381,10 @@ static void osdCompleteAsyncInitialization(void)
                     case OSD_UNIT_IMPERIAL:
                         osdFormatCentiNumber(string_buffer, avg_efficiency / 10, 0, 2, 0, 3);
                         string_buffer[3] = SYM_WH_MI;
+                        break;
+                    case OSD_UNIT_GA:
+                        osdFormatCentiNumber(string_buffer, avg_efficiency / 10, 0, 2, 0, 3);
+                        string_buffer[3] = SYM_WH_NM;
                         break;
                     default:
                     case OSD_UNIT_METRIC_MPH:
@@ -3523,6 +3613,28 @@ static void osdShowStatsPage2(void)
                     } else {
                         osdFormatCentiNumber(buff, (int32_t)(getMWhDrawn() * 10.0f * METERS_PER_MILE / totalDistance), 0, 2, 0, 3);
                         tfp_sprintf(buff, "%s%c", buff, SYM_WH_MI);
+                        if (!efficiencyValid) {
+                            buff[0] = buff[1] = buff[2] = '-';
+                        }
+                    }
+                    break;
+                case OSD_UNIT_GA:
+                    if (osdConfig()->stats_energy_unit == OSD_STATS_ENERGY_UNIT_MAH) {
+                        moreThanAh = osdFormatCentiNumber(buff, (int32_t)(getMAhDrawn() * 10000.0f * METERS_PER_NAUTICALMILE / totalDistance), 1000, 0, 2, 3);
+                        if (!moreThanAh) {
+                            tfp_sprintf(buff, "%s%c%c", buff, SYM_MAH_NM_0, SYM_MAH_NM_1);
+                        } else {
+                            tfp_sprintf(buff, "%s%c", buff, SYM_AH_NM);
+                        }
+                        if (!efficiencyValid) {
+                            buff[0] = buff[1] = buff[2] = '-';
+                            buff[3] = SYM_MAH_NM_0;
+                            buff[4] = SYM_MAH_NM_1;
+                            buff[5] = '\0';
+                        }
+                    } else {
+                        osdFormatCentiNumber(buff, (int32_t)(getMWhDrawn() * 10.0f * METERS_PER_NAUTICALMILE / totalDistance), 0, 2, 0, 3);
+                        tfp_sprintf(buff, "%s%c", buff, SYM_WH_NM);
                         if (!efficiencyValid) {
                             buff[0] = buff[1] = buff[2] = '-';
                         }

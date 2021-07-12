@@ -59,7 +59,7 @@ typedef struct osd_sidebar_s {
 void osdGridDrawVario(displayPort_t *display, unsigned gx, unsigned gy, float zvel)
 {
     int v = zvel / OSD_VARIO_CM_S_PER_ARROW;
-    uint8_t vchars[] = {SYM_BLANK, SYM_BLANK, SYM_BLANK, SYM_BLANK, SYM_BLANK};
+    uint16_t vchars[] = {SYM_BLANK, SYM_BLANK, SYM_BLANK, SYM_BLANK, SYM_BLANK};
 
     if (v >= 6)
         vchars[0] = SYM_VARIO_UP_2A;
@@ -220,11 +220,11 @@ void osdGridDrawHeadingGraph(displayPort_t *display, unsigned gx, unsigned gy, i
     displayWrite(display, gx, gy, buf);
 }
 
-static uint8_t osdUpdateSidebar(osd_sidebar_scroll_e scroll, osd_sidebar_t *sidebar, timeMs_t currentTimeMs)
+static uint16_t osdUpdateSidebar(osd_sidebar_scroll_e scroll, osd_sidebar_t *sidebar, timeMs_t currentTimeMs)
 {
     // Scroll between SYM_AH_DECORATION_MIN and SYM_AH_DECORATION_MAX.
     // Zero scrolling should draw SYM_AH_DECORATION.
-    uint8_t decoration = SYM_AH_DECORATION;
+    uint16_t decoration = SYM_AH_DECORATION;
     int offset = 0;
     int steps;
     switch (scroll) {
@@ -291,8 +291,8 @@ void osdGridDrawSidebars(displayPort_t *display)
     static osd_sidebar_t right;
 
     timeMs_t currentTimeMs = millis();
-    uint8_t leftDecoration = osdUpdateSidebar(osdConfig()->left_sidebar_scroll, &left, currentTimeMs);
-    uint8_t rightDecoration = osdUpdateSidebar(osdConfig()->right_sidebar_scroll, &right, currentTimeMs);
+    uint16_t leftDecoration = osdUpdateSidebar(osdConfig()->left_sidebar_scroll, &left, currentTimeMs);
+    uint16_t rightDecoration = osdUpdateSidebar(osdConfig()->right_sidebar_scroll, &right, currentTimeMs);
 
     const int hudwidth = OSD_AH_SIDEBAR_WIDTH_POS;
     const int hudheight = osdConfig()->sidebar_height;

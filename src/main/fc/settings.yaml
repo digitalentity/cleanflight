@@ -64,7 +64,7 @@ tables:
   - name: nav_rth_alt_mode
     values: ["CURRENT", "EXTRA", "FIXED", "MAX", "AT_LEAST", "AT_LEAST_LINEAR_DESCENT"]
   - name: osd_unit
-    values: ["IMPERIAL", "METRIC", "METRIC_MPH", "UK"]
+    values: ["IMPERIAL", "METRIC", "METRIC_MPH", "UK", "GA"]
     enum: osd_unit_e
   - name: osd_stats_energy_unit
     values: ["MAH", "WH"]
@@ -101,7 +101,7 @@ tables:
     values: ["OR", "AND"]
     enum: modeActivationOperator_e
   - name: osd_crosshairs_style
-    values: ["DEFAULT", "AIRCRAFT", "TYPE3", "TYPE4", "TYPE5", "TYPE6", "TYPE7"]
+    values: ["DEFAULT", "AIRCRAFT", "TYPE3", "TYPE4", "TYPE5", "TYPE6", "TYPE7", "TYPE8"]
     enum: osd_crosshairs_style_e
   - name: osd_sidebar_scroll
     values: ["NONE", "ALTITUDE", "SPEED", "HOME_DISTANCE"]

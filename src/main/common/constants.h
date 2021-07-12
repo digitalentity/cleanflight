@@ -18,7 +18,8 @@
 #pragma once
 
 #define FEET_PER_MILE                           5280
+#define FEET_PER_NAUTICALMILE                   6076.118
 #define FEET_PER_KILOFEET                       1000 // Used for altitude
 #define METERS_PER_KILOMETER                    1000
-#define METERS_PER_MILE                         1609
-
+#define METERS_PER_MILE                         1609.344
+#define METERS_PER_NAUTICALMILE                 1852.001

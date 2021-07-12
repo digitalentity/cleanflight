@@ -240,8 +240,9 @@ typedef enum {
     OSD_UNIT_METRIC,
     OSD_UNIT_METRIC_MPH, // Old UK units, all metric except speed in mph
     OSD_UNIT_UK, // Show everything in imperial, temperature in C
+    OSD_UNIT_GA, // General Aviation: Knots, Nautical Miles, Feet, Degrees C
 
-    OSD_UNIT_MAX = OSD_UNIT_UK,
+    OSD_UNIT_MAX = OSD_UNIT_GA,
 } osd_unit_e;
 
 typedef enum {

@@ -226,6 +226,7 @@ void osdHudDrawCrosshair(displayCanvas_t *canvas, uint8_t px, uint8_t py)
         SYM_AH_CH_TYPE5, SYM_AH_CH_TYPE5 + 1, SYM_AH_CH_TYPE5 + 2,
         SYM_AH_CH_TYPE6, SYM_AH_CH_TYPE6 + 1, SYM_AH_CH_TYPE6 + 2,
         SYM_AH_CH_TYPE7, SYM_AH_CH_TYPE7 + 1, SYM_AH_CH_TYPE7 + 2,
+        SYM_AH_CH_TYPE8, SYM_AH_CH_TYPE8 + 1, SYM_AH_CH_TYPE8 + 2,
     };
 
     // Center on the screen

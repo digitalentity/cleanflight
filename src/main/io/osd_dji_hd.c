@@ -656,6 +656,8 @@ static int32_t osdConvertVelocityToUnit(int32_t vel)
             FALLTHROUGH;
         case OSD_UNIT_IMPERIAL:
             return (vel * 224) / 10000; // Convert to mph
+        case OSD_UNIT_GA:
+            return (vel * 0.019438444924406); // Convert to Knots
         case OSD_UNIT_METRIC:
             return (vel * 36) / 1000;   // Convert to kmh
     }
@@ -697,6 +699,9 @@ void osdDJIFormatVelocityStr(char* buff)
         case OSD_UNIT_IMPERIAL:
             tfp_sprintf(buff, "%s %3d MPH", sourceBuf, (int)osdConvertVelocityToUnit(vel));
             break;
+        case OSD_UNIT_GA:
+            tfp_sprintf(buff, "%s %3d KT", sourceBuf, (int)osdConvertVelocityToUnit(vel));
+            break;
         case OSD_UNIT_METRIC:
             tfp_sprintf(buff, "%s %3d KPH", sourceBuf, (int)osdConvertVelocityToUnit(vel));
             break;
@@ -733,6 +738,18 @@ static void osdDJIFormatDistanceStr(char *buff, int32_t dist)
                 // Show miles when dist >= 0.5mi
                 tfp_sprintf(buff, "%d.%02d%s", (int)(centifeet / (100*FEET_PER_MILE)),
                 (abs(centifeet) % (100 * FEET_PER_MILE)) / FEET_PER_MILE, "Mi");
+            }
+            break;
+        case OSD_UNIT_GA:
+            centifeet = CENTIMETERS_TO_CENTIFEET(dist);
+            if (abs(centifeet) < FEET_PER_NAUTICALMILE * 100 / 2) {
+                // Show feet when dist < 0.5mi
+                tfp_sprintf(buff, "%d%s", (int)(centifeet / 100), "FT");
+            }
+            else {
+                // Show miles when dist >= 0.5mi
+                tfp_sprintf(buff, "%d.%02d%s", (int)(centifeet / (100 * FEET_PER_NAUTICALMILE)),
+                (int)((abs(centifeet) % (int)(100 * FEET_PER_NAUTICALMILE)) / FEET_PER_NAUTICALMILE), "NM");
             }
             break;
         case OSD_UNIT_METRIC_MPH:

@@ -438,7 +438,7 @@ void osdCanvasDrawArtificialHorizon(displayPort_t *display, displayCanvas_t *can
 
 void osdCanvasDrawHeadingGraph(displayPort_t *display, displayCanvas_t *canvas, const osdDrawPoint_t *p, int heading)
 {
-    static const uint8_t graph[] = {
+    static const uint16_t graph[] = {
         SYM_HEADING_W,
         SYM_HEADING_LINE,
         SYM_HEADING_DIVIDED_LINE,
@@ -504,6 +504,8 @@ static int32_t osdCanvasSidebarGetValue(osd_sidebar_scroll_e scroll)
             switch ((osd_unit_e)osdConfig()->units) {
                 case OSD_UNIT_UK:
                     FALLTHROUGH;
+                case OSD_UNIT_GA:
+                    FALLTHROUGH;
                 case OSD_UNIT_IMPERIAL:
                     return CENTIMETERS_TO_CENTIFEET(osdGetAltitude());
                 case OSD_UNIT_METRIC_MPH:
@@ -524,6 +526,9 @@ static int32_t osdCanvasSidebarGetValue(osd_sidebar_scroll_e scroll)
                     case OSD_UNIT_IMPERIAL:
                         // cms/s to (mi/h) * 100
                         return speed * 224 / 100;
+                    case OSD_UNIT_GA:
+                        // cm/s to Knots * 100
+                        return (int)(speed * 0.019438444924406) * 100;
                     case OSD_UNIT_METRIC:
                         // cm/s to (km/h) * 100
                         return speed * 36 / 10;
@@ -535,6 +540,8 @@ static int32_t osdCanvasSidebarGetValue(osd_sidebar_scroll_e scroll)
 #if defined(USE_GPS)
             switch ((osd_unit_e)osdConfig()->units) {
                 case OSD_UNIT_UK:
+                    FALLTHROUGH;
+                case OSD_UNIT_GA:
                     FALLTHROUGH;
                 case OSD_UNIT_IMPERIAL:
                     return CENTIMETERS_TO_CENTIFEET(GPS_distanceToHome * 100);
@@ -583,6 +590,8 @@ static void osdCanvasSidebarGetUnit(osdUnit_t *unit, uint16_t *countsPerStep, os
             switch ((osd_unit_e)osdConfig()->units) {
                 case OSD_UNIT_UK:
                     FALLTHROUGH;
+                case OSD_UNIT_GA:
+                    FALLTHROUGH;
                 case OSD_UNIT_IMPERIAL:
                     unit->symbol = SYM_ALT_FT;
                     unit->divisor = FEET_PER_KILOFEET;
@@ -611,6 +620,12 @@ static void osdCanvasSidebarGetUnit(osdUnit_t *unit, uint16_t *countsPerStep, os
                     unit->divided_symbol = 0;
                     *countsPerStep = 5;
                     break;
+                case OSD_UNIT_GA:
+                    unit->symbol = SYM_KT;
+                    unit->divisor = 0;
+                    unit->divided_symbol = 0;
+                    *countsPerStep = 5;
+                    break;
                 case OSD_UNIT_METRIC:
                     unit->symbol = SYM_KMH;
                     unit->divisor = 0;
@@ -627,6 +642,12 @@ static void osdCanvasSidebarGetUnit(osdUnit_t *unit, uint16_t *countsPerStep, os
                     unit->symbol = SYM_FT;
                     unit->divisor = FEET_PER_MILE;
                     unit->divided_symbol = SYM_MI;
+                    *countsPerStep = 300;
+                    break;
+                case OSD_UNIT_GA:
+                    unit->symbol = SYM_FT;
+                    unit->divisor = (int)FEET_PER_NAUTICALMILE;
+                    unit->divided_symbol = SYM_NM;
                     *countsPerStep = 300;
                     break;
                 case OSD_UNIT_METRIC_MPH:
@@ -648,7 +669,7 @@ static bool osdCanvasDrawSidebar(uint32_t *configured, displayWidgets_t *widgets
                                 osd_sidebar_scroll_e scroll, unsigned scrollStep)
 {
     STATIC_ASSERT(OSD_SIDEBAR_SCROLL_MAX <= 3, adjust_scroll_shift);
-    STATIC_ASSERT(OSD_UNIT_MAX <= 3, adjust_units_shift);
+    STATIC_ASSERT(OSD_UNIT_MAX <= 5, adjust_units_shift);
     // Configuration
     uint32_t configuration = scrollStep << 16 | (unsigned)osdConfig()->sidebar_horizontal_offset << 8 | scroll << 6 | osdConfig()->units << 4;
     if (configuration != *configured) {
