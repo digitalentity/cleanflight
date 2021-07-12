@@ -243,18 +243,18 @@ static int8_t loiterDirection(void) {
 
     if (pidProfile()->loiter_direction == NAV_LOITER_YAW) {
 
-        if (rcCommand[YAW] < -250) { 
+        if (rcCommand[YAW] < -250) {
             loiterDirYaw = 1; //RIGHT //yaw is contrariwise
         }
 
-        if (rcCommand[YAW] > 250) { 
+        if (rcCommand[YAW] > 250) {
             loiterDirYaw = -1; //LEFT  //see annexCode in fc_core.c
         }
 
         dir = loiterDirYaw;
     }
 
-    if (IS_RC_MODE_ACTIVE(BOXLOITERDIRCHN)) { 
+    if (IS_RC_MODE_ACTIVE(BOXLOITERDIRCHN)) {
         dir *= -1;
     }
 
@@ -651,8 +651,8 @@ void applyFixedWingNavigationController(navigationFSMStateFlags_t navStateFlags,
         if (true) {
 #endif
             if (navStateFlags & NAV_CTL_ALT) {
-                if (getMotorStatus() == MOTOR_STOPPED_USER) {
-                    // Motor has been stopped by user. Update target altitude and bypass navigation pitch/throttle control
+                if (getMotorStatus() == MOTOR_STOPPED_USER || FLIGHT_MODE(SOARING_MODE)) {
+                    // Motor has been stopped by user or soaring mode enabled to override altitude control
                     resetFixedWingAltitudeController();
                     setDesiredPosition(&navGetCurrentActualPositionAndVelocity()->pos, posControl.actualState.yaw, NAV_POS_UPDATE_Z);
                 } else {
@@ -676,6 +676,10 @@ void applyFixedWingNavigationController(navigationFSMStateFlags_t navStateFlags,
         //if (navStateFlags & NAV_CTL_YAW)
         if ((navStateFlags & NAV_CTL_ALT) || (navStateFlags & NAV_CTL_POS)) {
             applyFixedWingPitchRollThrottleController(navStateFlags, currentTimeUs);
+        }
+
+        if (FLIGHT_MODE(SOARING_MODE) && navConfig()->general.flags.soaring_motor_stop) {
+            ENABLE_STATE(NAV_MOTOR_STOP_OR_IDLE);
         }
     }
 }

@@ -114,6 +114,7 @@ PG_RESET_TEMPLATE(navConfig_t, navConfig,
             .rth_alt_control_override = SETTING_NAV_RTH_ALT_CONTROL_OVERRIDE_DEFAULT, // Override RTH Altitude and Climb First using Pitch and Roll stick
             .nav_overrides_motor_stop = SETTING_NAV_OVERRIDES_MOTOR_STOP_DEFAULT,
             .safehome_usage_mode = SETTING_SAFEHOME_USAGE_MODE_DEFAULT,
+            .soaring_motor_stop = SETTING_NAV_FW_SOARING_MOTOR_STOP_DEFAULT,          // stops motor when Saoring mode enabled
         },
 
         // General navigation parameters
@@ -191,6 +192,7 @@ PG_RESET_TEMPLATE(navConfig_t, navConfig,
         .allow_manual_thr_increase = SETTING_NAV_FW_ALLOW_MANUAL_THR_INCREASE_DEFAULT,
         .useFwNavYawControl = SETTING_NAV_USE_FW_YAW_CONTROL_DEFAULT,
         .yawControlDeadband = SETTING_NAV_FW_YAW_DEADBAND_DEFAULT,
+        .soaring_pitch_deadband = SETTING_NAV_FW_SOARING_PITCH_DEADBAND_DEFAULT,// pitch angle mode deadband when Saoring mode enabled
     }
 );
 
@@ -3181,8 +3183,9 @@ static navigationFSMEvent_t selectNavEventFromBoxModeInput(void)
             canActivateWaypoint = false;
         }
 
-        // LAUNCH mode has priority over any other NAV mode
-        if (STATE(FIXED_WING_LEGACY)) {
+        /* Airplane specific modes */
+        if (STATE(AIRPLANE)) {
+            // LAUNCH mode has priority over any other NAV mode
             if (isNavLaunchEnabled()) {     // FIXME: Only available for fixed wing aircrafts now
                 if (canActivateLaunchMode) {
                     canActivateLaunchMode = false;
@@ -3202,6 +3205,16 @@ static navigationFSMEvent_t selectNavEventFromBoxModeInput(void)
                     else
                         return NAV_FSM_EVENT_SWITCH_TO_IDLE;
                 }
+            }
+
+            /* Soaring mode, disables altitude control in Position hold and Course hold modes.
+             * Pitch allowed to freefloat within defined Angle mode deadband */
+            if (IS_RC_MODE_ACTIVE(BOXSOARING) && (FLIGHT_MODE(NAV_POSHOLD_MODE) || FLIGHT_MODE(NAV_COURSE_HOLD_MODE))) {
+                if (!FLIGHT_MODE(SOARING_MODE)) {
+                    ENABLE_FLIGHT_MODE(SOARING_MODE);
+                }
+            } else {
+                DISABLE_FLIGHT_MODE(SOARING_MODE);
             }
         }
 
@@ -3672,7 +3685,7 @@ bool navigationInAutomaticThrottleMode(void)
 bool navigationIsControllingThrottle(void)
 {
     // Note that this makes a detour into mixer code to evaluate actual motor status
-    return navigationInAutomaticThrottleMode() && (getMotorStatus() != MOTOR_STOPPED_USER);
+    return navigationInAutomaticThrottleMode() && getMotorStatus() != MOTOR_STOPPED_USER && !FLIGHT_MODE(SOARING_MODE);
 }
 
 bool navigationIsControllingAltitude(void) {

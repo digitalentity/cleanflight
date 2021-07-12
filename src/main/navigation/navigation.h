@@ -199,6 +199,7 @@ typedef struct navConfig_s {
             uint8_t rth_alt_control_override;   // Override RTH Altitude and Climb First settings using Pitch and Roll stick
             uint8_t nav_overrides_motor_stop;   // Autonomous modes override motor_stop setting and user command to stop motor
             uint8_t safehome_usage_mode;        // Controls when safehomes are used
+            uint8_t soaring_motor_stop;         // stop motor when Soaring mode enabled
         } flags;
 
         uint8_t  pos_failure_timeout;           // Time to wait before switching to emergency landing (0 - disable)
@@ -267,8 +268,9 @@ typedef struct navConfig_s {
         uint8_t  launch_max_angle;           // Max tilt angle (pitch/roll combined) to consider launch successful. Set to 180 to disable completely [deg]
         uint8_t  cruise_yaw_rate;            // Max yaw rate (dps) when CRUISE MODE is enabled
         bool     allow_manual_thr_increase;
-        bool    useFwNavYawControl;
-        uint8_t yawControlDeadband;
+        bool     useFwNavYawControl;
+        uint8_t  yawControlDeadband;
+        uint8_t  soaring_pitch_deadband;     // soaring mode pitch angle deadband (deg)
     } fw;
 } navConfig_t;
 

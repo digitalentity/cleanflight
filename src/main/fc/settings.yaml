@@ -2499,6 +2499,17 @@ groups:
         default_value: "ALL_NAV"
         field: general.flags.nav_overrides_motor_stop
         table: nav_overrides_motor_stop
+      - name: nav_fw_soaring_motor_stop
+        description: "Stops motor when Soaring mode enabled."
+        default_value: OFF
+        field: general.flags.soaring_motor_stop
+        type: bool
+      - name: nav_fw_soaring_pitch_deadband
+        description: "Pitch Angle deadband when soaring mode enabled (deg). Angle mode inactive within deadband allowing pitch to free float whilst soaring."
+        default_value: 5
+        field: fw.soaring_pitch_deadband
+        min: 0
+        max: 15
       - name: nav_rth_climb_first
         description: "If set to ON or ON_FW_SPIRAL aircraft will climb to nav_rth_altitude first before turning to head home. If set to OFF aircraft will turn and head home immediately climbing on the way. For a fixed wing ON will use a linear climb, ON_FW_SPIRAL will use a loiter turning climb with climb rate set by nav_auto_climb_rate, turn rate set by nav_fw_loiter_radius (ON_FW_SPIRAL is a fixed wing setting and behaves the same as ON for a multirotor)"
         default_value: "ON"

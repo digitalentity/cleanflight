@@ -46,7 +46,7 @@ typedef enum {
     ARMING_DISABLED_NO_PREARM                       = (1 << 28),
     ARMING_DISABLED_DSHOT_BEEPER                    = (1 << 29),
 
-    ARMING_DISABLED_ALL_FLAGS                       = (ARMING_DISABLED_FAILSAFE_SYSTEM | ARMING_DISABLED_NOT_LEVEL | ARMING_DISABLED_SENSORS_CALIBRATING | 
+    ARMING_DISABLED_ALL_FLAGS                       = (ARMING_DISABLED_FAILSAFE_SYSTEM | ARMING_DISABLED_NOT_LEVEL | ARMING_DISABLED_SENSORS_CALIBRATING |
                                                        ARMING_DISABLED_SYSTEM_OVERLOADED | ARMING_DISABLED_NAVIGATION_UNSAFE |
                                                        ARMING_DISABLED_COMPASS_NOT_CALIBRATED | ARMING_DISABLED_ACCELEROMETER_NOT_CALIBRATED |
                                                        ARMING_DISABLED_ARM_SWITCH | ARMING_DISABLED_HARDWARE_FAILURE | ARMING_DISABLED_BOXFAILSAFE |
@@ -99,6 +99,7 @@ typedef enum {
     FLAPERON              = (1 << 13),
     TURN_ASSISTANT        = (1 << 14),
     TURTLE_MODE           = (1 << 15),
+    SOARING_MODE          = (1 << 16),
 } flightModeFlags_e;
 
 extern uint32_t flightModeFlags;
