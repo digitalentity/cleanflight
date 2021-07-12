@@ -108,7 +108,10 @@
     #if !defined(BMP280_I2C_BUS)
         #define BMP280_I2C_BUS BARO_I2C_BUS
     #endif
-    BUSDEV_REGISTER_I2C(busdev_bmp280,      DEVHW_BMP280,       BMP280_I2C_BUS,     0x76,               NONE,           DEVFLAGS_NONE,      0);
+    #if !defined(BMP280_I2C_ADDR)
+        #define BMP280_I2C_ADDR 0x76
+    #endif
+    BUSDEV_REGISTER_I2C(busdev_bmp280,      DEVHW_BMP280,       BMP280_I2C_BUS,     BMP280_I2C_ADDR,    NONE,           DEVFLAGS_NONE,      0);
     #endif
 #endif
 
