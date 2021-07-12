@@ -17,7 +17,7 @@
 
 #pragma once
 
-#define DISTANCE_BETWEEN_TWO_LONGITUDE_POINTS_AT_EQUATOR    1.113195f  // MagicEarthNumber from APM
+#define DISTANCE_BETWEEN_TWO_LONGITUDE_POINTS_AT_EQUATOR 1.1131884502145034f  // MagicEarthNumber from ArduPilot
 
 #if defined(USE_NAV)
 
