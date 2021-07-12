@@ -2567,6 +2567,11 @@ groups:
         default_value: "RTH"
         field: general.flags.safehome_usage_mode
         table: safehome_usage_mode
+      - name: nav_mission_planner_reset
+        description: "With Reset ON WP Mission Planner waypoint count can be reset to 0 by toggling the mode switch ON-OFF-ON."
+        default_value: ON
+        field: general.flags.mission_planner_reset
+        type: bool
       - name: nav_mc_bank_angle
         description: "Maximum banking angle (deg) that multicopter navigation is allowed to set. Machine must be able to satisfy this angle without loosing altitude"
         default_value: 30

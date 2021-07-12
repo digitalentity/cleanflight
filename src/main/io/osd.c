@@ -2844,6 +2844,37 @@ static bool osdDrawSingleElement(uint8_t item)
 #endif // USE_ADC
 #endif // USE_POWER_LIMITS
 
+    case OSD_MISSION:
+        {
+            if (IS_RC_MODE_ACTIVE(BOXPLANWPMISSION)) {
+                char buf[5];
+                switch (posControl.wpMissionPlannerStatus) {
+                case WP_PLAN_WAIT:
+                    strcpy(buf, "WAIT");
+                    break;
+                case WP_PLAN_SAVE:
+                    strcpy(buf, "SAVE");
+                    break;
+                case WP_PLAN_OK:
+                    strcpy(buf, " OK ");
+                    break;
+                case WP_PLAN_FULL:
+                    strcpy(buf, "FULL");
+                }
+                tfp_sprintf(buff, "%s>%2uWP", buf, posControl.wpPlannerActiveWPIndex);
+            } else if (!ARMING_FLAG(ARMED)) {
+                if (posControl.wpPlannerActiveWPIndex){
+                    tfp_sprintf(buff, "PLAN>%2uWP", posControl.waypointCount);  // mission planner mision active
+                } else {
+                    tfp_sprintf(buff, "STOR>%2uWP", posControl.waypointCount);  // no mission planner, show eeprom WP load state
+                }
+            } else {
+                tfp_sprintf(buff, "%2uWP     ", posControl.waypointCount);  // only show WP count when armed with planner mode off
+            }
+            displayWrite(osdDisplayPort, elemPosX, elemPosY, buff);
+            return true;
+        }
+
     default:
         return false;
     }
@@ -3091,6 +3122,7 @@ void pgResetFn_osdLayoutsConfig(osdLayoutsConfig_t *osdLayoutsConfig)
     osdLayoutsConfig->item_pos[0][OSD_REMAINING_FLIGHT_TIME_BEFORE_RTH] = OSD_POS(23, 7);
     osdLayoutsConfig->item_pos[0][OSD_REMAINING_DISTANCE_BEFORE_RTH] = OSD_POS(23, 6);
 
+    osdLayoutsConfig->item_pos[0][OSD_MISSION] = OSD_POS(0, 10);
     osdLayoutsConfig->item_pos[0][OSD_GPS_SATS] = OSD_POS(0, 11) | OSD_VISIBLE_FLAG;
     osdLayoutsConfig->item_pos[0][OSD_GPS_HDOP] = OSD_POS(0, 10);
 
@@ -3983,6 +4015,9 @@ textAttributes_t osdGetSystemMessage(char *buff, size_t buff_size, bool isCenter
                     }
                     if (FLIGHT_MODE(HEADFREE_MODE)) {
                         messages[messageCount++] = OSD_MESSAGE_STR(OSD_MSG_HEADFREE);
+                    }
+                    if (posControl.flags.wpMissionPlannerActive) {
+                        messages[messageCount++] = OSD_MESSAGE_STR(OSD_MSG_MISSION_PLANNER);
                     }
                 }
                 // Pick one of the available messages. Each message lasts

@@ -3752,6 +3752,16 @@ Minimum distance from homepoint when RTH full procedure will be activated [cm]. 
 
 ---
 
+### nav_mission_planner_reset
+
+With Reset ON WP Mission Planner waypoint count can be reset to 0 by toggling the mode switch ON-OFF-ON.
+
+| Default | Min | Max |
+| --- | --- | --- |
+| ON |  |  |
+
+---
+
 ### nav_overrides_motor_stop
 
 When set to OFF the navigation system will not take over the control of the motor if the throttle is low (motor will stop). When set to OFF_ALWAYS the navigation system will not take over the control of the motor if the throttle was low even when failsafe is triggered. When set to AUTO_ONLY the navigation system will only take over the control of the throttle in autonomous navigation modes (NAV WP and NAV RTH). When set to ALL_NAV (default) the navigation system will take over the control of the motor completely and never allow the motor to stop even when the throttle is low. This setting only has an effect on NAV modes which take control of the throttle when combined with MOTOR_STOP and is likely to cause a stall if fw_min_throttle_down_pitch isn't set correctly or the pitch estimation is wrong for fixed wing models when not set to ALL_NAV
