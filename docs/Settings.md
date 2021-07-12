@@ -3902,6 +3902,16 @@ If set to ON, waypoints will be automatically loaded from EEPROM to the FC durin
 
 ---
 
+### nav_wp_mission_restart
+
+Sets restart behaviour for a WP mission when interrupted mid mission. START from first WP, RESUME from last active WP or SWITCH between START and RESUME each time WP Mode is reselected ON. SWITCH effectively allows resuming once only from a previous mid mission waypoint after which the mission will restart from the first waypoint.
+
+| Default | Min | Max |
+| --- | --- | --- |
+| RESUME |  |  |
+
+---
+
 ### nav_wp_radius
 
 Waypoint radius [cm]. Waypoint would be considered reached if machine is within this radius

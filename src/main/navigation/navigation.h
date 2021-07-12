@@ -145,6 +145,12 @@ typedef enum {
     ON_FW_SPIRAL,
 } navRTHClimbFirst_e;
 
+typedef enum {
+    WP_MISSION_START,
+    WP_MISSION_RESUME,
+    WP_MISSION_SWITCH,
+} navMissionRestart_e;
+
 typedef struct positionEstimationConfig_s {
     uint8_t automatic_mag_declination;
     uint8_t reset_altitude_type; // from nav_reset_type_e
@@ -199,6 +205,7 @@ typedef struct navConfig_s {
             uint8_t rth_alt_control_override;   // Override RTH Altitude and Climb First settings using Pitch and Roll stick
             uint8_t nav_overrides_motor_stop;   // Autonomous modes override motor_stop setting and user command to stop motor
             uint8_t safehome_usage_mode;        // Controls when safehomes are used
+            uint8_t waypoint_mission_restart;   // Waypoint mission restart action
         } flags;
 
         uint8_t  pos_failure_timeout;           // Time to wait before switching to emergency landing (0 - disable)
