@@ -112,8 +112,23 @@ bool ms4525Detect(pitotDev_t * pitot)
 {
     uint8_t rxbuf[4];
     bool ack = false;
+    uint8_t found_sensor = DEVHW_MS4525_ADDR1;
+    
+    //search the sensor with 3 different addresses
+    if (found_sensor == DEVHW_MS4525_ADDR1) {
+        pitot->busDev = busDeviceInit(BUSTYPE_I2C, DEVHW_MS4525_ADDR1, 0, OWNER_AIRSPEED);
+        if (pitot->busDev == NULL) {
+            found_sensor = DEVHW_MS4525_ADDR2;
+        }
+    } else if (found_sensor == DEVHW_MS4525_ADDR2) {
+        pitot->busDev = busDeviceInit(BUSTYPE_I2C, DEVHW_MS4525_ADDR2, 0, OWNER_AIRSPEED);
+        if (pitot->busDev == NULL) {
+            found_sensor = DEVHW_MS4525_ADDR3;
+        }
+    } else if (found_sensor == DEVHW_MS4525_ADDR3) {
+        pitot->busDev = busDeviceInit(BUSTYPE_I2C, DEVHW_MS4525_ADDR3, 0, OWNER_AIRSPEED);
+    }
 
-    pitot->busDev = busDeviceInit(BUSTYPE_I2C, DEVHW_MS4525, 0, OWNER_AIRSPEED);
     if (pitot->busDev == NULL) {
         return false;
     }

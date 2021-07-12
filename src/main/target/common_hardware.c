@@ -336,7 +336,9 @@
 #endif
 
 #if defined(USE_PITOT_MS4525) && defined(MS4525_I2C_BUS)
-    BUSDEV_REGISTER_I2C(busdev_ms5425,      DEVHW_MS4525,       MS4525_I2C_BUS,     0x28,               NONE,           DEVFLAGS_USE_RAW_REGISTERS,  0);    // Requires 0xFF to passthrough
+    BUSDEV_REGISTER_I2C(busdev_ms5425_0,      DEVHW_MS4525_ADDR1,       MS4525_I2C_BUS,     0x28,               NONE,           DEVFLAGS_USE_RAW_REGISTERS,  0);    // Requires 0xFF to passthrough
+    BUSDEV_REGISTER_I2C(busdev_ms5425_1,      DEVHW_MS4525_ADDR2,       MS4525_I2C_BUS,     0x36,               NONE,           DEVFLAGS_USE_RAW_REGISTERS,  0);    // Requires 0xFF to passthrough
+    BUSDEV_REGISTER_I2C(busdev_ms5425_2,      DEVHW_MS4525_ADDR3,       MS4525_I2C_BUS,     0x46,               NONE,           DEVFLAGS_USE_RAW_REGISTERS,  0);    // Requires 0xFF to passthrough
 #endif
 
 

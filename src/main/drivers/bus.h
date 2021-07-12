@@ -144,7 +144,9 @@ typedef enum {
     DEVHW_US42,
 
     /* Other hardware */
-    DEVHW_MS4525,       // Pitot meter
+    DEVHW_MS4525_ADDR1, // Pitot meter
+    DEVHW_MS4525_ADDR2, // Pitot meter
+    DEVHW_MS4525_ADDR3, // Pitot meter
     DEVHW_PCA9685,      // PWM output device
     DEVHW_M25P16,       // SPI NOR flash
     DEVHW_UG2864,       // I2C OLED display
