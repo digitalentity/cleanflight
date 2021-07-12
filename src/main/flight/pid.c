@@ -68,6 +68,7 @@ FILE_COMPILE_FOR_SPEED
 #include "programming/logic_condition.h"
 
 typedef struct {
+    uint8_t axis;
     float kP;   // Proportional gain
     float kI;   // Integral gain
     float kD;   // Derivative gain
@@ -77,11 +78,6 @@ typedef struct {
 
     float gyroRate;
     float rateTarget;
-
-    // Buffer for derivative calculation
-#define PID_GYRO_RATE_BUF_LENGTH 5
-    float gyroRateBuf[PID_GYRO_RATE_BUF_LENGTH];
-    firFilter_t gyroRateFilter;
 
     // Rate integrator
     float errorGyroIf;
@@ -104,6 +100,7 @@ typedef struct {
 #ifdef USE_D_BOOST
     pt1Filter_t dBoostLpf;
     biquadFilter_t dBoostGyroLpf;
+    float dBoostTargetAcceleration;
 #endif
     uint16_t pidSumLimit;
     filterApply4FnPtr ptermFilterApplyFn;
@@ -141,10 +138,11 @@ static EXTENDED_FASTRAM float antigravityAccelerator;
 #endif
 
 #define D_BOOST_GYRO_LPF_HZ 80    // Biquad lowpass input cutoff to peak D around propwash frequencies
-#define D_BOOST_LPF_HZ 10         // PT1 lowpass cutoff to smooth the boost effect
+#define D_BOOST_LPF_HZ 7          // PT1 lowpass cutoff to smooth the boost effect
 
 #ifdef USE_D_BOOST
-static EXTENDED_FASTRAM float dBoostFactor;
+static EXTENDED_FASTRAM float dBoostMin;
+static EXTENDED_FASTRAM float dBoostMax;
 static EXTENDED_FASTRAM float dBoostMaxAtAlleceleration;
 #endif
 
@@ -285,7 +283,8 @@ PG_RESET_TEMPLATE(pidProfile_t, pidProfile,
         .iterm_relax = SETTING_MC_ITERM_RELAX_DEFAULT,
 
 #ifdef USE_D_BOOST
-        .dBoostFactor = SETTING_D_BOOST_FACTOR_DEFAULT,
+        .dBoostMin = SETTING_D_BOOST_MIN_DEFAULT,
+        .dBoostMax = SETTING_D_BOOST_MAX_DEFAULT,
         .dBoostMaxAtAlleceleration = SETTING_D_BOOST_MAX_AT_ACCELERATION_DEFAULT,
         .dBoostGyroDeltaLpfHz = SETTING_D_BOOST_GYRO_DELTA_LPF_HZ_DEFAULT,
 #endif
@@ -699,16 +698,22 @@ static float FAST_CODE applyDBoost(pidState_t *pidState, float dT) {
 
     float dBoost = 1.0f;
 
-    if (dBoostFactor > 1) {
-        const float dBoostGyroDelta = (pidState->gyroRate - pidState->previousRateGyro) / dT;
-        const float dBoostGyroAcceleration = fabsf(biquadFilterApply(&pidState->dBoostGyroLpf, dBoostGyroDelta));
-        const float dBoostRateAcceleration = fabsf((pidState->rateTarget - pidState->previousRateTarget) / dT);
+    const float dBoostGyroDelta = (pidState->gyroRate - pidState->previousRateGyro) / dT;
+    const float dBoostGyroAcceleration = fabsf(biquadFilterApply(&pidState->dBoostGyroLpf, dBoostGyroDelta));
+    const float dBoostRateAcceleration = fabsf((pidState->rateTarget - pidState->previousRateTarget) / dT);
 
-        const float acceleration = MAX(dBoostGyroAcceleration, dBoostRateAcceleration);
-        dBoost = scaleRangef(acceleration, 0.0f, dBoostMaxAtAlleceleration, 1.0f, dBoostFactor);
-        dBoost = pt1FilterApply4(&pidState->dBoostLpf, dBoost, D_BOOST_LPF_HZ, dT);
-        dBoost = constrainf(dBoost, 1.0f, dBoostFactor);
+    if (dBoostGyroAcceleration >= dBoostRateAcceleration) {
+        //Gyro is accelerating faster than setpoint, we want to smooth out
+        dBoost = scaleRangef(dBoostGyroAcceleration, 0.0f, dBoostMaxAtAlleceleration, 1.0f, dBoostMax);
+    } else {
+        //Setpoint is accelerating, we want to boost response
+        dBoost = scaleRangef(dBoostRateAcceleration, 0.0f, pidState->dBoostTargetAcceleration, 1.0f, dBoostMin);
     }
+
+    dBoost = pt1FilterApply4(&pidState->dBoostLpf, dBoost, D_BOOST_LPF_HZ, dT);
+    dBoost = constrainf(dBoost, dBoostMin, dBoostMax);
+
+    DEBUG_SET(DEBUG_ALWAYS, pidState->axis, dBoost * 100);
 
     return dBoost;
 }
@@ -1179,7 +1184,8 @@ void pidInit(void)
     motorItermWindupPoint = 1.0f - (pidProfile()->itermWindupPointPercent / 100.0f);
 
 #ifdef USE_D_BOOST
-    dBoostFactor = pidProfile()->dBoostFactor;
+    dBoostMin = pidProfile()->dBoostMin;
+    dBoostMax = pidProfile()->dBoostMax;
     dBoostMaxAtAlleceleration = pidProfile()->dBoostMaxAtAlleceleration;
 #endif
 
@@ -1189,6 +1195,14 @@ void pidInit(void)
 #endif
 
     for (uint8_t axis = FD_ROLL; axis <= FD_YAW; axis++) {
+
+    #ifdef USE_D_BOOST
+        // Rate * 10 * 10. First 10 is to convert stick to DPS. Second 10 is to convert target to acceleration. 
+        // We assume, max acceleration is when pilot deflects the stick fully in 100ms
+        pidState[axis].dBoostTargetAcceleration = currentControlRateProfile->stabilized.rates[axis] * 10 * 10;
+    #endif
+
+        pidState[axis].axis = axis;
         if (axis == FD_YAW) {
             pidState[axis].pidSumLimit = pidProfile()->pidSumLimitYaw;
             if (yawLpfHz) {
