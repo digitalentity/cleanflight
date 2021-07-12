@@ -87,6 +87,8 @@ FILE_COMPILE_FOR_SPEED
 #include "flight/servos.h"
 #include "flight/pid.h"
 #include "flight/imu.h"
+#include "flight/secondary_imu.h"
+#include "flight/rate_dynamics.h"
 
 #include "flight/failsafe.h"
 #include "flight/power_limits.h"
@@ -373,7 +375,7 @@ static bool emergencyArmingIsEnabled(void)
     return emergencyArmingIsTriggered() && emergencyArmingCanOverrideArmingDisabled();
 }
 
-void annexCode(void)
+void annexCode(float dT)
 {
     int32_t throttleValue;
 
@@ -392,6 +394,19 @@ void annexCode(void)
             rcCommand[ROLL] = rcCommand[ROLL] * currentControlRateProfile->manual.rates[FD_ROLL] / 100L;
             rcCommand[PITCH] = rcCommand[PITCH] * currentControlRateProfile->manual.rates[FD_PITCH] / 100L;
             rcCommand[YAW] = rcCommand[YAW] * currentControlRateProfile->manual.rates[FD_YAW] / 100L;
+        } else {
+            DEBUG_SET(DEBUG_RATE_DYNAMICS, 0, rcCommand[ROLL]);
+            rcCommand[ROLL] = applyRateDynamics(rcCommand[ROLL], ROLL, dT);
+            DEBUG_SET(DEBUG_RATE_DYNAMICS, 1, rcCommand[ROLL]);
+
+            DEBUG_SET(DEBUG_RATE_DYNAMICS, 2, rcCommand[PITCH]);
+            rcCommand[PITCH] = applyRateDynamics(rcCommand[PITCH], PITCH, dT);
+            DEBUG_SET(DEBUG_RATE_DYNAMICS, 3, rcCommand[PITCH]);
+
+            DEBUG_SET(DEBUG_RATE_DYNAMICS, 4, rcCommand[YAW]);
+            rcCommand[YAW] = applyRateDynamics(rcCommand[YAW], YAW, dT);
+            DEBUG_SET(DEBUG_RATE_DYNAMICS, 5, rcCommand[YAW]);
+            
         }
 
         //Compute THROTTLE command
@@ -859,7 +874,7 @@ void taskMainPidLoop(timeUs_t currentTimeUs)
     imuUpdateAccelerometer();
     imuUpdateAttitude(currentTimeUs);
 
-    annexCode();
+    annexCode(dT);
 
     if (rxConfig()->rcFilterFrequency) {
         rcInterpolationApply(isRXDataNew);

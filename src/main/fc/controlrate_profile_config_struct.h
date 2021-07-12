@@ -49,4 +49,15 @@ typedef struct controlRateConfig_s {
         uint8_t fpvCamAngleDegrees;             // Camera angle to treat as "forward" base axis in ACRO (Roll and Yaw sticks will command rotation considering this axis)
     } misc;
 
+#ifdef USE_RATE_DYNAMICS
+    struct {
+        uint8_t sensitivityCenter;
+        uint8_t sensitivityEnd;
+        uint8_t correctionCenter;
+        uint8_t correctionEnd;
+        uint8_t weightCenter;
+        uint8_t weightEnd;
+    } rateDynamics;
+#endif
+
 } controlRateConfig_t;

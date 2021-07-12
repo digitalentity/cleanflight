@@ -4782,6 +4782,66 @@ Limits acceleration of YAW rotation speed that can be requested by stick input. 
 
 ---
 
+### rate_dynamics_center_correction
+
+The center stick correction for Rate Dynamics
+
+| Default | Min | Max |
+| --- | --- | --- |
+| 10 | 10 | 95 |
+
+---
+
+### rate_dynamics_center_sensitivity
+
+The center stick sensitivity for Rate Dynamics
+
+| Default | Min | Max |
+| --- | --- | --- |
+| 100 | 25 | 175 |
+
+---
+
+### rate_dynamics_center_weight
+
+The center stick weight for Rate Dynamics
+
+| Default | Min | Max |
+| --- | --- | --- |
+| 0 | 0 | 95 |
+
+---
+
+### rate_dynamics_end_correction
+
+The end  stick correction for Rate Dynamics
+
+| Default | Min | Max |
+| --- | --- | --- |
+| 10 | 10 | 95 |
+
+---
+
+### rate_dynamics_end_sensitivity
+
+The end stick sensitivity for Rate Dynamics
+
+| Default | Min | Max |
+| --- | --- | --- |
+| 100 | 25 | 175 |
+
+---
+
+### rate_dynamics_end_weight
+
+The end  stick weight for Rate Dynamics
+
+| Default | Min | Max |
+| --- | --- | --- |
+| 0 | 0 | 95 |
+
+---
+
 ### rc_expo
 
 Exposition value used for the PITCH/ROLL axes by all the stabilized flights modes (all but `MANUAL`)

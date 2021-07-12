@@ -94,7 +94,7 @@ tables:
       "VIBE", "CRUISE", "REM_FLIGHT_TIME", "SMARTAUDIO", "ACC",
       "ERPM", "RPM_FILTER", "RPM_FREQ", "NAV_YAW", "DYNAMIC_FILTER", "DYNAMIC_FILTER_FREQUENCY",
       "IRLOCK", "CD", "KALMAN_GAIN", "PID_MEASUREMENT", "SPM_CELLS", "SPM_VS600", "SPM_VARIO", "PCF8574", "DYN_GYRO_LPF", "AUTOLEVEL", "FW_D", "IMU2", "ALTITUDE",
-      "GYRO_ALPHA_BETA_GAMMA", "SMITH_PREDICTOR", "AUTOTRIM", "AUTOTUNE"]
+      "GYRO_ALPHA_BETA_GAMMA", "SMITH_PREDICTOR", "AUTOTRIM", "AUTOTUNE", "RATE_DYNAMICS"]
   - name: async_mode
     values: ["NONE", "GYRO", "ALL"]
   - name: aux_operator
@@ -1444,6 +1444,48 @@ groups:
         min: 0
         max: 50
         default_value: 0
+      - name: rate_dynamics_center_sensitivity
+        field: rateDynamics.sensitivityCenter
+        default_value: 100
+        min: 25
+        max: 175
+        description: "The center stick sensitivity for Rate Dynamics"
+        condition: USE_RATE_DYNAMICS
+      - name: rate_dynamics_end_sensitivity
+        field: rateDynamics.sensitivityEnd
+        default_value: 100
+        min: 25
+        max: 175
+        description: "The end stick sensitivity for Rate Dynamics"
+        condition: USE_RATE_DYNAMICS
+      - name: rate_dynamics_center_correction
+        field: rateDynamics.correctionCenter
+        default_value: 10
+        min: 10
+        max: 95
+        description: "The center stick correction for Rate Dynamics"
+        condition: USE_RATE_DYNAMICS
+      - name: rate_dynamics_end_correction
+        field: rateDynamics.correctionEnd
+        default_value: 10
+        min: 10
+        max: 95
+        description: "The end  stick correction for Rate Dynamics"
+        condition: USE_RATE_DYNAMICS
+      - name: rate_dynamics_center_weight
+        field: rateDynamics.weightCenter
+        default_value: 0
+        min: 0
+        max: 95
+        description: "The center stick weight for Rate Dynamics"
+        condition: USE_RATE_DYNAMICS
+      - name: rate_dynamics_end_weight
+        field: rateDynamics.weightEnd
+        default_value: 0
+        min: 0
+        max: 95
+        description: "The end  stick weight for Rate Dynamics"
+        condition: USE_RATE_DYNAMICS
 
   - name: PG_SERIAL_CONFIG
     type: serialConfig_t
