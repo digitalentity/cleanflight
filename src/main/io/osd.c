@@ -3423,14 +3423,19 @@ static void osdShowStatsPage1(void)
 
     switch (rxConfig()->serialrx_provider) {
         case SERIALRX_CRSF:
-            displayWrite(osdDisplayPort, statNameX, top, "MIN LQ           :");
-            itoa(stats.min_lq, buff, 10);
+            displayWrite(osdDisplayPort, statNameX, top, "MIN RSSI %       :");
+            itoa(stats.min_rssi, buff, 10);
             strcat(buff, "%");
             displayWrite(osdDisplayPort, statValuesX, top++, buff);
 
-            displayWrite(osdDisplayPort, statNameX, top, "MIN RSSI         :");
+            displayWrite(osdDisplayPort, statNameX, top, "MIN RSSI DBM     :");
             itoa(stats.min_rssi_dbm, buff, 10);
             tfp_sprintf(buff, "%s%c", buff, SYM_DBM);
+            displayWrite(osdDisplayPort, statValuesX, top++, buff);
+
+            displayWrite(osdDisplayPort, statNameX, top, "MIN LQ           :");
+            itoa(stats.min_lq, buff, 10);
+            strcat(buff, "%");
             displayWrite(osdDisplayPort, statValuesX, top++, buff);
             break;
         default:
